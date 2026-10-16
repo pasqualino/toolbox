@@ -186,11 +186,9 @@ private struct EntryRow: View {
     var body: some View {
         HStack(spacing: 10) {
             ToolIcon(symbol: entry.symbol, tint: tint, size: 26)
-                .saturation(entry.isReady ? 1 : 0)
-                .opacity(entry.isReady ? 1 : 0.55)
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.name)
-                    .foregroundStyle(entry.isReady ? .primary : .secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.caption)

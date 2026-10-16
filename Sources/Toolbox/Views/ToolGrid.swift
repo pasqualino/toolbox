@@ -58,7 +58,7 @@ struct ToolGrid: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 28, weight: .bold))
-                Text(categories.count > 1 ? "Drop files anywhere, or press \(HotKey.shared.shortcut.display) from any app." : "\(readyCount) tools")
+                Text(categories.count > 1 ? "Drop files anywhere, or press \(HotKey.shared.shortcut.display) from any app." : "\(ToolRegistry.entryCount(in: categories[0])) tools")
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -71,10 +71,6 @@ struct ToolGrid: View {
             .controlSize(.large)
             .help("Find Tool (⌘K)")
         }
-    }
-
-    private var readyCount: Int {
-        model.tools.filter { categories.contains($0.category) && $0.isReady }.count
     }
 
     @ViewBuilder
@@ -153,7 +149,7 @@ struct ToolCard: View {
     var action: (() -> Void)?
 
     init(tool: Tool, action: (() -> Void)? = nil) {
-        entry = ToolRegistry.group(containing: tool.id).map(ToolEntry.group) ?? .tool(tool)
+        entry = ToolEntry(tool)
         self.action = action
     }
 
@@ -176,14 +172,11 @@ struct ToolCard: View {
         } label: {
             HStack(spacing: 12) {
                 ToolIcon(symbol: entry.symbol, tint: tint, size: 38)
-                    .saturation(entry.isReady ? 1 : 0)
-                    .opacity(entry.isReady ? 1 : 0.55)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(entry.name)
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(entry.isReady ? .primary : .secondary)
-                        if !entry.isReady { Badge(text: "Soon") }
+                            .foregroundStyle(.primary)
                         if case .group(let g) = entry { Badge(text: "\(g.members.count)") }
                     }
                     Text(entry.summary)
@@ -212,11 +205,6 @@ struct ToolCard: View {
         .contextMenu { EntryMenu(entry: entry) }
         .onHover { hovering = $0 }
         .animation(.snappy(duration: 0.15), value: hovering)
-        .help(entry.isReady ? entry.summary : comingSoonReason)
-    }
-
-    private var comingSoonReason: String {
-        if case .tool(let tool) = entry, case .comingSoon(let reason) = tool.status { return "Coming soon. \(reason)" }
-        return ""
+        .help(entry.summary)
     }
 }

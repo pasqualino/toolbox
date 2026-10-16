@@ -16,13 +16,20 @@ final class InputItem: Identifiable {
     let id = UUID()
     let url: URL
     let size: Int64
+    /// Loaded when the row first shows.
     var thumbnail: NSImage?
     var status: Status = .pending
     var outputSize: Int64 = 0
 
-    init(url: URL) {
+    init(url: URL, size: Int64) {
         self.url = url
-        size = Format.fileSize(url)
+        self.size = size
+    }
+
+    /// Starts loading the thumbnail if it isn't there yet. Rows call this as they appear.
+    func loadThumbnail() {
+        guard thumbnail == nil else { return }
+        Thumbnails.load(for: url, size: 96) { self.thumbnail = $0 }
     }
 
     var name: String { url.lastPathComponent }
@@ -39,14 +46,25 @@ final class ToolSession {
 
     let tool: Tool
     var items: [InputItem] = []
-    var text = ""
+    var text = "" {
+        didSet { textVersion &+= 1 }
+    }
     /// Second input for two-input text tools (Text Diff).
-    var secondary = ""
+    var secondary = "" {
+        didSet { textVersion &+= 1 }
+    }
+    /// Bumped on every change to `text` or `secondary`, so views can key work on it without hashing the text.
+    private(set) var textVersion = 0
     /// Bumped by Regenerate for generator tools.
     var generation = 0
     var options: Options {
-        didSet { saveOptions() }
+        didSet {
+            saveOptions()
+            updatePlan()
+        }
     }
+    /// Output names for tools that rename (Batch Rename), kept current as files and options change.
+    private(set) var plan: (names: [String], problem: String?)?
     var phase: Phase = .idle
     /// When the last run started and finished, for the Jobs list.
     var startedAt: Date?
@@ -56,7 +74,10 @@ final class ToolSession {
     var result: RunResult?
     var resultText = ""
     /// Text per input item, joined into `resultText` in input order.
-    private var texts: [Int: String] = [:]
+    private var texts: [String?] = []
+    /// Set while a burst of text events is being coalesced; `textsDirty` says a join is still owed.
+    private var textJoin: Task<Void, Never>?
+    private var textsDirty = false
     /// Error for runs that aren't per-file (merge, summarize).
     var runError: String?
 
@@ -65,37 +86,48 @@ final class ToolSession {
     init(tool: Tool) {
         self.tool = tool
         options = Self.loadOptions(for: tool)
+        missingRequirements = tool.requirements.filter { !Toolchain.isAvailable($0) }
     }
 
     // MARK: Inputs
 
     var acceptsFiles: Bool { tool.inputKind != .url }
 
-    /// Adds files, expanding folders. Returns how many were skipped as unsupported.
-    @discardableResult
-    func add(_ urls: [URL]) -> Int {
+    /// Adds files, expanding folders. Walking folders and reading sizes happens off the main thread,
+    /// then the files are added in one go, on the main actor. Returns how many were skipped as unsupported.
+    @MainActor @discardableResult
+    func add(_ urls: [URL]) async -> Int {
         if phase == .finished { resetResults() }
-        var skipped = 0
+        let tool = tool
         let known = Set(items.map { $0.url.standardizedFileURL })
-        for url in expand(urls) where !known.contains(url.standardizedFileURL) {
-            guard tool.accepts(url) else {
-                skipped += 1
-                continue
+        let (found, skipped) = await Task.detached(priority: .userInitiated) { () -> ([(URL, Int64)], Int) in
+            var found: [(URL, Int64)] = []
+            var skipped = 0
+            for url in Self.expand(urls) where !known.contains(url.standardizedFileURL) {
+                guard tool.accepts(url) else {
+                    skipped += 1
+                    continue
+                }
+                found.append((url, Format.fileSize(url)))
             }
-            let item = InputItem(url: url)
-            items.append(item)
-            Thumbnails.load(for: url, size: 96) { item.thumbnail = $0 }
-        }
+            return (found, skipped)
+        }.value
+        // Another add may have finished while this one walked the disk.
+        let present = Set(items.map { $0.url.standardizedFileURL })
+        items.append(contentsOf: found.filter { !present.contains($0.0.standardizedFileURL) }.map { InputItem(url: $0.0, size: $0.1) })
+        updatePlan()
         return skipped
     }
 
     func remove(_ ids: Set<InputItem.ID>) {
         items.removeAll { ids.contains($0.id) }
         if items.isEmpty { resetResults() }
+        updatePlan()
     }
 
     func move(from source: IndexSet, to destination: Int) {
         items.move(fromOffsets: source, toOffset: destination)
+        updatePlan()
     }
 
     func clear() {
@@ -104,9 +136,18 @@ final class ToolSession {
         text = ""
         secondary = ""
         resetResults()
+        updatePlan()
     }
 
-    private func expand(_ urls: [URL]) -> [URL] {
+    private func updatePlan() {
+        guard let makePlan = tool.plan, !items.isEmpty else {
+            if plan != nil { plan = nil }
+            return
+        }
+        plan = makePlan(items.map(\.url), options)
+    }
+
+    private nonisolated static func expand(_ urls: [URL]) -> [URL] {
         let fm = FileManager.default
         return urls.flatMap { url -> [URL] in
             var isDir: ObjCBool = false
@@ -145,14 +186,11 @@ final class ToolSession {
                 return "Select pages first."
             }
         }
-        if tool.id == "batch-rename", !items.isEmpty {
-            return BatchRename.problem(with: BatchRename.newNames(for: items.map(\.url), options: options))
-        }
-        return nil
+        return plan?.problem
     }
 
     var canRun: Bool {
-        guard tool.isReady, phase != .running, missingRequirements.isEmpty, blocker == nil else { return false }
+        guard phase != .running, missingRequirements.isEmpty, blocker == nil else { return false }
         switch tool.inputKind {
         case .files: return items.count >= tool.minimumInputs
         case .url: return !trimmedText.isEmpty
@@ -163,11 +201,17 @@ final class ToolSession {
     }
 
     /// Bumped after an install so `missingRequirements` is re-evaluated.
-    var requirementsCheck = 0
+    var requirementsCheck = 0 {
+        didSet { refreshRequirements() }
+    }
 
-    var missingRequirements: [Requirement] {
-        _ = requirementsCheck
-        return tool.requirements.filter { !Toolchain.isAvailable($0) }
+    /// Requirements that aren't met. Checked when the session is made, after an install,
+    /// and when the app becomes active (Apple Intelligence may have been turned on meanwhile).
+    private(set) var missingRequirements: [Requirement]
+
+    func refreshRequirements() {
+        let missing = tool.requirements.filter { !Toolchain.isAvailable($0) }
+        if missing != missingRequirements { missingRequirements = missing }
     }
 
     /// Overall progress for the bottom bar.
@@ -183,8 +227,10 @@ final class ToolSession {
         return total / Double(items.count)
     }
 
-    func run(outputRoot: URL) {
-        guard canRun else { return }
+    /// Starts a run. Returns its task, or nil when the session can't run yet.
+    @discardableResult
+    func run(outputRoot: URL) -> Task<Void, Never>? {
+        guard canRun else { return nil }
         resetResults()
         phase = .running
         startedAt = Date()
@@ -205,13 +251,13 @@ final class ToolSession {
             continuation.finish()
             await pump.value
             guard let self else { return }
-            if ProcessInfo.processInfo.environment["TOOLBOX_DEBUG"] != nil {
-                FileHandle.standardError.write("result \(result)\n".data(using: .utf8)!)
-            }
+            self.flushTexts(perFile: isPerFile)
+            DebugLog.log("result \(result)")
             self.result = result
+            let deliveredByName = Dictionary(result.outputs.map { ($0.lastPathComponent, $0) }) { first, _ in first }
             for item in self.items {
                 if case .done(let outputs) = item.status {
-                    let delivered = outputs.compactMap { out in result.outputs.first { $0.lastPathComponent == out.lastPathComponent } }
+                    let delivered = outputs.compactMap { deliveredByName[$0.lastPathComponent] }
                     item.status = .done(delivered.isEmpty ? outputs : delivered)
                     item.outputSize = (delivered.isEmpty ? outputs : delivered).reduce(0) { $0 + Format.fileSize($1) }
                 }
@@ -219,7 +265,7 @@ final class ToolSession {
             self.phase = result.cancelled && result.outputs.isEmpty ? .idle : .finished
             self.finishedAt = Date()
             if result.cancelled { self.resetStatuses() }
-            if tool.id == "speed-test", !self.resultText.isEmpty { SpeedHistory.add(self.resultText) }
+            if tool.keepsSpeedHistory, !self.resultText.isEmpty { SpeedHistory.add(self.resultText) }
             if !result.outputs.isEmpty || !self.resultText.isEmpty {
                 History.record(tool.id)
                 if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), let folder = result.folder {
@@ -228,6 +274,13 @@ final class ToolSession {
                 NSSound(named: "Glass")?.play()
             }
         }
+        return task
+    }
+
+    /// Runs and returns once the run has finished, or right away when it can't start.
+    @MainActor
+    func runAndWait(outputRoot: URL) async {
+        await run(outputRoot: outputRoot)?.value
     }
 
     func cancel() {
@@ -236,9 +289,7 @@ final class ToolSession {
     }
 
     private func handle(_ event: RunEvent, perFile: Bool) {
-        if ProcessInfo.processInfo.environment["TOOLBOX_DEBUG"] != nil {
-            FileHandle.standardError.write("event \(event)\n".data(using: .utf8)!)
-        }
+        DebugLog.log("event \(event)")
         switch event {
         case .itemStarted(let i):
             if perFile, items.indices.contains(i) { items[i].status = .running(0) }
@@ -249,16 +300,48 @@ final class ToolSession {
         case .itemFailed(let i, let message):
             if perFile, items.indices.contains(i) { items[i].status = .failed(message) } else { runError = message }
         case .text(let i, let text):
+            if texts.count <= i { texts.append(contentsOf: repeatElement(nil, count: i + 1 - texts.count)) }
             texts[i] = text
+            textsChanged(perFile: perFile)
+        }
+    }
+
+    /// Joins at once, then at most every 100 ms while more text arrives, so a batch of files
+    /// finishing together doesn't rebuild the whole result once per file.
+    private func textsChanged(perFile: Bool) {
+        guard textJoin == nil else {
+            textsDirty = true
+            return
+        }
+        resultText = joinedTexts(perFile: perFile)
+        textJoin = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(100))
+            guard let self, !Task.isCancelled else { return }
+            self.textJoin = nil
+            if self.textsDirty {
+                self.textsDirty = false
+                self.textsChanged(perFile: perFile)
+            }
+        }
+    }
+
+    /// Brings `resultText` up to date now, at the end of a run.
+    private func flushTexts(perFile: Bool) {
+        textJoin?.cancel()
+        textJoin = nil
+        if textsDirty {
+            textsDirty = false
             resultText = joinedTexts(perFile: perFile)
         }
     }
 
     /// One file: its text. Several: each under its file name, in the order the files were added.
     private func joinedTexts(perFile: Bool) -> String {
-        let keys = texts.keys.sorted()
-        guard perFile, keys.count > 1 || items.count > 1 else { return keys.compactMap { texts[$0] }.joined(separator: "\n\n") }
-        return keys.map { i in
+        let present = texts.indices.filter { texts[$0] != nil }
+        guard perFile, present.count > 1 || items.count > 1 else {
+            return present.compactMap { texts[$0] }.joined(separator: "\n\n")
+        }
+        return present.map { i in
             let name = items.indices.contains(i) ? items[i].name : "Item \(i + 1)"
             return "\(name)\n\(String(repeating: "-", count: min(name.count, 60)))\n\(texts[i] ?? "")"
         }.joined(separator: "\n\n")
@@ -272,7 +355,10 @@ final class ToolSession {
     func resetResults() {
         result = nil
         resultText = ""
-        texts = [:]
+        texts = []
+        textJoin?.cancel()
+        textJoin = nil
+        textsDirty = false
         runError = nil
         batchProgress = 0
         phase = .idle
@@ -318,6 +404,22 @@ final class ToolSession {
     func resetOptions() {
         options = Options.defaults(for: tool)
     }
+
+    // MARK: Option bindings
+
+    func binding(for id: String) -> Binding<String> {
+        Binding(get: { self.options[id] }, set: { self.options[id] = $0 })
+    }
+
+    func boolBinding(for id: String) -> Binding<Bool> {
+        Binding(get: { self.options[id] == "true" }, set: { self.options[id] = $0 ? "true" : "false" })
+    }
+
+    /// A number option as a Double, kept within `range`.
+    func numberBinding(for id: String, range: ClosedRange<Double>) -> Binding<Double> {
+        Binding(get: { Double(self.options[id]) ?? range.lowerBound },
+                set: { self.options[id] = OptionSpecFormat.number(min(max($0, range.lowerBound), range.upperBound)) })
+    }
 }
 
 enum Thumbnails {
@@ -329,6 +431,19 @@ enum Thumbnails {
             let image = rep?.nsImage ?? NSWorkspace.shared.icon(forFile: url.path)
             Task { @MainActor in completion(image) }
         }
+    }
+}
+
+/// Finder icons by path. Looking one up hits the disk, so views reuse them instead of asking per render.
+@MainActor
+enum FileIcons {
+    private static let cache = NSCache<NSString, NSImage>()
+
+    static func icon(for path: String) -> NSImage {
+        if let cached = cache.object(forKey: path as NSString) { return cached }
+        let icon = NSWorkspace.shared.icon(forFile: path)
+        cache.setObject(icon, forKey: path as NSString)
+        return icon
     }
 }
 
@@ -347,14 +462,16 @@ enum History {
         Task { @MainActor in AppModel.shared.historyVersion += 1 }
     }
 
-    /// 0 for unused, higher for more recent.
-    static func boost(_ id: String) -> Double {
-        guard let index = ids.firstIndex(of: id) else { return 0 }
-        return Double(12 - index) / 12
+    /// 0 for unused, higher for more recent, by tool id. Read once per search, not per tool.
+    static var recency: [String: Double] {
+        var boost: [String: Double] = [:]
+        for (index, id) in ids.enumerated() where boost[id] == nil { boost[id] = Double(12 - index) / 12 }
+        return boost
     }
 }
 
-/// Past Network Speed Test reports, newest first.
+/// Past Network Speed Test reports, newest first. Read from UserDefaults once, then kept in memory.
+@MainActor
 enum SpeedHistory {
     struct Entry: Codable, Hashable {
         let date: Date
@@ -363,14 +480,20 @@ enum SpeedHistory {
 
     static let key = "speedHistory"
 
+    private static var cached: [Entry]?
+
     static var entries: [Entry] {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
-        return (try? JSONDecoder().decode([Entry].self, from: data)) ?? []
+        if let cached { return cached }
+        let data = UserDefaults.standard.data(forKey: key)
+        let decoded = data.flatMap { try? JSONDecoder().decode([Entry].self, from: $0) } ?? []
+        cached = decoded
+        return decoded
     }
 
     static func add(_ report: String) {
-        let list = [Entry(date: Date(), report: report)] + entries
-        if let data = try? JSONEncoder().encode(Array(list.prefix(20))) { UserDefaults.standard.set(data, forKey: key) }
+        let list = Array(([Entry(date: Date(), report: report)] + entries).prefix(20))
+        cached = list
+        if let data = try? JSONEncoder().encode(list) { UserDefaults.standard.set(data, forKey: key) }
     }
 }
 

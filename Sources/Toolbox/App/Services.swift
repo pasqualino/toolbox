@@ -49,21 +49,13 @@ final class ServiceProvider: NSObject {
 
     // MARK: Helpers
 
+    /// An empty result leaves the selection as it was.
     private func transform(_ pboard: NSPasteboard, toolID: String, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
         guard let text = pboard.string(forType: .string), let tool = ToolRegistry.tool(id: toolID) else { return }
-        let options = MainActor.assumeIsolated { AppModel.shared.session(for: tool).options }
-        do {
-            let output = try tool.apply(TextInput(text), options: options)
-            pboard.clearContents()
-            pboard.setString(output, forType: .string)
-            MainActor.assumeIsolated { History.record(toolID) }
-        } catch let failure {
-            error.pointee = failure.localizedDescription as NSString
-            MainActor.assumeIsolated {
-                Toast.show("\(tool.name) failed", detail: failure.localizedDescription,
-                           symbol: "exclamationmark.triangle.fill", tint: .red)
-            }
+        let outcome = MainActor.assumeIsolated {
+            TextExport.transform(tool, text, options: AppModel.shared.session(for: tool).options, into: pboard)
         }
+        if case .failed(let message) = outcome { error.pointee = message as NSString }
     }
 
     /// The calling app waits for the service to return, so the model runs on a background task while this
@@ -74,43 +66,44 @@ final class ServiceProvider: NSObject {
         var options = MainActor.assumeIsolated { AppModel.shared.session(for: tool).options }
         options["mode"] = mode
         let settings = RewriteSession.Settings(options)
+        // The wait below is synchronous, so the result also lands in a box it can read without awaiting.
         let box = ResultBox()
         let done = DispatchSemaphore(value: 0)
         MainActor.assumeIsolated {
             Toast.show(mode == "fix" ? "Fixing grammar…" : "Rewriting…", detail: RewriteModel.describe(options),
                        symbol: "sparkles", tint: tool.tint, duration: Self.inPlaceTimeout)
         }
-        Task.detached {
-            do { box.set(.success(try await RewriteSession(settings: settings).rewrite(text) { _ in })) }
-            catch { box.set(.failure(error)) }
-            done.signal()
+        let work = Task.detached {
+            defer { done.signal() }
+            do {
+                let output = try await RewriteSession(settings: settings).rewrite(text) { _ in }
+                box.set(.success(output))
+                return output
+            } catch {
+                box.set(.failure(error))
+                throw error
+            }
         }
         if done.wait(timeout: .now() + Self.inPlaceTimeout) == .success, let result = box.value {
             switch result {
             case .success(let output):
-                pboard.clearContents()
-                pboard.setString(output, forType: .string)
+                TextExport.copy(output, to: pboard)
                 MainActor.assumeIsolated {
                     History.record("rewrite")
                     Toast.show(mode == "fix" ? "Grammar fixed" : "Rewritten", detail: output)
                 }
             case .failure(let failure):
                 error.pointee = failure.localizedDescription as NSString
-                MainActor.assumeIsolated {
-                    Toast.show("Rewrite failed", detail: failure.localizedDescription,
-                               symbol: "exclamationmark.triangle.fill", tint: .red)
-                }
+                MainActor.assumeIsolated { Toast.error("Rewrite failed", detail: failure.localizedDescription) }
             }
             return
         }
         // Too slow to replace in place: leave the selection alone and deliver to the clipboard when ready.
         error.pointee = "Still rewriting; the result will be copied to the clipboard." as NSString
         Task { @MainActor in
-            while box.value == nil { try? await Task.sleep(for: .milliseconds(200)) }
-            if case .success(let output) = box.value {
-                TextExport.copy(output)
-                Toast.show("Rewrite copied", detail: "Press ⌘V to paste it.")
-            }
+            guard let output = try? await work.value else { return }
+            TextExport.copy(output)
+            Toast.show("Rewrite copied", detail: "Press ⌘V to paste it.")
         }
     }
 }

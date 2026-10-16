@@ -17,6 +17,30 @@ public enum ProcessRunner {
         onLine: (@Sendable (String) -> Void)? = nil,
         onErrorLine: (@Sendable (String) -> Void)? = nil
     ) async throws -> ProcessOutput {
+        let result = try await execute(executable, arguments, environment: environment, onLine: onLine, onErrorLine: onErrorLine)
+        guard result.status == 0 else {
+            throw ToolError.message(summarize(result.stderr, fallback: executable.lastPathComponent))
+        }
+        return result
+    }
+
+    /// Runs a command whose non-zero exit is an answer, not a failure (codesign, spctl, xattr).
+    /// Returns stdout, stderr and status for every exit. Terminates the process on task cancellation.
+    public static func capture(
+        _ executable: URL,
+        _ arguments: [String],
+        environment: [String: String]? = nil
+    ) async throws -> ProcessOutput {
+        try await execute(executable, arguments, environment: environment, onLine: nil, onErrorLine: nil)
+    }
+
+    private static func execute(
+        _ executable: URL,
+        _ arguments: [String],
+        environment: [String: String]?,
+        onLine: (@Sendable (String) -> Void)?,
+        onErrorLine: (@Sendable (String) -> Void)?
+    ) async throws -> ProcessOutput {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
@@ -45,13 +69,11 @@ public enum ProcessRunner {
                     errBuffer.append(err.fileHandleForReading.readDataToEndOfFile())
                     outBuffer.flush()
                     errBuffer.flush()
-                    let result = ProcessOutput(status: p.terminationStatus, stdout: outBuffer.text, stderr: errBuffer.text)
                     if p.terminationReason == .uncaughtSignal {
                         cont.resume(throwing: CancellationError())
-                    } else if p.terminationStatus != 0 {
-                        cont.resume(throwing: ToolError.message(Self.summarize(result.stderr, fallback: executable.lastPathComponent)))
                     } else {
-                        cont.resume(returning: result)
+                        cont.resume(returning: ProcessOutput(status: p.terminationStatus,
+                                                             stdout: outBuffer.text, stderr: errBuffer.text))
                     }
                 }
                 do {

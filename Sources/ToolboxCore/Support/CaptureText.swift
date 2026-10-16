@@ -19,7 +19,7 @@ public enum CaptureText {
         } else {
             args.append("-i")
         }
-        let result = try await MacShell.run("/usr/sbin/screencapture", args + [png.path])
+        let result = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/sbin/screencapture"), args + [png.path])
         try Task.checkCancellation()
 
         let made = FileManager.default.fileExists(atPath: png.path)

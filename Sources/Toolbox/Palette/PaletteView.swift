@@ -27,7 +27,7 @@ struct PaletteView: View {
     private var results: [Tool] {
         let ranked = ToolSearch.rank(ToolRegistry.all, query: state.query, files: state.files)
         guard state.text != nil else { return ranked }
-        return ranked.filter { $0.isTransform || $0.id == "rewrite" || $0.inputKind == .textOrFiles }
+        return ranked.filter(\.takesText)
     }
 
     var body: some View {
@@ -50,7 +50,7 @@ struct PaletteView: View {
             if !state.files.isEmpty { fileChips }
             Divider().opacity(0.5)
             resultList(results)
-            footer
+            footer(results)
         }
         .frame(width: 640)
         .background {
@@ -121,7 +121,7 @@ struct PaletteView: View {
             HStack(spacing: 6) {
                 ForEach(state.files, id: \.self) { url in
                     HStack(spacing: 5) {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                        Image(nsImage: FileIcons.icon(for: url.path))
                             .resizable()
                             .frame(width: 16, height: 16)
                         Text(url.lastPathComponent)
@@ -173,7 +173,7 @@ struct PaletteView: View {
         }
     }
 
-    private var footer: some View {
+    private func footer(_ results: [Tool]) -> some View {
         HStack(spacing: 14) {
             Image(systemName: "square.grid.2x2.fill")
                 .foregroundStyle(.tertiary)
@@ -181,7 +181,7 @@ struct PaletteView: View {
             Spacer()
             HStack(spacing: 4) { KeyCap(text: "↑↓"); Text("Move") }
             HStack(spacing: 4) { KeyCap(text: "↩"); Text("Open") }
-            if selectedIsTransform {
+            if results.indices.contains(state.selection) && ClipboardAction.supports(results[state.selection]) {
                 HStack(spacing: 4) { KeyCap(text: "⌥↩"); Text("Apply to clipboard") }
             }
             HStack(spacing: 4) { KeyCap(text: "esc"); Text("Close") }
@@ -191,11 +191,6 @@ struct PaletteView: View {
         .padding(.horizontal, 16)
         .frame(height: 34)
         .background(.quaternary.opacity(0.25))
-    }
-
-    private var selectedIsTransform: Bool {
-        let results = results
-        return results.indices.contains(state.selection) && ClipboardAction.supports(results[state.selection])
     }
 
     private func applyToClipboard(_ results: [Tool]) {
@@ -217,44 +212,34 @@ struct PaletteView: View {
     private func open(_ results: [Tool]) {
         guard results.indices.contains(state.selection) else { return }
         let tool = results[state.selection]
-        // Capture Text goes straight to the crosshair; no window needed.
-        if tool.id == "capture-text" {
-            CaptureFlow.run()
-            return
-        }
+        if tool.flow.openFromPalette() { return }
         var text = tool.inputKind == .url && ToolSearch.looksLikeURL(state.query) ? state.query : nil
         if let handed = state.text {
             AppModel.shared.session(for: tool).text = ""
-            if tool.id == "rewrite" {
-                AppModel.shared.rewrite.reset()
-                AppModel.shared.rewrite.autoStart = true
-            }
+            tool.flow.willOpen(withText: handed)
             AppModel.shared.open(tool, text: handed)
             return
         }
         // Text tools start from the clipboard when their editor is empty, so Return shows a result at once.
-        let takesClipboard = (tool.isTransform && !tool.traits.contains(.generator)) || tool.id == "rewrite"
-        if takesClipboard, AppModel.shared.session(for: tool).text.isEmpty || tool.id == "rewrite",
+        // Rewrite always takes the clipboard: it's the message you're about to send.
+        let rewrite = tool.flow == .rewrite
+        let takesClipboard = (tool.isTransform && !tool.traits.contains(.generator)) || rewrite
+        if takesClipboard, AppModel.shared.session(for: tool).text.isEmpty || rewrite,
            let clip = NSPasteboard.general.string(forType: .string), clip.utf8.count < 5_000_000 {
             text = clip
         }
-        if tool.id == "rewrite", text != nil {
-            AppModel.shared.rewrite.reset()
-            AppModel.shared.rewrite.autoStart = true
-        }
-        if tool.isTransform, let file = state.files.first,
-           let data = try? Data(contentsOf: file), let contents = String(data: data, encoding: .utf8) {
+        tool.flow.willOpen(withText: text)
+        if tool.isTransform, let file = state.files.first, let contents = TextExport.read(file) {
             text = contents
         }
         var files = tool.isTransform ? [] : state.files
         // Screenshot tools start from the image on the clipboard, the way text tools start from copied text.
-        if files.isEmpty, PasteboardImport.screenshotTools.contains(tool.id),
+        if files.isEmpty, tool.traits.contains(.takesClipboardImage),
            AppModel.shared.session(for: tool).items.isEmpty {
             files = PasteboardImport.files(for: tool)
         }
         AppModel.shared.open(tool, files: files, text: text)
-        // Action tools you open from the palette are ones you want to run now (Network Speed Test).
-        if tool.inputKind == .action, tool.id != "keep-awake" { AppModel.shared.runCurrent() }
+        if tool.runsWhenOpenedFromPalette { AppModel.shared.runCurrent() }
     }
 }
 
@@ -270,8 +255,7 @@ private struct PaletteRow: View {
                 HStack(spacing: 6) {
                     Text(tool.name)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(tool.isReady ? .primary : .secondary)
-                    if !tool.isReady { Badge(text: "Soon") }
+                        .foregroundStyle(.primary)
                 }
                 Text(tool.summary)
                     .font(.system(size: 12))

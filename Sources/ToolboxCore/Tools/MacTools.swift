@@ -108,7 +108,8 @@ enum MacTools {
             let result = try await SpeedTest.run(sequential: ctx.options.bool("sequential"))
             ctx.showText(result.report)
             return []
-        }
+        },
+        runningHint: "A speed test takes about 20 seconds."
     )
 
     // MARK: - Fix "App Is Damaged"
@@ -132,6 +133,7 @@ enum MacTools {
         runner: .perFile { url, ctx in
             ctx.showText(try await AppRepair.run(url, fix: ctx.options.string("mode") != "check"))
             return []
-        }
+        },
+        inputHint: "Only the download quarantine flag is removed; nothing else in the app changes."
     )
 }

@@ -21,26 +21,24 @@ enum MediaReport {
             sections[sections.count - 1].rows.append((label, value))
         }
 
+        /// Values line up across every section, not just within one.
         var text: String {
             let width = sections.flatMap { $0.rows.map(\.0.count) }.max() ?? 0
             return sections.filter { !$0.rows.isEmpty }.map { section in
-                ([section.title] + section.rows.map { label, value in
-                    "  " + label.padding(toLength: width, withPad: " ", startingAt: 0) + "  " + value
-                }).joined(separator: "\n")
+                section.title + "\n" + DevTextReport.table(section.rows, indent: "  ", labelWidth: width)
             }.joined(separator: "\n\n")
         }
     }
 
-    static func report(for url: URL) async throws -> String {
+    /// `preferAVFoundation` skips ffprobe, for testing the fallback without uninstalling FFmpeg.
+    static func report(for url: URL, preferAVFoundation: Bool = false) async throws -> String {
         guard FileManager.default.fileExists(atPath: url.path) else { throw ToolError.unreadable(url) }
         let type = UTType(filenameExtension: url.pathExtension.lowercased())
         if let type, type.conforms(to: .image), !type.conforms(to: .movie) {
             return try image(url)
         }
-        // TOOLBOX_MEDIAINFO_AVFOUNDATION=1 forces the fallback, for testing without uninstalling FFmpeg.
-        let forceFallback = ProcessInfo.processInfo.environment["TOOLBOX_MEDIAINFO_AVFOUNDATION"] == "1"
-        if let ffprobe = Toolchain.ffprobe, !forceFallback {
-            return try await probe(url, ffprobe: ffprobe)
+        if Toolchain.ffprobe != nil, !preferAVFoundation {
+            return try await probe(url)
         }
         return try await avFoundation(url)
     }
@@ -61,20 +59,9 @@ enum MediaReport {
 
     // MARK: ffprobe
 
-    private static func probe(_ url: URL, ffprobe: URL) async throws -> String {
-        let out: ProcessOutput
-        do {
-            out = try await ProcessRunner.run(ffprobe, [
-                "-v", "error", "-print_format", "json", "-show_format", "-show_streams", url.path,
-            ])
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            throw ToolError.unreadable(url)
-        }
-        guard let json = try? JSONSerialization.jsonObject(with: Data(out.stdout.utf8)) as? [String: Any],
-              let format = json["format"] as? [String: Any] else { throw ToolError.unreadable(url) }
-        let streams = json["streams"] as? [[String: Any]] ?? []
+    private static func probe(_ url: URL) async throws -> String {
+        let (format, streams) = try await FFmpeg.probeJSON(url)
+        guard !format.isEmpty else { throw ToolError.unreadable(url) }
         let tags = lowercased(format["tags"] as? [String: Any])
 
         var b = Builder()
@@ -455,19 +442,31 @@ enum MediaReport {
         date.formatted(date: .abbreviated, time: .standard)
     }
 
-    /// EXIF "2024:05:01 10:00:00", in the camera's local time.
-    private static func exifDate(_ text: String) -> String? {
+    private static let exifFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy:MM:dd HH:mm:ss"
-        return f.date(from: text).map(date)
+        return f
+    }()
+
+    private static let isoFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoWhole: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    /// EXIF "2024:05:01 10:00:00", in the camera's local time.
+    private static func exifDate(_ text: String) -> String? {
+        exifFormatter.date(from: text).map(date)
     }
 
     private static func isoDate(_ text: String) -> String? {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = f.date(from: text) { return date(d) }
-        f.formatOptions = [.withInternetDateTime]
-        return f.date(from: text).map(date)
+        (isoFractional.date(from: text) ?? isoWhole.date(from: text)).map(date)
     }
 }

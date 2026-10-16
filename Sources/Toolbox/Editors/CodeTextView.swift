@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ToolboxCore
 
 /// Plain monospaced NSTextView. No smart quotes, dashes or autocorrect, which would corrupt JSON and code.
 /// Handles megabytes of text without the cost of a SwiftUI Text.
@@ -12,7 +13,7 @@ struct CodeTextView: NSViewRepresentable {
     /// Monospaced by default; prose tools (Rewrite) pass the system font.
     var font: NSFont = .monospacedSystemFont(ofSize: 12.5, weight: .regular)
     /// Syntax coloring for code; nil for plain text.
-    var language: CodeLanguage?
+    var language: Syntax?
     var focusToken = 0
     /// Called with dropped file URLs; return true to accept them instead of inserting their paths.
     var onDropFiles: (([URL]) -> Bool)?
@@ -60,6 +61,7 @@ struct CodeTextView: NSViewRepresentable {
         textView.usesFindBar = true
         textView.isIncrementalSearchingEnabled = true
         textView.string = text
+        context.coordinator.lastText = text
         textView.isEditable = editable
         textView.isSelectable = true
         textView.placeholder = placeholder
@@ -70,10 +72,12 @@ struct CodeTextView: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         context.coordinator.parent = self
         guard let textView = scroll.documentView as? DropTextView else { return }
-        if textView.string != text {
+        // Compare with what was last pushed or typed: reading textView.string copies the whole text.
+        if context.coordinator.lastText != text {
             // Keep the caret where it was when the change came from outside (Use as Input, paste from palette).
             let selection = textView.selectedRanges
             textView.string = text
+            context.coordinator.lastText = text
             context.coordinator.highlight(textView, now: true)
             // Programmatic changes don't trigger a redraw of the placeholder.
             textView.needsDisplay = true
@@ -92,6 +96,8 @@ struct CodeTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CodeTextView
         var focusToken: Int
+        /// The text the view holds, as last set from the binding or typed. Same storage as the binding's value.
+        var lastText = ""
 
         init(_ parent: CodeTextView) {
             self.parent = parent
@@ -100,17 +106,36 @@ struct CodeTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let view = notification.object as? NSTextView else { return }
-            parent.text = view.string
+            let text = view.string
+            lastText = text
+            parent.text = text
             highlight(view, now: false)
         }
 
         private var pending: DispatchWorkItem?
+        /// Bumped per request, so a slow background match never colors text that has changed since.
+        private var generation = 0
+
+        /// Above this many characters, a programmatic change is matched off the main thread.
+        static let backgroundThreshold = 50_000
 
         /// Colors the text. While typing, waits a beat so fast typing doesn't re-run the regexes per key.
         func highlight(_ view: NSTextView, now: Bool) {
             pending?.cancel()
+            generation += 1
             guard let language = parent.language, let storage = view.textStorage else { return }
             let font = parent.font
+            if now, storage.length > Self.backgroundThreshold {
+                guard storage.length <= Highlighter.maxLength else { return }
+                let text = storage.string
+                let requested = generation
+                Task { @MainActor [weak self, weak view] in
+                    let spans = await Task.detached(priority: .userInitiated) { Highlighter.spans(language, in: text) }.value
+                    guard let self, view != nil, self.generation == requested else { return }
+                    Highlighter.apply(spans, to: storage, baseFont: font)
+                }
+                return
+            }
             let work = DispatchWorkItem { [weak view] in
                 guard view != nil else { return }
                 Highlighter.apply(language, to: storage, baseFont: font)

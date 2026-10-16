@@ -30,6 +30,7 @@ enum ImageEditTools {
             try await ImageIOHelpers.write(try Beautify.render(image, ctx.options), to: out, format: .png, quality: 1)
             return [out]
         },
+        traits: .takesClipboardImage,
         preview: { source, options in
             try Beautify.render(try ImageEdit.previewImage(source), options)
         }
@@ -78,6 +79,7 @@ enum ImageEditTools {
             }
             return [out]
         },
+        traits: .takesClipboardImage,
         preview: { source, options in
             try Redact.render(try ImageEdit.previewImage(source), options).image
         }

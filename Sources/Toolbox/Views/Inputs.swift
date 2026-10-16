@@ -81,9 +81,11 @@ struct DropZone: View {
         .scaleEffect(targeted && !reduceMotion ? 1.01 : 1)
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: targeted)
         .dropDestination(for: URL.self) { urls, _ in
-            let skipped = session.add(urls)
-            rejected = skipped > 0 ? skipped : nil
-            return skipped < urls.count
+            Task {
+                let skipped = await session.add(urls)
+                rejected = skipped > 0 ? skipped : nil
+            }
+            return true
         } isTargeted: { targeted = $0 }
     }
 
@@ -102,11 +104,7 @@ struct DropZone: View {
 
     private var typesHint: String {
         if session.tool.minimumInputs > 1 { return "Add at least \(session.tool.minimumInputs). Drag to set the order." }
-        switch session.tool.id {
-        case "fix-app": return "Only the download quarantine flag is removed; nothing else in the app changes."
-        case "batch-rename": return "Or a whole folder. Copies are renamed unless you choose Rename originals."
-        default: return "Or a whole folder. Originals are never changed."
-        }
+        return session.tool.inputHint ?? "Or a whole folder. Originals are never changed."
     }
 }
 
@@ -159,8 +157,7 @@ struct FileList: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 Divider()
-                let renamed = session.tool.id == "batch-rename"
-                    ? BatchRename.newNames(for: session.items.map(\.url), options: session.options) : []
+                let renamed = session.plan?.names ?? []
                 List(selection: $selection) {
                     ForEach(Array(session.items.enumerated()), id: \.element.id) { index, item in
                         FileRow(item: item, showIndex: session.tool.ordered ? index + 1 : nil,
@@ -191,7 +188,8 @@ struct FileList: View {
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
-            session.add(urls) < urls.count
+            Task { await session.add(urls) }
+            return true
         } isTargeted: { targeted = $0 }
     }
 
@@ -262,6 +260,7 @@ private struct FileRow: View {
         }
         .padding(.vertical, 3)
         .draggable(draggedURL)
+        .task { item.loadThumbnail() }
     }
 
     /// Dragging a finished row hands out the result; otherwise the original.
@@ -388,7 +387,7 @@ struct ResultFiles: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(result.outputs, id: \.self) { url in
                         HStack {
-                            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
+                            Image(nsImage: FileIcons.icon(for: url.path))
                                 .resizable()
                                 .frame(width: 28, height: 28)
                             Text(url.lastPathComponent).lineLimit(1).truncationMode(.middle)
@@ -434,7 +433,7 @@ struct TextEntry: View {
                     HStack(spacing: 6) {
                         ForEach(session.items) { item in
                             HStack(spacing: 4) {
-                                Image(nsImage: NSWorkspace.shared.icon(forFile: item.url.path))
+                                Image(nsImage: FileIcons.icon(for: item.url.path))
                                     .resizable().frame(width: 14, height: 14)
                                 Text(item.name).lineLimit(1)
                                 Button {
@@ -462,7 +461,8 @@ struct TextEntry: View {
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
-            session.add(urls) < urls.count
+            Task { await session.add(urls) }
+            return true
         } isTargeted: { targeted = $0 }
         .onChange(of: model.focusToken, initial: true) { focused = true }
     }
@@ -470,7 +470,6 @@ struct TextEntry: View {
 
 struct TextResult: View {
     let session: ToolSession
-    @State private var copied = false
 
     var body: some View {
         Panel {
@@ -483,19 +482,9 @@ struct TextResult: View {
                         ProgressView().controlSize(.small)
                     } else if !session.isTextResult {
                         // Text-only results have Copy and Save As in the bottom bar.
-                        Button {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(session.resultText, forType: .string)
-                            copied = true
-                            Task {
-                                try? await Task.sleep(for: .seconds(1.5))
-                                copied = false
-                            }
-                        } label: {
-                            Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
-                        }
-                        .buttonStyle(.borderless)
-                        .keyboardShortcut("c", modifiers: [.command, .shift])
+                        CopyButton(text: session.resultText, flash: 1.5)
+                            .buttonStyle(.borderless)
+                            .keyboardShortcut("c", modifiers: [.command, .shift])
                     }
                 }
                 .padding(.horizontal, 14)
@@ -550,6 +539,7 @@ struct FileStrip: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .draggable(item.url)
+            .task(id: item.id) { item.loadThumbnail() }
         }
     }
 }

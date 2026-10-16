@@ -31,8 +31,8 @@ enum FileTools {
         ],
         actionTitle: "Rename",
         runner: .batch { urls, ctx in
-            let names = BatchRename.newNames(for: urls, options: ctx.options)
-            if let problem = BatchRename.problem(with: names) { throw ToolError.message(problem) }
+            let (names, problem) = BatchRename.plan(urls, ctx.options)
+            if let problem { throw ToolError.message(problem) }
 
             if ctx.options.string("mode") == "rename" {
                 return try renameInPlace(urls, to: names, ctx: ctx)
@@ -48,7 +48,9 @@ enum FileTools {
                 ctx.progress(Double(i + 1) / Double(urls.count))
             }
             return outputs
-        }
+        },
+        inputHint: "Or a whole folder. Copies are renamed unless you choose Rename originals.",
+        plan: BatchRename.plan
     )
 
     /// Two-phase move (to a temporary name, then to the final one) so swaps and case-only changes can't collide.

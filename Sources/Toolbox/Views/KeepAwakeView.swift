@@ -85,9 +85,7 @@ struct KeepAwakeView: View {
                         .keyboardShortcut(.return, modifiers: .command)
                 } else {
                     DurationPicker(session: session)
-                    Toggle("Keep the display on too", isOn: Binding(
-                        get: { session.options.bool("display") },
-                        set: { session.options["display"] = $0 ? "true" : "false" }))
+                    Toggle("Keep the display on too", isOn: session.boolBinding(for: "display"))
                         .toggleStyle(.checkbox)
                     Button {
                         model.start(session.options)

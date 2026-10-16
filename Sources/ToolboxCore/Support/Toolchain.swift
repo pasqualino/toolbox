@@ -6,16 +6,26 @@ public enum Toolchain {
     static let searchDirectories = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
 
     /// PATH for child processes. Apps launched from Finder get a minimal PATH, so add Homebrew's.
-    static var searchPath: String {
+    /// The environment doesn't change while running, so it's built once.
+    static let searchPath: String = {
         let inherited = ProcessInfo.processInfo.environment["PATH"]?.split(separator: ":").map(String.init) ?? []
         var seen = Set<String>()
         return (searchDirectories + inherited).filter { seen.insert($0).inserted }.joined(separator: ":")
-    }
+    }()
 
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var found: [String: URL] = [:]
+
+    /// Finds an executable on `searchPath`. Hits are cached for the process lifetime; misses aren't,
+    /// so a tool installed while the app runs (the Install button) is found on the next check.
     public static func locate(_ name: String) -> URL? {
+        if let url = lock.withLock({ found[name] }) { return url }
         for dir in searchPath.split(separator: ":") {
             let url = URL(fileURLWithPath: String(dir)).appendingPathComponent(name)
-            if FileManager.default.isExecutableFile(atPath: url.path) { return url }
+            if FileManager.default.isExecutableFile(atPath: url.path) {
+                lock.withLock { found[name] = url }
+                return url
+            }
         }
         return nil
     }

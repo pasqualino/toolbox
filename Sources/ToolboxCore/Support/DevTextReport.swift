@@ -3,8 +3,9 @@ import Foundation
 /// Plain-text report helpers shared by the developer report tools.
 enum DevTextReport {
     /// Aligned "label  value" lines. Values with newlines are indented under the value column.
-    static func table(_ rows: [(String, String)], indent: String = "") -> String {
-        let width = (rows.map(\.0.count).max() ?? 0) + 2
+    /// `labelWidth` lines up several tables that share a column; by default it fits these rows.
+    static func table(_ rows: [(String, String)], indent: String = "", labelWidth: Int? = nil) -> String {
+        let width = (labelWidth ?? rows.map(\.0.count).max() ?? 0) + 2
         return rows.map { label, value in
             let pad = String(repeating: " ", count: width - label.count)
             let cont = "\n" + indent + String(repeating: " ", count: width)

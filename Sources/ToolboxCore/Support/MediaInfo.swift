@@ -18,22 +18,7 @@ struct MediaInfo: Sendable {
     var overallBitrate: Int = 0
 
     static func inspect(_ url: URL) async throws -> MediaInfo {
-        guard let ffprobe = Toolchain.ffprobe else { throw ToolError.missingRequirement(.ffmpeg) }
-        let out: ProcessOutput
-        do {
-            out = try await ProcessRunner.run(ffprobe, [
-                "-v", "error", "-print_format", "json", "-show_format", "-show_streams", url.path,
-            ])
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            throw ToolError.unreadable(url)
-        }
-        guard let json = try? JSONSerialization.jsonObject(with: Data(out.stdout.utf8)) as? [String: Any] else {
-            throw ToolError.unreadable(url)
-        }
-        let streams = json["streams"] as? [[String: Any]] ?? []
-        let format = json["format"] as? [String: Any] ?? [:]
+        let (format, streams) = try await FFmpeg.probeJSON(url)
         let video = streams.first {
             ($0["codec_type"] as? String) == "video"
                 && ($0["disposition"] as? [String: Any])?["attached_pic"] as? Int != 1
@@ -121,6 +106,19 @@ enum Media {
             return ["-c:v", "libvpx-vp9", "-crf", String(quality + 12), "-b:v", "0",
                     "-deadline", "good", "-cpu-used", "4", "-row-mt", "1", "-pix_fmt", "yuv420p"]
         }
+    }
+
+    /// Re-encodes the main video and audio streams through `filters`, then even dimensions.
+    /// `ext` defaults to `reencodeExtension(for:)` and `encode` to `encodeArgs` for it, copying the sound when possible.
+    static func reencode(_ url: URL, filters: [String], suffix: String, ext: String? = nil, encode: [String]? = nil,
+                         info: MediaInfo, context ctx: ToolContext) async throws -> [URL] {
+        let ext = ext ?? reencodeExtension(for: url)
+        let out = ctx.output(for: url, suffix: suffix, ext: ext)
+        try await FFmpeg.run(
+            ["-i", url.path] + mainStreams + ["-vf", (filters + [evenFilter]).joined(separator: ",")]
+                + (encode ?? encodeArgs(forExtension: ext, audioCodec: info.audioCodec)) + [out.path],
+            duration: info.duration, context: ctx)
+        return [out]
     }
 
     /// The container a re-encode writes for an input: keeps MP4, MOV, M4V, MKV and WebM, otherwise MP4.

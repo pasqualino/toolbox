@@ -19,17 +19,19 @@ final class RewriteModel {
 
     private var conversation: RewriteSession?
     private var task: Task<Void, Never>?
-    /// Settings and draft the current conversation was started with.
-    private var startedWith: (String, RewriteSession.Settings)?
 
     var isRunning: Bool { task != nil }
+
+    /// Returns when the current rewrite or refine finishes.
+    func waitUntilDone() async {
+        await task?.value
+    }
     var current: String { streaming ?? (versions.indices.contains(selected) ? versions[selected] : "") }
 
     func rewrite(_ draft: String, options: Options) {
         let settings = RewriteSession.Settings(options)
         let session = RewriteSession(settings: settings)
         conversation = session
-        startedWith = (draft, settings)
         run(note: Self.describe(options)) { [weak self] in
             try await session.rewrite(draft) { partial in Task { @MainActor in self?.streaming = partial } }
         }
@@ -42,12 +44,6 @@ final class RewriteModel {
         run(note: "“\(note)”") { [weak self] in
             try await session.refine(note) { partial in Task { @MainActor in self?.streaming = partial } }
         }
-    }
-
-    /// True when the draft or settings changed since the last rewrite, so Rewrite should start fresh.
-    func isStale(draft: String, options: Options) -> Bool {
-        guard let (d, s) = startedWith else { return true }
-        return d != draft || s != RewriteSession.Settings(options)
     }
 
     func stop() {
@@ -63,7 +59,6 @@ final class RewriteModel {
         selected = 0
         error = nil
         conversation = nil
-        startedWith = nil
     }
 
     private func run(note: String, _ body: @escaping () async throws -> String) {
@@ -99,7 +94,6 @@ struct RewriteView: View {
     let session: ToolSession
 
     @Environment(AppModel.self) private var model
-    @State private var copied = false
     @FocusState private var feedbackFocused: Bool
 
     private var rewrite: RewriteModel { model.rewrite }
@@ -119,7 +113,8 @@ struct RewriteView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 12)
             }
-            RewriteOptions(session: session)
+            // Feedback is a CLI-only option and stays hidden here.
+            InlineOptions(session: session, excluding: ["feedback"], segmented: true)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
 
@@ -154,7 +149,7 @@ struct RewriteView: View {
         @Bindable var session = session
         return Panel {
             VStack(spacing: 0) {
-                PaneTitle(title: "Your draft", symbol: "square.and.pencil") {
+                PaneHeader(title: "Your draft", symbol: "square.and.pencil") {
                     if !session.text.isEmpty {
                         Button("Clear") {
                             session.text = ""
@@ -176,7 +171,7 @@ struct RewriteView: View {
     private var resultPane: some View {
         Panel {
             VStack(spacing: 0) {
-                PaneTitle(title: "Rewritten", symbol: "sparkles") {
+                PaneHeader(title: "Rewritten", symbol: "sparkles") {
                     if rewrite.isRunning { ProgressView().controlSize(.small) }
                     VersionPicker(rewrite: rewrite)
                 }
@@ -276,20 +271,9 @@ struct RewriteView: View {
                     }
                     .controlSize(.large)
                     .keyboardShortcut("r", modifiers: .command)
-                    Button {
-                        copy()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                            Text(copied ? "Copied" : "Copy").fontWeight(.semibold)
-                            Image(systemName: "return").font(.system(size: 11, weight: .bold)).opacity(0.6)
-                        }
-                        .frame(minWidth: 100)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(copied ? .green : tool.tint)
-                    .controlSize(.large)
-                    .keyboardShortcut(.return, modifiers: .command)
+                    CopyButton(text: rewrite.current, prominent: tool.tint, showsReturn: true, minWidth: 100)
+                        .controlSize(.large)
+                        .keyboardShortcut(.return, modifiers: .command)
                 }
             }
             .padding(.horizontal, 24)
@@ -320,73 +304,6 @@ struct RewriteView: View {
         rewrite.rewrite(session.text, options: session.options)
         History.record(tool.id)
     }
-
-    private func copy() {
-        let text = rewrite.current
-        guard !text.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-        copied = true
-        Task {
-            try? await Task.sleep(for: .seconds(1.2))
-            copied = false
-        }
-    }
-}
-
-/// Tone, length and toggles in one row. Feedback is a CLI-only option and stays hidden here.
-private struct RewriteOptions: View {
-    let session: ToolSession
-
-    var body: some View {
-        FlowLayout(spacing: 18, lineSpacing: 10) {
-            ForEach(session.tool.options.filter { $0.id != "feedback" }) { spec in
-                if session.options.isVisible(spec, among: session.tool.options) {
-                    OptionControl(spec: spec, session: session)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct OptionControl: View {
-    let spec: OptionSpec
-    let session: ToolSession
-
-    private var value: Binding<String> {
-        Binding(get: { session.options[spec.id] }, set: { session.options[spec.id] = $0 })
-    }
-
-    var body: some View {
-        switch spec.kind {
-        case .choice(let choices, _):
-            HStack(spacing: 8) {
-                Text(spec.label).foregroundStyle(.secondary)
-                if choices.count <= 3 {
-                    Picker(spec.label, selection: value) {
-                        ForEach(choices, id: \.value) { Text($0.label).tag($0.value) }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                    .pickerStyle(.segmented)
-                } else {
-                    Picker(spec.label, selection: value) {
-                        ForEach(choices, id: \.value) { Text($0.label).tag($0.value) }
-                    }
-                    .labelsHidden()
-                    .fixedSize()
-                }
-            }
-        case .toggle:
-            Toggle(spec.label, isOn: Binding(get: { value.wrappedValue == "true" },
-                                             set: { value.wrappedValue = $0 ? "true" : "false" }))
-                .toggleStyle(.checkbox)
-                .help(spec.help ?? "")
-        default:
-            EmptyView()
-        }
-    }
 }
 
 /// v1 v2 v3 buttons to step back through versions.
@@ -398,47 +315,11 @@ private struct VersionPicker: View {
             HStack(spacing: 2) {
                 ForEach(rewrite.versions.indices, id: \.self) { i in
                     Button("v\(i + 1)") { rewrite.selected = i }
-                        .buttonStyle(ChipStyle(selected: i == rewrite.selected, compact: true))
+                        .buttonStyle(ChipStyle(selected: i == rewrite.selected, size: .compact))
                         .help(rewrite.notes.indices.contains(i) ? rewrite.notes[i] : "")
                 }
             }
             .disabled(rewrite.isRunning)
         }
-    }
-}
-
-struct ChipStyle: ButtonStyle {
-    var selected = false
-    var compact = false
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: compact ? 11 : 12, weight: selected ? .semibold : .regular))
-            .padding(.horizontal, compact ? 7 : 10)
-            .padding(.vertical, compact ? 2 : 4)
-            .foregroundStyle(selected ? Color.white : Color.primary)
-            .background(Capsule().fill(selected ? Color.accentColor : Color.primary.opacity(configuration.isPressed ? 0.14 : 0.07)))
-            .opacity(isEnabled ? 1 : 0.45)
-            .contentShape(Capsule())
-    }
-}
-
-private struct PaneTitle<Actions: View>: View {
-    let title: String
-    let symbol: String
-    @ViewBuilder var actions: Actions
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Label(title, systemImage: symbol)
-                .font(.subheadline.weight(.semibold))
-            Spacer()
-            actions
-        }
-        .buttonStyle(.borderless)
-        .font(.callout)
-        .padding(.horizontal, 14)
-        .frame(height: 36)
     }
 }

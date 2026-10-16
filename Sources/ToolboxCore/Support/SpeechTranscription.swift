@@ -130,9 +130,13 @@ enum SpeechTranscription {
         cleanup()
         let wav = temp.deletingPathExtension().appendingPathExtension("wav")
         let cleanupWav = { _ = try? FileManager.default.removeItem(at: wav) }
-        if let ffmpeg = Toolchain.ffmpeg {
-            _ = try? await ProcessRunner.run(ffmpeg, ["-hide_banner", "-nostdin", "-y", "-loglevel", "error",
-                                                       "-i", url.path, "-vn", "-ac", "1", "-ar", "16000", wav.path])
+        if Toolchain.ffmpeg != nil {
+            do {
+                try await FFmpeg.run(["-i", url.path, "-vn", "-ac", "1", "-ar", "16000", wav.path])
+            } catch is CancellationError {
+                cleanupWav()
+                throw CancellationError()
+            } catch {}
             if let file = try? AVAudioFile(forReading: wav), file.length > 0 {
                 return (file, cleanupWav)
             }

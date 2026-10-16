@@ -6,15 +6,6 @@ import ToolboxCore
 struct RunBar: View {
     let session: ToolSession
     @Environment(AppModel.self) private var model
-    @State private var copied = false
-
-    private func copiedFlash() {
-        copied = true
-        Task {
-            try? await Task.sleep(for: .seconds(1.2))
-            copied = false
-        }
-    }
 
     private var tint: Color { session.tool.tint }
 
@@ -156,17 +147,9 @@ struct RunBar: View {
             if session.isTextResult {
                 Button("Save As…") { TextExport.save(session.resultText, suggestedName: session.tool.name) }
                     .controlSize(.large)
-                Button {
-                    TextExport.copy(session.resultText)
-                    copiedFlash()
-                } label: {
-                    Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
-                        .frame(minWidth: 80)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(copied ? .green : tint)
-                .controlSize(.large)
-                .keyboardShortcut(.return, modifiers: .command)
+                CopyButton(text: session.resultText, prominent: tint, minWidth: 80)
+                    .controlSize(.large)
+                    .keyboardShortcut(.return, modifiers: .command)
             }
             if let result = session.result, !result.outputs.isEmpty {
                 Button {
@@ -310,23 +293,5 @@ enum SystemPane {
             return URL(string: "x-apple.systempreferences:com.apple.Siri-Settings.extension")
         }
         return nil
-    }
-}
-
-/// Copy or save a text result. Text-only tools write no files on their own.
-@MainActor
-enum TextExport {
-    static func copy(_ text: String) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-    }
-
-    static func save(_ text: String, suggestedName: String) {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = suggestedName + ".txt"
-        panel.allowedContentTypes = [.plainText]
-        panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        try? text.write(to: url, atomically: true, encoding: .utf8)
     }
 }

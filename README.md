@@ -59,6 +59,8 @@ for s in Fixtures/dev/check-*.sh; do TZ=Europe/Berlin zsh $s </dev/null; done
 
 356 checks: 48 media (ffprobe), 24 image/PDF/AI/download, 284 developer tools. Always test release builds: one engine bug only showed up with optimizations on.
 
+`./make-app.sh --debug-hooks` builds an app with the `TOOLBOX_SNAPSHOT` screenshot and `TOOLBOX_DEBUG` logging hooks (`Sources/Toolbox/App/Snapshot.swift`); normal builds leave them out.
+
 ## Output
 
 Each run writes to `~/Downloads/Toolbox/<date> <tool>/` (changeable in Settings). Originals are never changed, except by Batch Rename in "Rename originals" mode.

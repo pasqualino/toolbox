@@ -33,7 +33,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Appearance.apply()
             KeepAwakeModel.shared.refresh()
         }
+        #if TOOLBOX_DEBUG_HOOKS
         if MainActor.assumeIsolated({ Snapshot.runIfRequested() }) { return }
+        #endif
         MainActor.assumeIsolated { PasteShortcut.install() }
         NSApp.servicesProvider = ServiceProvider()
         NSUpdateDynamicServices()
@@ -81,7 +83,7 @@ struct AppCommands: Commands {
                 .keyboardShortcut("r", modifiers: [.command, .shift])
             Divider()
             Button("Add to Favorites / Remove") {
-                if let tool = AppModel.shared.currentTool { AppModel.shared.toggleFavorite(AppModel.entry(for: tool)) }
+                if let tool = AppModel.shared.currentTool { AppModel.shared.toggleFavorite(ToolEntry(tool)) }
             }
             .keyboardShortcut("d")
             Button("Open in New Window") {

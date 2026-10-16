@@ -1,9 +1,20 @@
 #!/bin/zsh
-# Builds Toolbox.app (release) next to this script. Usage: ./make-app.sh [--open]
+# Builds Toolbox.app (release) next to this script. Usage: ./make-app.sh [--open] [--debug-hooks]
+# --debug-hooks compiles in the TOOLBOX_SNAPSHOT/TOOLBOX_DEBUG test hooks (App/Snapshot.swift); off by default.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-swift build -c release --product Toolbox
+OPEN=0
+FLAGS=()
+for arg in "$@"; do
+  case $arg in
+    --open) OPEN=1 ;;
+    --debug-hooks) FLAGS=(-Xswiftc -DTOOLBOX_DEBUG_HOOKS) ;;
+    *) echo "usage: ./make-app.sh [--open] [--debug-hooks]" >&2; exit 2 ;;
+  esac
+done
+
+swift build -c release --product Toolbox "${FLAGS[@]}"
 BIN="$(swift build -c release --show-bin-path)/Toolbox"
 
 APP=Toolbox.app
@@ -23,7 +34,7 @@ cp $ICONS/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 codesign --force --sign - "$APP"
 echo "Built $PWD/$APP"
 
-if [[ "${1:-}" == "--open" ]]; then
+if (( OPEN )); then
   pkill -x Toolbox || true
   open "$APP"
 fi

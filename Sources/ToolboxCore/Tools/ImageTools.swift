@@ -244,7 +244,8 @@ enum ImageTools {
             let out = ctx.output(for: url, suffix: " cutout", ext: "png")
             try await ImageIOHelpers.write(cutout, to: out, format: .png, quality: 1)
             return [out]
-        }
+        },
+        traits: .takesClipboardImage
     )
 
     static let removeMetadata = Tool(

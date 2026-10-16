@@ -1,28 +1,15 @@
+#if TOOLBOX_DEBUG_HOOKS
 import AppKit
 import ScreenCaptureKit
 import ToolboxCore
 
 /// Debug aid: `TOOLBOX_SNAPSHOT=<dir> [TOOLBOX_FILES=a:b] [TOOLBOX_ROUTE=tool-id] Toolbox`
 /// renders the main window and the palette to PNGs, then quits. Needs no screen-recording permission.
+/// Only in builds made with `./make-app.sh --debug-hooks`.
 @MainActor
 enum Snapshot {
     static func runIfRequested() -> Bool {
         let env = ProcessInfo.processInfo.environment
-        if env["TOOLBOX_ACTIVATION_TEST"] != nil {
-            Task { @MainActor in
-                let menu = NSApp.mainMenu?.items.map(\.title) ?? []
-                let tool = NSApp.mainMenu?.items.first { $0.title == "Tool" }?.submenu?.items.map(\.title) ?? []
-                let file = NSApp.mainMenu?.items.first { $0.title == "File" }?.submenu?.items.map { "\($0.title)[\($0.keyEquivalent)]" } ?? []
-                print("menus \(menu)\ntool \(tool)\nfile \(file)")
-                try? await Task.sleep(for: .seconds(3)) // test script activates Finder meanwhile
-                print("before front=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "-")")
-                WindowController.shared.showMain()
-                try? await Task.sleep(for: .seconds(1))
-                print("after active=\(NSApp.isActive) front=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "-")")
-                NSApp.terminate(nil)
-            }
-            return true
-        }
         guard let dir = env["TOOLBOX_SNAPSHOT"] else { return false }
         let out = URL(fileURLWithPath: dir)
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
@@ -69,10 +56,10 @@ enum Snapshot {
                     let session = AppModel.shared.session(for: tool)
                     let rewrite = AppModel.shared.rewrite
                     rewrite.rewrite(session.text, options: session.options)
-                    while rewrite.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+                    await rewrite.waitUntilDone()
                     if let feedback = env["TOOLBOX_FEEDBACK"] {
                         rewrite.refine(feedback)
-                        while rewrite.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+                        await rewrite.waitUntilDone()
                     }
                     print("versions: \(rewrite.versions.count) error: \(rewrite.error ?? "none")")
                     for (i, v) in rewrite.versions.enumerated() { print("v\(i + 1): \(v)") }
@@ -146,3 +133,19 @@ enum Snapshot {
         }
     }
 }
+
+/// Debug output on stderr, on when TOOLBOX_DEBUG is set. Only in debug-hooks builds.
+enum DebugLog {
+    static let enabled = ProcessInfo.processInfo.environment["TOOLBOX_DEBUG"] != nil
+
+    static func log(_ message: @autoclosure () -> String) {
+        guard enabled else { return }
+        FileHandle.standardError.write((message() + "\n").data(using: .utf8)!)
+    }
+}
+#else
+/// Debug output, compiled out of normal builds. `./make-app.sh --debug-hooks` turns it on.
+enum DebugLog {
+    @inline(__always) static func log(_ message: @autoclosure () -> String) {}
+}
+#endif

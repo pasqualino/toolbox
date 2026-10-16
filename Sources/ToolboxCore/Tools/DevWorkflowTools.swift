@@ -6,7 +6,8 @@ enum DevWorkflowTools {
     static let decodeJWT = Tool.text(
         id: "decode-jwt", name: "Decode JWT", summary: "Header, payload and expiry, unverified",
         symbol: "key", keywords: ["jwt", "token", "bearer", "auth0", "claims", "decode", "id token", "access token", "exp"],
-        traits: .report
+        traits: .report,
+        outputSyntax: .json
     ) { input, _ in
         input.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "" : try DevJWT.decode(input.text)
     }
@@ -136,7 +137,8 @@ enum DevWorkflowTools {
         id: "text-diff", name: "Text Diff", summary: "Line changes between two texts",
         symbol: "plusminus", keywords: ["diff", "compare", "changes", "delta", "patch", "difference"],
         options: [OptionSpec("ignorews", "Ignore whitespace", .toggle(default: false))],
-        traits: [.twoInputs, .report]
+        traits: [.twoInputs, .report],
+        outputSyntax: .diff
     ) { input, options in
         if input.text.isEmpty, input.secondary.isEmpty { return "" }
         return DevDiff.diff(input.text, input.secondary, ignoreWhitespace: options.bool("ignorews"))

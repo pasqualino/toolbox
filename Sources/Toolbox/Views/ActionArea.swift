@@ -17,8 +17,8 @@ struct ActionArea: View {
                             .font(.title3.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
-                    if session.tool.id == "speed-test" {
-                        Text("A speed test takes about 20 seconds.").font(.callout).foregroundStyle(.tertiary)
+                    if let hint = session.tool.runningHint {
+                        Text(hint).font(.callout).foregroundStyle(.tertiary)
                     }
                 } else {
                     Text("Press \(session.tool.actionTitle) to start.")
@@ -31,19 +31,21 @@ struct ActionArea: View {
         } else {
             TextResult(session: session)
         }
-        if session.tool.id == "speed-test", SpeedHistory.entries.count > 1 || (session.phase != .finished && !SpeedHistory.entries.isEmpty) {
-            SpeedHistoryList(skipLatest: session.phase == .finished)
-                .frame(maxHeight: 220)
+        if session.tool.keepsSpeedHistory {
+            let history = SpeedHistory.entries
+            if history.count > 1 || (session.phase != .finished && !history.isEmpty) {
+                SpeedHistoryList(entries: Array(history.dropFirst(session.phase == .finished ? 1 : 0)))
+                    .frame(maxHeight: 220)
+            }
         }
     }
 }
 
 /// Earlier speed test runs, to compare with the one you just ran.
 private struct SpeedHistoryList: View {
-    let skipLatest: Bool
+    let entries: [SpeedHistory.Entry]
 
     var body: some View {
-        let entries = Array(SpeedHistory.entries.dropFirst(skipLatest ? 1 : 0))
         Panel {
             VStack(alignment: .leading, spacing: 0) {
                 Label("Earlier runs", systemImage: "clock.arrow.circlepath")

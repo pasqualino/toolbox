@@ -11,8 +11,6 @@ public enum BatchRename {
         let pad = options.int("pad") > 0 ? options.int("pad") : String(lastNumber).count
         let find = options.string("find")
         let replace = options.string("replace")
-        let dates = DateFormatter()
-        dates.dateFormat = "yyyy-MM-dd"
 
         return urls.enumerated().map { index, url in
             let ext = url.pathExtension
@@ -24,7 +22,10 @@ public enum BatchRename {
             var stem = pattern
                 .replacingOccurrences(of: "{name}", with: name)
                 .replacingOccurrences(of: "{n}", with: padded)
-                .replacingOccurrences(of: "{date}", with: dates.string(from: date(of: url)))
+            // Reading file dates costs a disk hit per file; only do it when the name asks for one.
+            if stem.contains("{date}") {
+                stem = stem.replacingOccurrences(of: "{date}", with: dayFormatter.string(from: date(of: url)))
+            }
             // "{ext}" in the pattern means the user places the extension; otherwise it's appended.
             // Either way the case change leaves the extension alone.
             let placesExt = stem.contains("{ext}")
@@ -35,6 +36,18 @@ public enum BatchRename {
                 .trimmingCharacters(in: .whitespaces)
             return placesExt || ext.isEmpty || stem.isEmpty ? stem : "\(stem).\(ext)"
         }
+    }
+
+    private static let dayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    /// New names plus the reason they can't be used, if any. The tool's `plan`.
+    @Sendable public static func plan(_ urls: [URL], _ options: Options) -> (names: [String], problem: String?) {
+        let names = newNames(for: urls, options: options)
+        return (names, problem(with: names))
     }
 
     /// Why these names can't be used, or nil when they're fine. Checks empty names and duplicates.

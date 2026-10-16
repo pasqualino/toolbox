@@ -54,17 +54,8 @@ enum CaptureFlow {
         Task { @MainActor in
             // Give the hide animation a moment so the window isn't in the capture.
             try? await Task.sleep(for: .milliseconds(250))
-            session.run(outputRoot: Prefs.outputRoot)
-            while session.phase == .running { try? await Task.sleep(for: .milliseconds(80)) }
-            let text = session.resultText
-            if !text.isEmpty {
-                TextExport.copy(text)
-                let first = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? text
-                Toast.show("Copied text", detail: first, symbol: "text.viewfinder", tint: tool.tint)
-            } else if let error = session.runError, error != "Cancelled" {
-                // Esc at the crosshair is a cancel, not a failure.
-                Toast.show("Capture failed", detail: error, symbol: "exclamationmark.triangle.fill", tint: .red)
-            }
+            await session.runAndWait(outputRoot: Prefs.outputRoot)
+            session.copyTextResult(failureTitle: "Capture failed", symbol: "text.viewfinder")
             if showResultInApp || wasVisible {
                 AppModel.shared.open(tool)
             }

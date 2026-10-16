@@ -49,6 +49,22 @@ enum Toast {
             if !Task.isCancelled { panel.orderOut(nil) }
         }
     }
+
+    /// Red: something failed.
+    static func error(_ title: String, detail: String?) {
+        show(title, detail: detail, symbol: "exclamationmark.triangle.fill", tint: .red)
+    }
+
+    /// Orange: nothing went wrong, but there was nothing to do.
+    static func warning(_ title: String, detail: String? = nil, symbol: String) {
+        show(title, detail: detail, symbol: symbol, tint: .orange)
+    }
+
+    /// Confirms a copy, with the first line of what was copied.
+    static func copied(_ title: String, text: String, symbol: String = "checkmark.circle.fill", tint: Color = .green) {
+        let preview = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? text
+        show(title, detail: preview, symbol: symbol, tint: tint)
+    }
 }
 
 private struct ToastView: View {
@@ -85,8 +101,7 @@ private struct ToastView: View {
 @MainActor
 enum ClipboardAction {
     static func supports(_ tool: Tool) -> Bool {
-        tool.isTransform || ["rewrite", "capture-text", "keep-awake"].contains(tool.id)
-            || PasteboardImport.clipboardTextTools.contains(tool.id)
+        tool.isTransform || tool.flow != .standard || tool.traits.contains(.copiesTextResult)
     }
 
     /// Rewrite takes a few seconds, so it shows a progress toast and replaces the clipboard when done.
@@ -94,8 +109,7 @@ enum ClipboardAction {
         let pasteboard = NSPasteboard.general
         guard let input = pasteboard.string(forType: .string),
               !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            Toast.show("Clipboard is empty", detail: "Copy your message, then try again.",
-                       symbol: "doc.on.clipboard", tint: .orange)
+            Toast.warning("Clipboard is empty", detail: "Copy your message, then try again.", symbol: "doc.on.clipboard")
             return
         }
         let options = AppModel.shared.session(for: tool).options
@@ -106,30 +120,28 @@ enum ClipboardAction {
                 let output = try await RewriteSession(settings: .init(options)).rewrite(input) { _ in }
                 // Don't clobber something the user copied while the model was working.
                 guard pasteboard.changeCount == change else {
-                    Toast.show("Clipboard changed", detail: "Rewrite discarded.", symbol: "xmark.circle", tint: .orange)
+                    Toast.warning("Clipboard changed", detail: "Rewrite discarded.", symbol: "xmark.circle")
                     return
                 }
-                pasteboard.clearContents()
-                pasteboard.setString(output, forType: .string)
+                TextExport.copy(output, to: pasteboard)
                 History.record(tool.id)
-                Toast.show("Copied · Rewrite", detail: output.split(whereSeparator: \.isNewline).first.map(String.init))
+                Toast.copied("Copied · Rewrite", text: output)
             } catch {
-                Toast.show("Rewrite failed", detail: error.localizedDescription,
-                           symbol: "exclamationmark.triangle.fill", tint: .red)
+                Toast.error("Rewrite failed", detail: error.localizedDescription)
             }
         }
     }
 
     static func apply(_ tool: Tool) {
-        if PasteboardImport.clipboardTextTools.contains(tool.id) {
+        if tool.traits.contains(.copiesTextResult) {
             PasteboardImport.runOnClipboard(tool)
             return
         }
-        if tool.id == "capture-text" {
+        switch tool.flow {
+        case .captureText:
             CaptureFlow.run()
             return
-        }
-        if tool.id == "keep-awake" {
+        case .keepAwake:
             let model = KeepAwakeModel.shared
             if model.isActive {
                 model.stop()
@@ -139,34 +151,21 @@ enum ClipboardAction {
                 Toast.show("Keeping your Mac awake", detail: model.statusLine, symbol: "cup.and.saucer.fill", tint: tool.tint)
             }
             return
-        }
-        if tool.id == "rewrite" {
+        case .rewrite:
             rewriteClipboard(tool)
             return
+        case .standard:
+            break
         }
         let pasteboard = NSPasteboard.general
         let input = pasteboard.string(forType: .string) ?? ""
-        let isGenerator = tool.traits.contains(.generator)
-        guard isGenerator || !input.isEmpty else {
-            Toast.show("Clipboard is empty", detail: "Copy some text, then try again.",
-                       symbol: "doc.on.clipboard", tint: .orange)
+        guard tool.traits.contains(.generator) || !input.isEmpty else {
+            Toast.warning("Clipboard is empty", detail: "Copy some text, then try again.", symbol: "doc.on.clipboard")
             return
         }
         let options = AppModel.shared.session(for: tool).options
-        do {
-            let output = try tool.apply(TextInput(input), options: options)
-            guard !output.isEmpty else {
-                Toast.show("Nothing to copy", detail: tool.name, symbol: "questionmark.circle", tint: .orange)
-                return
-            }
-            pasteboard.clearContents()
-            pasteboard.setString(output, forType: .string)
-            History.record(tool.id)
-            let preview = output.split(whereSeparator: \.isNewline).first.map(String.init) ?? output
-            Toast.show("Copied · \(tool.name)", detail: preview)
-        } catch {
-            Toast.show("\(tool.name) failed", detail: error.localizedDescription,
-                       symbol: "exclamationmark.triangle.fill", tint: .red)
+        if case .copied(let output) = TextExport.transform(tool, input, options: options, into: pasteboard) {
+            Toast.copied("Copied · \(tool.name)", text: output)
         }
     }
 }

@@ -32,7 +32,12 @@ final class AppModel {
     /// Bumped to ask the active tool view to focus its primary input.
     var focusToken = 0
 
-    let tools = ToolRegistry.all
+    private init() {
+        // Requirements can change while Toolbox is in the background (Apple Intelligence turned on, FFmpeg installed).
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+            Task { @MainActor in AppModel.shared.sessions.values.forEach { $0.refreshRequirements() } }
+        }
+    }
 
     func session(for tool: Tool) -> ToolSession {
         if let existing = sessions[tool.id] { return existing }
@@ -55,7 +60,7 @@ final class AppModel {
         let session = session(for: tool)
         if !files.isEmpty {
             if session.phase == .finished { session.clear() }
-            session.add(files)
+            Task { await session.add(files) }
         }
         if let text { session.text = text }
         route = .tool(tool.id)
@@ -111,13 +116,8 @@ final class AppModel {
         if let i = favoriteIDs.firstIndex(of: entry.id) { favoriteIDs.remove(at: i) } else { favoriteIDs.append(entry.id) }
     }
 
-    /// The entry a tool belongs to: its group, or itself.
-    static func entry(for tool: Tool) -> ToolEntry {
-        ToolRegistry.group(containing: tool.id).map(ToolEntry.group) ?? .tool(tool)
-    }
-
     var favoriteSections: [ToolSection] {
-        let all = ToolRegistry.all.map(Self.entry(for:))
+        let all = ToolRegistry.all.map(ToolEntry.init)
         let entries = favoriteIDs.compactMap { id in all.first { $0.id == id } }
         return entries.isEmpty ? [] : [ToolSection(title: nil, entries: entries)]
     }
@@ -129,7 +129,7 @@ final class AppModel {
     /// Search results across every category, one section per category. Group members show individually,
     /// so "snake" finds snake_case rather than Change Case.
     var searchSections: [ToolSection] {
-        let hits = ToolSearch.rank(tools, query: searchQuery, files: [])
+        let hits = ToolSearch.rank(ToolRegistry.all, query: searchQuery, files: [])
         return ToolCategory.allCases.compactMap { category in
             let entries = hits.filter { $0.category == category }.map(ToolEntry.tool)
             return entries.isEmpty ? nil : ToolSection(title: category.title, entries: entries)
@@ -141,9 +141,7 @@ final class AppModel {
         _ = historyVersion
         var seen = Set<String>()
         let entries: [ToolEntry] = History.ids.compactMap { id in
-            let entry: ToolEntry? = ToolRegistry.group(containing: id).map(ToolEntry.group)
-                ?? ToolRegistry.tool(id: id).map(ToolEntry.tool)
-            guard let entry, seen.insert(entry.id).inserted else { return nil }
+            guard let entry = ToolRegistry.tool(id: id).map(ToolEntry.init), seen.insert(entry.id).inserted else { return nil }
             return entry
         }
         return entries.isEmpty ? [] : [ToolSection(title: nil, entries: entries)]
@@ -155,10 +153,7 @@ final class AppModel {
 
     /// Runs a specific session; tool windows call this so they don't run the main window's tool.
     func run(_ session: ToolSession) {
-        if session.tool.id == "capture-text" {
-            CaptureFlow.run(showResultInApp: true)
-            return
-        }
+        if session.tool.flow.run() { return }
         session.run(outputRoot: Prefs.outputRoot)
     }
 
@@ -178,7 +173,10 @@ final class AppModel {
         panel.allowedContentTypes = session.tool.accepts
         panel.prompt = "Add"
         panel.message = "Choose files for \(session.tool.name)"
-        if panel.runModal() == .OK { session.add(panel.urls) }
+        if panel.runModal() == .OK {
+            let urls = panel.urls
+            Task { await session.add(urls) }
+        }
     }
 
     func revealResults() {

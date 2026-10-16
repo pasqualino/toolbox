@@ -14,11 +14,9 @@ struct ToolView: View {
     }
 
     var body: some View {
-        if case .comingSoon(let reason) = tool.status {
-            ComingSoonView(tool: tool, reason: reason)
-        } else if tool.id == "rewrite" {
+        if tool.flow == .rewrite {
             RewriteView(session: session)
-        } else if tool.id == "keep-awake" {
+        } else if tool.flow == .keepAwake {
             KeepAwakeView(session: session)
         } else if tool.isTransform {
             TextToolView(session: session)
@@ -69,28 +67,6 @@ struct ToolHeader: View {
             }
             Spacer()
         }
-    }
-}
-
-private struct ComingSoonView: View {
-    let tool: Tool
-    let reason: String
-
-    var body: some View {
-        VStack(spacing: 14) {
-            ToolIcon(tool, size: 72)
-            Text(tool.name)
-                .font(.title.bold())
-            Text("Coming soon")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text(reason)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 360)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .navigationTitle(tool.name)
     }
 }
 
@@ -154,9 +130,7 @@ private struct EditorArea: View {
     let spec: OptionSpec
     let url: URL
 
-    private var value: Binding<String> {
-        Binding(get: { session.options[spec.id] }, set: { session.options[spec.id] = $0 })
-    }
+    private var value: Binding<String> { session.binding(for: spec.id) }
 
     var body: some View {
         Panel {

@@ -14,9 +14,8 @@ guard let first = args.first else {
 
 if first == "list" {
     for tool in ToolRegistry.all {
-        let state = tool.isReady ? "" : "  (coming soon)"
         let opts = tool.options.map { "\($0.id)=\($0.defaultValue)" }.joined(separator: " ")
-        print("\(tool.id)\(state)\n    \(opts)")
+        print("\(tool.id)\n    \(opts)")
     }
     exit(0)
 }
@@ -46,6 +45,10 @@ guard let tool = ToolRegistry.tool(id: first) else {
 }
 
 var options = Options.defaults(for: tool)
+// TOOLBOX_MEDIAINFO_AVFOUNDATION=1 makes Media Info use its AVFoundation fallback, for testing without uninstalling FFmpeg.
+if ProcessInfo.processInfo.environment["TOOLBOX_MEDIAINFO_AVFOUNDATION"] == "1", tool.options.contains(where: { $0.id == "avfoundation" }) {
+    options["avfoundation"] = "true"
+}
 var files: [URL] = []
 var text = ""
 var text2 = ""

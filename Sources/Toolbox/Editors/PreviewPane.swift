@@ -31,12 +31,11 @@ struct PreviewPane: View {
                 .opacity(0.5)
             if let image {
                 if let regionsOption {
-                    RegionEditor(image: image, value: Binding(get: { session.options[regionsOption] },
-                                                              set: { session.options[regionsOption] = $0 }))
+                    RegionEditor(image: image, value: session.binding(for: regionsOption))
                 } else {
                     Image(decorative: image, scale: 1)
                         .resizable()
-                        .interpolation(session.tool.id == "make-qr" ? .none : .high)
+                        .interpolation(session.tool.traits.contains(.pixelPreview) ? .none : .high)
                         .aspectRatio(contentMode: .fit)
                         .padding(16)
                 }

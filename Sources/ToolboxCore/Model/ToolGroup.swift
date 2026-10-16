@@ -35,6 +35,11 @@ public enum ToolEntry: Identifiable, Sendable {
     case tool(Tool)
     case group(ToolGroup)
 
+    /// The entry a tool belongs to: its group, or itself.
+    public init(_ tool: Tool) {
+        self = ToolRegistry.group(containing: tool.id).map(ToolEntry.group) ?? .tool(tool)
+    }
+
     public var id: String {
         switch self {
         case .tool(let t): t.id
@@ -68,13 +73,6 @@ public enum ToolEntry: Identifiable, Sendable {
         switch self {
         case .tool(let t): t.id
         case .group(let g): g.members[0].toolID
-        }
-    }
-
-    public var isReady: Bool {
-        switch self {
-        case .tool(let t): t.isReady
-        case .group: true
         }
     }
 
@@ -197,10 +195,24 @@ extension ToolRegistry {
         groupByTool[toolID]
     }
 
-    /// Category contents as sections. Unbuilt tools go last, under "Coming Soon".
+    /// Category contents as sections.
     public static func sections(in category: ToolCategory) -> [ToolSection] {
+        sectionsByCategory[category] ?? []
+    }
+
+    /// Number of rows a category shows (groups count once), for the sidebar.
+    public static func entryCount(in category: ToolCategory) -> Int {
+        entryCounts[category] ?? 0
+    }
+
+    private static let sectionsByCategory: [ToolCategory: [ToolSection]] =
+        Dictionary(uniqueKeysWithValues: ToolCategory.allCases.map { ($0, buildSections(in: $0)) })
+
+    private static let entryCounts: [ToolCategory: Int] =
+        sectionsByCategory.mapValues { $0.reduce(0) { $0 + $1.entries.count } }
+
+    private static func buildSections(in category: ToolCategory) -> [ToolSection] {
         let tools = all.filter { $0.category == category }
-        let soon = tools.filter { !$0.isReady }.map(ToolEntry.tool)
         var sections: [ToolSection]
         if category == .developer {
             var placed = Set<String>()
@@ -216,17 +228,11 @@ extension ToolRegistry {
                 }
                 return ToolSection(title: title, entries: entries)
             }
-            let rest = tools.filter { $0.isReady && !placed.contains($0.id) }.map(ToolEntry.tool)
+            let rest = tools.filter { !placed.contains($0.id) }.map(ToolEntry.tool)
             if !rest.isEmpty { sections.append(ToolSection(title: "Other", entries: rest)) }
         } else {
-            sections = [ToolSection(title: nil, entries: tools.filter(\.isReady).map(ToolEntry.tool))]
+            sections = [ToolSection(title: nil, entries: tools.map(ToolEntry.tool))]
         }
-        if !soon.isEmpty { sections.append(ToolSection(title: "Coming Soon", entries: soon)) }
         return sections.filter { !$0.entries.isEmpty }
-    }
-
-    /// Number of rows a category shows (groups count once), for the sidebar.
-    public static func entryCount(in category: ToolCategory) -> Int {
-        sections(in: category).filter { $0.title != "Coming Soon" }.reduce(0) { $0 + $1.entries.count }
     }
 }

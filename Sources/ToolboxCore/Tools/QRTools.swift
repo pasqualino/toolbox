@@ -40,6 +40,7 @@ enum QRTools {
             try await ImageIOHelpers.write(image, to: out, format: .png, quality: 1)
             return [out]
         },
+        traits: .pixelPreview,
         preview: { source, options in
             let files = source.url.map { [$0] } ?? []
             let payload = try QRCode.payload(text: try QRCode.content(text: source.text, files: files), options: options)
@@ -66,6 +67,7 @@ enum QRTools {
             guard !codes.isEmpty else { throw ToolError.message("No QR code or barcode found in \(url.lastPathComponent).") }
             ctx.showText(QRCode.report(codes))
             return []
-        }
+        },
+        traits: [.takesClipboardImage, .copiesTextResult]
     )
 }

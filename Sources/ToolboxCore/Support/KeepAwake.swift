@@ -12,7 +12,6 @@ public final class KeepAwake: @unchecked Sendable {
     private var expiry: DispatchWorkItem?
     private var _endDate: Date?
     private var _active = false
-    private var _keepsDisplayOn = false
     /// Bumped on every start, so a stale expiry can't end a newer session.
     private var generation = 0
 
@@ -21,7 +20,6 @@ public final class KeepAwake: @unchecked Sendable {
     /// When it ends on its own. Nil while inactive or when it runs until stopped.
     public var endDate: Date? { locked { _endDate } }
     public var isActive: Bool { locked { _active } }
-    public var keepsDisplayOn: Bool { locked { _keepsDisplayOn } }
 
     /// Starts, or restarts with new settings. A nil duration runs until `stop()`.
     public func start(duration: TimeInterval?, keepDisplayOn: Bool) throws {
@@ -39,7 +37,6 @@ public final class KeepAwake: @unchecked Sendable {
         generation += 1
         let current = generation
         _active = true
-        _keepsDisplayOn = keepDisplayOn
         if let duration {
             _endDate = Date().addingTimeInterval(duration)
             // A dispatch timer, not Timer: the CLI has no run loop spinning.

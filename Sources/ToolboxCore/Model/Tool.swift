@@ -3,7 +3,7 @@ import Foundation
 import UniformTypeIdentifiers
 
 public enum ToolCategory: String, CaseIterable, Identifiable, Sendable {
-    // Display order: sidebar, ⌘1…⌘7, grids and the CLI list all follow it.
+    // Display order: sidebar, ⌘1…⌘8, grids and the CLI list all follow it.
     case developer, ai, pdf, images, video, audio, files, mac
 
     public var id: String { rawValue }
@@ -90,12 +90,6 @@ public enum Requirement: String, Sendable, CaseIterable {
     }
 }
 
-public enum ToolStatus: Sendable, Equatable {
-    case ready
-    /// Listed so search matches what people expect, but not built yet.
-    case comingSoon(reason: String)
-}
-
 /// How a tool processes its inputs.
 public enum ToolRunner: Sendable {
     /// Called once per input file. Returns the files it wrote into `context.outputDirectory`.
@@ -108,19 +102,33 @@ public enum ToolRunner: Sendable {
     case transform(@Sendable (TextInput, Options) throws -> String)
 }
 
-/// Extra behavior for live text tools.
-public struct TextToolTraits: Sendable, OptionSet {
+/// Extra behavior the app adapts to.
+public struct ToolTraits: Sendable, OptionSet {
     public let rawValue: Int
     public init(rawValue: Int) { self.rawValue = rawValue }
 
     /// Makes output with no input (UUID, Lorem Ipsum). Shows a Regenerate button.
-    public static let generator = TextToolTraits(rawValue: 1 << 0)
+    public static let generator = ToolTraits(rawValue: 1 << 0)
     /// Takes a second text (Text Diff).
-    public static let twoInputs = TextToolTraits(rawValue: 1 << 1)
+    public static let twoInputs = ToolTraits(rawValue: 1 << 1)
     /// Output is a report about the input, not a replacement for it (Count, JWT Decode).
     /// The palette's ⌥Return copies the report rather than "transforming" the clipboard.
-    public static let report = TextToolTraits(rawValue: 1 << 2)
+    public static let report = ToolTraits(rawValue: 1 << 2)
+    /// Typically used right after a screenshot: the palette hands it the image on the clipboard.
+    public static let takesClipboardImage = ToolTraits(rawValue: 1 << 3)
+    /// The palette's ⌥Return runs it on the clipboard image and copies the text it returns.
+    public static let copiesTextResult = ToolTraits(rawValue: 1 << 4)
+    /// The preview is pixel-exact (QR codes), so it scales without smoothing.
+    public static let pixelPreview = ToolTraits(rawValue: 1 << 5)
 }
+
+/// Code a text tool reads or writes, so the app can color it. UI-free: the app maps it to colors.
+public enum Syntax: Sendable {
+    case json, yaml, graphql, sql, xml, go, typescript, javascript, diff
+}
+
+/// New names for a set of files, and why they can't be used (Batch Rename's preview and its check).
+public typealias NamePlan = @Sendable ([URL], Options) -> (names: [String], problem: String?)
 
 public struct Tool: Identifiable, Sendable {
     public let id: String
@@ -140,13 +148,21 @@ public struct Tool: Identifiable, Sendable {
     public let ordered: Bool
     public let options: [OptionSpec]
     public let requirements: [Requirement]
-    public let status: ToolStatus
     /// Verb on the run button ("Convert", "Compress").
     public let actionTitle: String
-    public let runner: ToolRunner?
-    public let traits: TextToolTraits
+    public let runner: ToolRunner
+    public let traits: ToolTraits
     /// Live preview of the result, rendered by the same code the tool uses (Beautify, Redact, Make QR Code).
     public let preview: (@Sendable (PreviewSource, Options) throws -> CGImage)?
+    /// Language of a text tool's input and output, for syntax coloring.
+    public let inputSyntax: Syntax?
+    public let outputSyntax: Syntax?
+    /// Line under the drop zone prompt, when the default ("Originals are never changed") doesn't fit.
+    public let inputHint: String?
+    /// Line shown while it runs, for tools that report nothing until they finish.
+    public let runningHint: String?
+    /// The output names for these inputs, for tools that rename (Batch Rename). Previewed before running.
+    public let plan: NamePlan?
 
     public init(
         id: String,
@@ -161,11 +177,15 @@ public struct Tool: Identifiable, Sendable {
         ordered: Bool = false,
         options: [OptionSpec] = [],
         requirements: [Requirement] = [],
-        status: ToolStatus = .ready,
         actionTitle: String,
-        runner: ToolRunner?,
-        traits: TextToolTraits = [],
-        preview: (@Sendable (PreviewSource, Options) throws -> CGImage)? = nil
+        runner: ToolRunner,
+        traits: ToolTraits = [],
+        preview: (@Sendable (PreviewSource, Options) throws -> CGImage)? = nil,
+        inputSyntax: Syntax? = nil,
+        outputSyntax: Syntax? = nil,
+        inputHint: String? = nil,
+        runningHint: String? = nil,
+        plan: NamePlan? = nil
     ) {
         self.id = id
         self.name = name
@@ -179,22 +199,28 @@ public struct Tool: Identifiable, Sendable {
         self.ordered = ordered
         self.options = options
         self.requirements = requirements
-        self.status = status
         self.actionTitle = actionTitle
         self.runner = runner
         self.traits = traits
         self.preview = preview
+        self.inputSyntax = inputSyntax
+        self.outputSyntax = outputSyntax
+        self.inputHint = inputHint
+        self.runningHint = runningHint
+        self.plan = plan
     }
 
     /// A live text transform in the Developer category.
     public static func text(
         id: String, name: String, summary: String, symbol: String,
-        keywords: [String] = [], options: [OptionSpec] = [], traits: TextToolTraits = [],
+        keywords: [String] = [], options: [OptionSpec] = [], traits: ToolTraits = [],
+        inputSyntax: Syntax? = nil, outputSyntax: Syntax? = nil,
         transform: @escaping @Sendable (TextInput, Options) throws -> String
     ) -> Tool {
         Tool(id: id, name: name, summary: summary, category: .developer, symbol: symbol,
              keywords: keywords, inputKind: .text, minimumInputs: 0, options: options,
-             actionTitle: "Copy", runner: .transform(transform), traits: traits)
+             actionTitle: "Copy", runner: .transform(transform), traits: traits,
+             inputSyntax: inputSyntax, outputSyntax: outputSyntax)
     }
 
     public var isTransform: Bool {
@@ -202,28 +228,20 @@ public struct Tool: Identifiable, Sendable {
         return false
     }
 
+    /// Takes typed or pasted text: live transforms, Rewrite, and the text-or-document tools.
+    public var takesText: Bool { inputKind == .text || inputKind == .textOrFiles }
+
     /// Runs a transform tool directly. Throws for other tools.
     public func apply(_ input: TextInput, options: Options? = nil) throws -> String {
         guard case .transform(let body) = runner else { throw ToolError.message("\(name) isn't a text tool.") }
         return try body(input, options ?? .defaults(for: self))
     }
 
-    public var isReady: Bool { status == .ready && runner != nil }
-
     /// True when the tool can take this file.
     public func accepts(_ url: URL) -> Bool {
         guard !accepts.isEmpty else { return true }
         guard let type = UTType(filenameExtension: url.pathExtension.lowercased()) else { return false }
         return accepts.contains { type.conforms(to: $0) }
-    }
-
-    /// A listed-but-unbuilt tool.
-    public static func comingSoon(
-        id: String, name: String, summary: String, category: ToolCategory,
-        symbol: String, keywords: [String] = [], reason: String
-    ) -> Tool {
-        Tool(id: id, name: name, summary: summary, category: category, symbol: symbol,
-             keywords: keywords, status: .comingSoon(reason: reason), actionTitle: "", runner: nil)
     }
 }
 

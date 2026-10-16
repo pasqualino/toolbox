@@ -56,15 +56,11 @@ enum VideoTools {
             if let limit = Int(ctx.options.string("size")), let cap = capShortSide(info, to: limit) {
                 filters.append(cap)
             }
-            filters.append(Media.evenFilter)
             let codec: Media.VideoCodec = ctx.options.bool("hevc") ? .hevc : .h264
-            let out = ctx.output(for: url, suffix: " compressed", ext: "mp4")
-            try await FFmpeg.run(
-                ["-i", url.path] + Media.mainStreams + ["-vf", filters.joined(separator: ",")]
-                    + Media.videoArgs(codec, quality: crf, preset: "medium")
-                    + Media.aacArgs(128) + Media.containerArgs("mp4") + [out.path],
-                duration: info.duration, context: ctx)
-            return [out]
+            return try await Media.reencode(url, filters: filters, suffix: " compressed", ext: "mp4",
+                                            encode: Media.videoArgs(codec, quality: crf, preset: "medium")
+                                                + Media.aacArgs(128) + Media.containerArgs("mp4"),
+                                            info: info, context: ctx)
         }
     )
 
@@ -88,27 +84,11 @@ enum VideoTools {
         runner: .perFile { url, ctx in
             let info = try await videoInfo(url)
             let format = ctx.options.string("format")
-            let args: [String]
-            let ext: String
-            switch format {
-            case "mov":
-                ext = "mov"
-                args = Media.encodeArgs(forExtension: "mov", audioCodec: info.audioCodec)
-            case "webm":
-                ext = "webm"
-                args = Media.encodeArgs(forExtension: "webm", audioCodec: info.audioCodec)
-            case "hevc":
-                ext = "mp4"
-                args = Media.videoArgs(.hevc) + Media.mp4Audio(info.audioCodec) + Media.containerArgs("mp4")
-            default:
-                ext = "mp4"
-                args = Media.encodeArgs(forExtension: "mp4", audioCodec: info.audioCodec)
-            }
-            let out = ctx.output(for: url, ext: ext)
-            try await FFmpeg.run(
-                ["-i", url.path] + Media.mainStreams + ["-vf", Media.evenFilter] + args + [out.path],
-                duration: info.duration, context: ctx)
-            return [out]
+            let ext = ["mov", "webm"].contains(format) ? format : "mp4"
+            // HEVC keeps MP4 audio handling but swaps the video encoder.
+            let encode = format == "hevc"
+                ? Media.videoArgs(.hevc) + Media.mp4Audio(info.audioCodec) + Media.containerArgs("mp4") : nil
+            return try await Media.reencode(url, filters: [], suffix: "", ext: ext, encode: encode, info: info, context: ctx)
         }
     )
 
@@ -198,14 +178,7 @@ enum VideoTools {
                 let target = Int(ctx.options.string("size")) ?? 1080
                 if let cap = capShortSide(info, to: target, upscale: upscale) { filters.append(cap) }
             }
-            filters.append(Media.evenFilter)
-            let ext = Media.reencodeExtension(for: url)
-            let out = ctx.output(for: url, suffix: " resized", ext: ext)
-            try await FFmpeg.run(
-                ["-i", url.path] + Media.mainStreams + ["-vf", filters.joined(separator: ",")]
-                    + Media.encodeArgs(forExtension: ext, audioCodec: info.audioCodec) + [out.path],
-                duration: info.duration, context: ctx)
-            return [out]
+            return try await Media.reencode(url, filters: filters, suffix: " resized", info: info, context: ctx)
         }
     )
 
@@ -251,14 +224,7 @@ enum VideoTools {
             }
             guard !filters.isEmpty else { throw ToolError.message("Pick an aspect, a rotation or a flip.") }
             let info = try await videoInfo(url)
-            filters.append(Media.evenFilter)
-            let ext = Media.reencodeExtension(for: url)
-            let out = ctx.output(for: url, suffix: " edited", ext: ext)
-            try await FFmpeg.run(
-                ["-i", url.path] + Media.mainStreams + ["-vf", filters.joined(separator: ",")]
-                    + Media.encodeArgs(forExtension: ext, audioCodec: info.audioCodec) + [out.path],
-                duration: info.duration, context: ctx)
-            return [out]
+            return try await Media.reencode(url, filters: filters, suffix: " edited", info: info, context: ctx)
         }
     )
 

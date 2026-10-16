@@ -44,9 +44,7 @@ private struct OptionRow: View {
     let spec: OptionSpec
     let session: ToolSession
 
-    private var value: Binding<String> {
-        Binding(get: { session.options[spec.id] }, set: { session.options[spec.id] = $0 })
-    }
+    private var value: Binding<String> { session.binding(for: spec.id) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -88,17 +86,14 @@ private struct OptionRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         case .toggle:
-            Toggle(spec.label, isOn: Binding(get: { value.wrappedValue == "true" },
-                                             set: { value.wrappedValue = $0 ? "true" : "false" }))
+            Toggle(spec.label, isOn: session.boolBinding(for: spec.id))
                 .toggleStyle(.switch)
                 .controlSize(.small)
         case .slider(let range, let step, _, let format):
             SliderOption(value: value, range: range, step: step, format: format)
         case .number(let range, _, let unit):
             HStack {
-                TextField("", value: Binding(get: { Double(value.wrappedValue) ?? range.lowerBound },
-                                             set: { value.wrappedValue = OptionSpecFormat.number(min(max($0, range.lowerBound), range.upperBound)) }),
-                          format: .number)
+                TextField("", value: session.numberBinding(for: spec.id, range: range), format: .number)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 90)
                 Text(unit).foregroundStyle(.secondary)
@@ -190,7 +185,7 @@ private struct FileOption: View {
                 Image(systemName: "doc.badge.plus").foregroundStyle(.secondary)
                 Text(placeholder).foregroundStyle(.secondary).lineLimit(1)
             } else {
-                Image(nsImage: NSWorkspace.shared.icon(forFile: value))
+                Image(nsImage: FileIcons.icon(for: value))
                     .resizable().frame(width: 18, height: 18)
                 Text(URL(fileURLWithPath: value).lastPathComponent).lineLimit(1).truncationMode(.middle)
             }

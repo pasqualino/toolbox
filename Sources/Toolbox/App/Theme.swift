@@ -16,7 +16,7 @@ extension ToolCategory {
         }
     }
 
-    /// ⌘1…⌘6 order.
+    /// ⌘1…⌘8 order.
     var shortcutIndex: Int { ToolCategory.allCases.firstIndex(of: self)! + 1 }
 }
 
@@ -42,13 +42,11 @@ struct ToolIcon: View {
     let symbol: String
     let tint: Color
     var size: CGFloat = 28
-    var dimmed = false
 
     init(_ tool: Tool, size: CGFloat = 28) {
         symbol = tool.symbol
         tint = tool.tint
         self.size = size
-        dimmed = !tool.isReady
     }
 
     init(symbol: String, tint: Color, size: CGFloat = 28) {
@@ -72,13 +70,11 @@ struct ToolIcon: View {
                     .symbolRenderingMode(.hierarchical)
             }
             .frame(width: size, height: size)
-            .shadow(color: tint.opacity(dimmed ? 0 : 0.25), radius: size * 0.12, y: size * 0.05)
-            .saturation(dimmed ? 0 : 1)
-            .opacity(dimmed ? 0.55 : 1)
+            .shadow(color: tint.opacity(0.25), radius: size * 0.12, y: size * 0.05)
     }
 }
 
-/// Small capsule label ("Soon", "⌘1").
+/// Small capsule label ("3", "⌘1").
 struct Badge: View {
     let text: String
     var tint: Color = .secondary
@@ -90,6 +86,39 @@ struct Badge: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(tint.opacity(0.12), in: Capsule())
+    }
+}
+
+/// Capsule button for quick choices: feedback chips, versions, durations, group members.
+struct ChipStyle: ButtonStyle {
+    enum Size {
+        /// v1 v2 v3 in a pane header.
+        case compact
+        case regular
+        /// Group member switcher above the editors.
+        case large
+    }
+
+    var selected = false
+    var size: Size = .regular
+    /// Fill when selected.
+    var tint: Color = .accentColor
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        let (font, horizontal, vertical, rest): (CGFloat, CGFloat, CGFloat, Double) = switch size {
+        case .compact: (11, 7, 2, 0.07)
+        case .regular: (12, 10, 4, 0.07)
+        case .large: (12.5, 12, 5, 0.06)
+        }
+        configuration.label
+            .font(.system(size: font, weight: selected ? .semibold : .regular))
+            .padding(.horizontal, horizontal)
+            .padding(.vertical, vertical)
+            .foregroundStyle(selected ? Color.white : Color.primary)
+            .background(Capsule().fill(selected ? tint : Color.primary.opacity(configuration.isPressed ? rest * 2 : rest)))
+            .opacity(isEnabled ? 1 : 0.45)
+            .contentShape(Capsule())
     }
 }
 

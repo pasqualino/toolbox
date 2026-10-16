@@ -19,6 +19,12 @@ public struct RunResult: Sendable {
 }
 
 public enum ToolEngine {
+    private static let folderDate: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        return f
+    }()
+
     /// Default delivery root: ~/Downloads/Toolbox.
     public static var defaultOutputRoot: URL {
         FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
@@ -37,9 +43,6 @@ public enum ToolEngine {
         outputRoot: URL = defaultOutputRoot,
         events: @escaping @Sendable (RunEvent) -> Void
     ) async -> RunResult {
-        guard let runner = tool.runner else {
-            return RunResult(folder: nil, outputs: [], failures: 1, cancelled: false)
-        }
         for req in tool.requirements where !Toolchain.isAvailable(req) {
             events(.itemFailed(0, message: ToolError.missingRequirement(req).localizedDescription))
             return RunResult(folder: nil, outputs: [], failures: 1, cancelled: false)
@@ -76,7 +79,7 @@ public enum ToolEngine {
             }
         }
 
-        switch runner {
+        switch tool.runner {
         case .perFile(let body):
             let limit = tool.requirements.contains(.ffmpeg) ? 1 : max(2, min(6, ProcessInfo.processInfo.activeProcessorCount / 2))
             // A nested enqueue() func capturing the group reported every item as index 0 in
@@ -131,9 +134,7 @@ public enum ToolEngine {
         }
 
         // Deliver.
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH.mm.ss"
-        let stamp = "\(formatter.string(from: Date())) \(tool.name)"
+        let stamp = "\(folderDate.string(from: Date())) \(tool.name)"
         var folder = outputRoot.appendingPathComponent(stamp, isDirectory: true)
         var n = 2
         while fm.fileExists(atPath: folder.path) {

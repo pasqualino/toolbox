@@ -18,17 +18,14 @@ struct JobsButton: View {
             .sorted { ($0.finishedAt ?? .distantPast) > ($1.finishedAt ?? .distantPast) }
     }
 
-    private var extraRunning: Int {
-        (model.rewrite.isRunning ? 1 : 0) + (KeepAwakeModel.shared.isActive ? 1 : 0)
-    }
-
     var body: some View {
-        let busy = running.count + extraRunning
+        let background = ToolFlow.backgroundJobs
+        let busy = running.count + background.count
         Button {
             showing.toggle()
         } label: {
             HStack(spacing: 5) {
-                if !running.isEmpty || model.rewrite.isRunning {
+                if !running.isEmpty || background.contains(where: \.showsProgress) {
                     ProgressView().controlSize(.small)
                 } else {
                     Image(systemName: "list.bullet.rectangle")
@@ -38,7 +35,7 @@ struct JobsButton: View {
         }
         .help("Jobs")
         .popover(isPresented: $showing, arrowEdge: .bottom) {
-            JobsList(running: running, recent: recent) { showing = false }
+            JobsList(running: running, recent: recent, background: background) { showing = false }
                 .environment(model)
         }
     }
@@ -47,6 +44,7 @@ struct JobsButton: View {
 private struct JobsList: View {
     let running: [ToolSession]
     let recent: [ToolSession]
+    let background: [ToolFlow.BackgroundJob]
     let dismiss: () -> Void
     @Environment(AppModel.self) private var model
 
@@ -54,7 +52,7 @@ private struct JobsList: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Jobs").font(.headline).padding(.horizontal, 14).padding(.vertical, 10)
             Divider()
-            if running.isEmpty && recent.isEmpty && !model.rewrite.isRunning && !KeepAwakeModel.shared.isActive {
+            if running.isEmpty && recent.isEmpty && background.isEmpty {
                 Text("Nothing running. Long runs, like compressing a video, show up here so you can keep working in other tools.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -63,15 +61,10 @@ private struct JobsList: View {
             } else {
                 ScrollView {
                     VStack(spacing: 2) {
-                        if KeepAwakeModel.shared.isActive, let tool = ToolRegistry.tool(id: "keep-awake") {
-                            JobRow(tool: tool, status: KeepAwakeModel.shared.statusLine, progress: nil) {
-                                Button("Stop") { KeepAwakeModel.shared.stop() }
-                            } open: { model.open(tool); dismiss() }
-                        }
-                        if model.rewrite.isRunning, let tool = ToolRegistry.tool(id: "rewrite") {
-                            JobRow(tool: tool, status: "Rewriting…", progress: nil) {
-                                Button("Stop") { model.rewrite.stop() }
-                            } open: { model.open(tool); dismiss() }
+                        ForEach(background, id: \.tool.id) { job in
+                            JobRow(tool: job.tool, status: job.status, progress: nil) {
+                                Button("Stop") { job.stop() }
+                            } open: { model.open(job.tool); dismiss() }
                         }
                         ForEach(running, id: \.tool.id) { session in
                             JobRow(tool: session.tool, status: runningStatus(session), progress: session.progress) {

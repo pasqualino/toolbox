@@ -16,9 +16,13 @@ enum MediaExtraTools {
                    "bitrate", "resolution", "fps", "frame rate", "exif", "hdr", "duration", "sample rate",
                    "gps", "camera", "what is this file"],
         accepts: VideoTools.videoTypes + [.audio, .image],
+        options: [
+            // Hidden in the app; the CLI sets it from TOOLBOX_MEDIAINFO_AVFOUNDATION=1 to test the fallback.
+            OptionSpec("avfoundation", "Read with AVFoundation", .toggle(default: false), visibleWhen: ("cli", ["true"])),
+        ],
         actionTitle: "Inspect",
         runner: .perFile { url, ctx in
-            ctx.showText(try await MediaReport.report(for: url))
+            ctx.showText(try await MediaReport.report(for: url, preferAVFoundation: ctx.options.bool("avfoundation")))
             return []
         }
     )

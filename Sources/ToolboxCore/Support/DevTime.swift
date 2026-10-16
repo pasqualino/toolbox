@@ -5,13 +5,20 @@ enum DevTime {
     static let posix = Locale(identifier: "en_US_POSIX")
     static let utc = TimeZone(identifier: "UTC")!
 
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var cache: [String: DateFormatter] = [:]
+
+    /// A formatter for `format` in `zone`. Built once per pair; callers must not change it.
     static func formatter(_ format: String, zone: TimeZone) -> DateFormatter {
+        let key = format + "|" + zone.identifier
+        if let cached = cacheLock.withLock({ cache[key] }) { return cached }
         let f = DateFormatter()
         f.locale = posix
         f.timeZone = zone
         f.calendar = Calendar(identifier: .gregorian)
         f.dateFormat = format
         f.isLenient = false
+        cacheLock.withLock { cache[key] = f }
         return f
     }
 
@@ -19,10 +26,20 @@ enum DevTime {
     static func iso(_ date: Date) -> String {
         let ms = (date.timeIntervalSince1970 * 1000).rounded()
         let hasMs = ms.truncatingRemainder(dividingBy: 1000) != 0
-        let f = ISO8601DateFormatter()
-        f.formatOptions = hasMs ? [.withInternetDateTime, .withFractionalSeconds] : [.withInternetDateTime]
-        return f.string(from: Date(timeIntervalSince1970: ms / 1000))
+        return (hasMs ? isoMillis : isoSeconds).string(from: Date(timeIntervalSince1970: ms / 1000))
     }
+
+    private static let isoMillis: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoSeconds: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
 
     /// "Wed 2026-10-21 16:03:00 GMT+2"
     static func local(_ date: Date, zone: TimeZone = .current, seconds: Bool = true) -> String {

@@ -60,7 +60,7 @@ public enum SpeedTest {
         guard FileManager.default.isExecutableFile(atPath: tool) else {
             throw ToolError.message("This Mac doesn't have networkQuality.")
         }
-        let output = try await MacShell.run(tool, sequential ? ["-c", "-s"] : ["-c"])
+        let output = try await ProcessRunner.capture(URL(fileURLWithPath: tool), sequential ? ["-c", "-s"] : ["-c"])
         try Task.checkCancellation()
         return try parse(Data(output.stdout.utf8), stderr: output.stderr)
     }
@@ -108,13 +108,14 @@ public enum SpeedTest {
     /// networkQuality writes local time like "2026-10-21 16:17:54.064".
     private static func date(_ string: String?) -> Date? {
         guard let string else { return nil }
+        return endDateFormatters.lazy.compactMap { $0.date(from: string) }.first
+    }
+
+    private static let endDateFormatters: [DateFormatter] = ["yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss"].map { format in
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        for format in ["yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss"] {
-            f.dateFormat = format
-            if let d = f.date(from: string) { return d }
-        }
-        return nil
+        f.dateFormat = format
+        return f
     }
 
     // Keys as networkQuality -c prints them (see `man networkQuality`).

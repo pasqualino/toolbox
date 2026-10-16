@@ -26,7 +26,7 @@ enum AppRepair {
     }
 
     static func signature(_ app: URL) async throws -> Signature {
-        let out = try await MacShell.run("/usr/bin/codesign", ["-dv", "--verbose=2", app.path])
+        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/codesign"), ["-dv", "--verbose=2", app.path])
         let text = out.stderr + out.stdout
         var sig = Signature(signed: out.status == 0, adhoc: false, identifier: nil, team: nil, authorities: [])
         for line in text.split(whereSeparator: \.isNewline) {
@@ -44,7 +44,7 @@ enum AppRepair {
     }
 
     static func assess(_ app: URL) async throws -> Assessment {
-        let out = try await MacShell.run("/usr/sbin/spctl", ["--assess", "--type", "execute", "-vv", app.path])
+        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/sbin/spctl"), ["--assess", "--type", "execute", "-vv", app.path])
         let text = out.stderr + out.stdout
         var result = Assessment(accepted: out.status == 0, source: nil, detail: nil)
         for line in text.split(whereSeparator: \.isNewline) {
@@ -62,7 +62,7 @@ enum AppRepair {
     }
 
     static func quarantine(_ app: URL) async throws -> Quarantine? {
-        let out = try await MacShell.run("/usr/bin/xattr", ["-p", "com.apple.quarantine", app.path])
+        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/xattr"), ["-p", "com.apple.quarantine", app.path])
         guard out.status == 0 else { return nil }
         // "flags;hex epoch;agent;uuid"
         let fields = out.stdout.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ";", omittingEmptySubsequences: false)
@@ -75,7 +75,7 @@ enum AppRepair {
 
     /// Removes the attribute recursively. Asks for an administrator password when the app isn't writable.
     static func removeQuarantine(_ app: URL) async throws -> RemoveOutcome {
-        let out = try await MacShell.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", app.path])
+        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/xattr"), ["-dr", "com.apple.quarantine", app.path])
         if out.status == 0 { return .removed }
         guard out.stderr.localizedCaseInsensitiveContains("Operation not permitted")
             || out.stderr.localizedCaseInsensitiveContains("Permission denied") else {
@@ -85,7 +85,7 @@ enum AppRepair {
         let literal = "\"" + app.path.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"") + "\""
         let script = "do shell script \"/usr/bin/xattr -dr com.apple.quarantine \" & quoted form of \(literal) with administrator privileges"
-        let admin = try await MacShell.run("/usr/bin/osascript", ["-e", script])
+        let admin = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/osascript"), ["-e", script])
         if admin.status == 0 { return .removedAsAdmin }
         if admin.stderr.contains("-128") || admin.stderr.localizedCaseInsensitiveContains("cancel") { return .userCancelled }
         throw ToolError.message(ProcessRunner.summarize(admin.stderr, fallback: "osascript"))

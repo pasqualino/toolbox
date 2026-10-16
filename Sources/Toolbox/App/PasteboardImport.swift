@@ -19,15 +19,6 @@ enum PasteboardImport {
         return []
     }
 
-    /// True when the clipboard holds something `tool` could take, without writing anything.
-    static func hasContent(for tool: Tool, in pasteboard: NSPasteboard = .general) -> Bool {
-        let types = pasteboard.types ?? []
-        if types.contains(.fileURL) { return true }
-        if takes(.pdf, tool), types.contains(.pdf) { return true }
-        return takes(.image, tool) && (types.contains(.png) || types.contains(.tiff)
-            || NSImage.canInit(with: pasteboard))
-    }
-
     static func takes(_ type: UTType, _ tool: Tool) -> Bool {
         tool.inputKind != .text && tool.inputKind != .action && tool.inputKind != .url
             && tool.accepts.contains { type.conforms(to: $0) || $0.conforms(to: type) }
@@ -41,17 +32,21 @@ enum PasteboardImport {
         return rep.representation(using: .png, properties: [:])
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH.mm.ss"
+        return f
+    }()
+
     /// Writes to a per-launch temp folder with a readable name, like "Pasted Image 16.45.12.png".
     private static func write(_ data: Data, ext: String) -> URL? {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Toolbox Pasted", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH.mm.ss"
         let kind = ext == "pdf" ? "Pasted PDF" : "Pasted Image"
-        var url = folder.appendingPathComponent("\(kind) \(formatter.string(from: Date())).\(ext)")
+        var url = folder.appendingPathComponent("\(kind) \(timeFormatter.string(from: Date())).\(ext)")
         var n = 2
         while FileManager.default.fileExists(atPath: url.path) {
-            url = folder.appendingPathComponent("\(kind) \(formatter.string(from: Date())) \(n).\(ext)")
+            url = folder.appendingPathComponent("\(kind) \(timeFormatter.string(from: Date())) \(n).\(ext)")
             n += 1
         }
         do {
@@ -87,7 +82,7 @@ enum PasteShortcut {
         let files = PasteboardImport.files(for: session.tool)
         guard !files.isEmpty else { return false }
         if session.phase == .finished { session.clear() }
-        session.add(files)
+        Task { await session.add(files) }
         return true
     }
 
@@ -104,40 +99,42 @@ enum PasteShortcut {
 }
 
 extension PasteboardImport {
-    /// Tools you typically use right after taking a screenshot; the palette hands them the clipboard image.
-    static let screenshotTools: Set<String> = ["extract-text", "read-qr", "redact-image", "beautify-screenshot", "remove-background"]
-
-    /// Tools whose ⌥Return result is text that goes straight back to the clipboard.
-    static let clipboardTextTools: Set<String> = ["extract-text", "read-qr"]
-
     /// ⌥Return: run on the clipboard image without opening a window, then copy the text it returns.
     static func runOnClipboard(_ tool: Tool) {
         let files = files(for: tool)
         guard !files.isEmpty else {
-            Toast.show("No image on the clipboard", detail: "Take a screenshot with ⌃⇧⌘4, then try again.",
-                       symbol: "photo.badge.exclamationmark", tint: .orange)
+            Toast.warning("No image on the clipboard", detail: "Take a screenshot with ⌃⇧⌘4, then try again.",
+                          symbol: "photo.badge.exclamationmark")
             return
         }
         let session = AppModel.shared.session(for: tool)
         session.clear()
-        session.add(files)
         Toast.show(tool.id == "read-qr" ? "Reading code…" : "Reading text…", symbol: tool.symbol, tint: tool.tint, duration: 15)
-        session.run(outputRoot: Prefs.outputRoot)
         Task { @MainActor in
-            while session.phase == .running { try? await Task.sleep(for: .milliseconds(80)) }
-            let text = session.resultText
-            if !text.isEmpty {
-                TextExport.copy(text)
-                History.record(tool.id)
-                Toast.show("Copied text", detail: text.split(whereSeparator: \.isNewline).first.map(String.init), tint: tool.tint)
-            } else {
-                let error = session.items.compactMap { item -> String? in
-                    if case .failed(let message) = item.status { return message }
-                    return nil
-                }.first ?? session.runError ?? "Nothing found."
-                Toast.show("\(tool.name) failed", detail: error, symbol: "exclamationmark.triangle.fill", tint: .red)
-            }
+            await session.add(files)
+            await session.runAndWait(outputRoot: Prefs.outputRoot)
+            session.copyTextResult(failureTitle: "\(tool.name) failed")
         }
+    }
+}
+
+extension ToolSession {
+    /// After a run that's only for its text (⌥Return on the clipboard, Capture Text): copies the text,
+    /// or says why there is none. A cancel (Esc at the crosshair) is not a failure and shows nothing.
+    @MainActor
+    func copyTextResult(failureTitle: String, symbol: String = "checkmark.circle.fill") {
+        if !resultText.isEmpty {
+            TextExport.copy(resultText)
+            Toast.copied("Copied text", text: resultText, symbol: symbol, tint: tool.tint)
+            return
+        }
+        let itemError = items.lazy.compactMap { item -> String? in
+            if case .failed(let message) = item.status { return message }
+            return nil
+        }.first
+        let error = itemError ?? runError ?? "Nothing found."
+        guard error != "Cancelled" else { return }
+        Toast.error(failureTitle, detail: error)
     }
 }
 

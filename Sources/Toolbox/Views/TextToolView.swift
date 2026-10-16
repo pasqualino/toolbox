@@ -10,18 +10,18 @@ struct TextToolView: View {
     @State private var output = ""
     @State private var error: String?
     @State private var computing = false
-    @State private var copied = false
+    /// Character and line counts, worked out with the output rather than on every render.
+    @State private var stats: String?
 
     private var tool: Tool { session.tool }
     private var isGenerator: Bool { tool.traits.contains(.generator) }
     private var twoInputs: Bool { tool.traits.contains(.twoInputs) }
 
-    /// Changes whenever the output must be recomputed.
+    /// Changes whenever the output must be recomputed. Keyed on the text's version, not its contents.
     private var computeKey: Int {
         var h = Hasher()
         h.combine(tool.id)
-        h.combine(session.text)
-        h.combine(session.secondary)
+        h.combine(session.textVersion)
         h.combine(session.options.values)
         h.combine(session.generation)
         return h.finalize()
@@ -98,7 +98,7 @@ struct TextToolView: View {
                 }
                 Divider()
                 CodeTextView(text: $session.text, placeholder: "Type, paste, or drop a file",
-                             language: CodeLanguage.input(for: tool.id),
+                             language: tool.inputSyntax,
                              focusToken: model.focusToken, onDropFiles: load)
                 if twoInputs {
                     Divider()
@@ -130,7 +130,7 @@ struct TextToolView: View {
                 ZStack(alignment: .bottom) {
                     CodeTextView(text: .constant(output), editable: false, wraps: false,
                                  placeholder: isGenerator ? "" : "Output appears as you type",
-                                 language: CodeLanguage.output(for: tool.id))
+                                 language: tool.outputSyntax)
                         // Stale while the input has an error.
                         .opacity(error == nil ? 1 : 0.35)
                     if let error {
@@ -153,28 +153,15 @@ struct TextToolView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 12) {
-                Text(stats)
+                Text(stats ?? Self.stats(isGenerator ? output : session.text, generator: isGenerator))
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button {
-                    copy()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        Text(copied ? "Copied" : "Copy Output")
-                            .fontWeight(.semibold)
-                        Image(systemName: "return")
-                            .font(.system(size: 11, weight: .bold))
-                            .opacity(0.6)
-                    }
-                    .frame(minWidth: 130)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(copied ? .green : tool.tint)
-                .controlSize(.large)
-                .disabled(output.isEmpty || error != nil)
-                .keyboardShortcut(.return, modifiers: .command)
+                CopyButton(text: error == nil ? output : "", title: "Copy Output", prominent: tool.tint,
+                           showsReturn: true, minWidth: 130) { History.record(tool.id) }
+                    .controlSize(.large)
+                    .disabled(output.isEmpty || error != nil)
+                    .keyboardShortcut(.return, modifiers: .command)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
@@ -182,12 +169,11 @@ struct TextToolView: View {
         .background(.bar)
     }
 
-    private var stats: String {
-        let source = isGenerator ? output : session.text
-        guard !source.isEmpty else { return isGenerator ? "" : "Waiting for input" }
+    private nonisolated static func stats(_ source: String, generator: Bool) -> String {
+        guard !source.isEmpty else { return generator ? "" : "Waiting for input" }
         let chars = source.count
         let lines = source.reduce(1) { $0 + ($1 == "\n" ? 1 : 0) }
-        let label = isGenerator ? "Output" : "Input"
+        let label = generator ? "Output" : "Input"
         return "\(label): \(chars.formatted()) characters · \(lines.formatted()) line\(lines == 1 ? "" : "s")"
     }
 
@@ -197,9 +183,11 @@ struct TextToolView: View {
         let tool = tool
         let input = TextInput(session.text, secondary: session.secondary)
         let options = session.options
+        let isGenerator = isGenerator
         if input.text.isEmpty, input.secondary.isEmpty, !isGenerator {
             output = ""
             error = nil
+            stats = Self.stats("", generator: false)
             return
         }
         // Debounce big inputs a little so typing stays smooth.
@@ -208,8 +196,8 @@ struct TextToolView: View {
             if Task.isCancelled { return }
         }
         computing = true
-        let result = await Task.detached(priority: .userInitiated) { () -> Result<String, Error> in
-            Result { try tool.apply(input, options: options) }
+        let (result, inputStats) = await Task.detached(priority: .userInitiated) { () -> (Result<String, Error>, String?) in
+            (Result { try tool.apply(input, options: options) }, isGenerator ? nil : Self.stats(input.text, generator: false))
         }.value
         guard !Task.isCancelled else { return }
         computing = false
@@ -220,24 +208,11 @@ struct TextToolView: View {
         case .failure(let failure):
             error = failure.localizedDescription
         }
-    }
-
-    private func copy() {
-        guard !output.isEmpty, error == nil else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(output, forType: .string)
-        History.record(tool.id)
-        copied = true
-        Task {
-            try? await Task.sleep(for: .seconds(1.2))
-            copied = false
-        }
+        stats = inputStats ?? Self.stats(output, generator: true)
     }
 
     private func load(_ urls: [URL]) -> Bool {
-        guard let url = urls.first,
-              let data = try? Data(contentsOf: url), data.count < 20_000_000,
-              let text = String(data: data, encoding: .utf8) else { return false }
+        guard let url = urls.first, let text = TextExport.read(url) else { return false }
         session.text = text
         return true
     }
@@ -274,21 +249,10 @@ private struct MemberChips: View {
         FlowLayout(spacing: 6, lineSpacing: 6) {
             ForEach(group.members, id: \.toolID) { member in
                 let selected = member.toolID == session.tool.id
-                Button {
+                Button(member.label) {
                     model.switchMember(from: session, to: member.toolID)
-                } label: {
-                    Text(member.label)
-                        .font(.system(size: 12.5, weight: selected ? .semibold : .regular))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 5)
-                        .foregroundStyle(selected ? Color.white : Color.primary)
-                        .background {
-                            Capsule().fill(selected ? AnyShapeStyle(session.tool.tint)
-                                                    : AnyShapeStyle(Color.primary.opacity(0.06)))
-                        }
-                        .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ChipStyle(selected: selected, size: .large, tint: session.tool.tint))
                 .help(ToolRegistry.tool(id: member.toolID)?.summary ?? "")
             }
         }
@@ -308,7 +272,8 @@ private struct MemberChips: View {
     }
 }
 
-private struct PaneHeader<Actions: View>: View {
+/// Title row above an editor pane, with small borderless actions on the right.
+struct PaneHeader<Actions: View>: View {
     let title: String
     let symbol: String
     @ViewBuilder var actions: Actions
@@ -328,14 +293,18 @@ private struct PaneHeader<Actions: View>: View {
 }
 
 /// Options in one wrapping row above the editors, so both panes keep their width.
-private struct InlineOptions: View {
+struct InlineOptions: View {
     let session: ToolSession
+    /// Options shown elsewhere, or not at all (Rewrite's CLI-only feedback).
+    var excluding: Set<String> = []
+    /// Short choice lists (three or fewer) as segmented controls, as Rewrite shows them.
+    var segmented = false
 
     var body: some View {
         FlowLayout(spacing: 18, lineSpacing: 10) {
-            ForEach(session.tool.options) { spec in
+            ForEach(session.tool.options.filter { !excluding.contains($0.id) }) { spec in
                 if session.options.isVisible(spec, among: session.tool.options) {
-                    InlineOption(spec: spec, session: session)
+                    InlineOption(spec: spec, session: session, segmented: segmented)
                 }
             }
         }
@@ -346,38 +315,38 @@ private struct InlineOptions: View {
 private struct InlineOption: View {
     let spec: OptionSpec
     let session: ToolSession
+    let segmented: Bool
 
-    private var value: Binding<String> {
-        Binding(get: { session.options[spec.id] }, set: { session.options[spec.id] = $0 })
-    }
+    private var value: Binding<String> { session.binding(for: spec.id) }
 
     var body: some View {
         HStack(spacing: 8) {
             switch spec.kind {
             case .toggle:
-                Toggle(spec.label, isOn: Binding(get: { value.wrappedValue == "true" },
-                                                 set: { value.wrappedValue = $0 ? "true" : "false" }))
+                Toggle(spec.label, isOn: session.boolBinding(for: spec.id))
                     .toggleStyle(.checkbox)
             case .choice(let choices, _):
                 label
-                Picker(spec.label, selection: value) {
+                let picker = Picker(spec.label, selection: value) {
                     ForEach(choices, id: \.value) { Text($0.label).tag($0.value) }
                 }
                 .labelsHidden()
                 .fixedSize()
+                if segmented && choices.count <= 3 {
+                    picker.pickerStyle(.segmented)
+                } else {
+                    picker
+                }
             case .number(let range, _, let unit):
                 label
-                TextField("", value: Binding(get: { Double(value.wrappedValue) ?? range.lowerBound },
-                                             set: { value.wrappedValue = OptionSpecFormat.number(min(max($0, range.lowerBound), range.upperBound)) }),
-                          format: .number)
+                TextField("", value: session.numberBinding(for: spec.id, range: range), format: .number)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 70)
                 if !unit.isEmpty { Text(unit).foregroundStyle(.secondary) }
             case .slider(let range, let step, _, _):
                 label
-                Stepper(value: Binding(get: { Double(value.wrappedValue) ?? range.lowerBound },
-                                       set: { value.wrappedValue = OptionSpecFormat.number($0) }),
-                        in: range, step: step) {
+                // The stepper keeps the value in range, so clamping changes nothing here.
+                Stepper(value: session.numberBinding(for: spec.id, range: range), in: range, step: step) {
                     Text(value.wrappedValue).monospacedDigit()
                 }
             case .text(_, let placeholder):

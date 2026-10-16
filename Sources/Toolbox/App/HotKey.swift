@@ -103,9 +103,7 @@ final class HotKey {
         let id = EventHotKeyID(signature: OSType(0x54424F58), id: 1) // "TBOX"
         let s = shortcut
         let status = RegisterEventHotKey(s.keyCode, s.modifiers, id, GetApplicationEventTarget(), 0, &ref)
-        if ProcessInfo.processInfo.environment["TOOLBOX_DEBUG"] != nil {
-            FileHandle.standardError.write("hotkey \(s.display) status \(status)\n".data(using: .utf8)!)
-        }
+        DebugLog.log("hotkey \(s.display) status \(status)")
         return status == noErr
     }
 

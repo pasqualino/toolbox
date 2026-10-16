@@ -29,18 +29,12 @@ enum DevJWT {
         return s.filter { !$0.isWhitespace }
     }
 
-    static func base64url(_ part: Substring) -> Data? {
-        var s = part.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
-        s += String(repeating: "=", count: (4 - s.count % 4) % 4)
-        return Data(base64Encoded: s)
-    }
-
     static func text(_ part: Substring) -> String {
-        base64url(part).map { String(decoding: $0, as: UTF8.self) } ?? ""
+        (try? DevEncoding.base64Decode(String(part))).map { String(decoding: $0, as: UTF8.self) } ?? ""
     }
 
     static func json(_ part: Substring, _ name: String) throws -> Any {
-        guard let data = base64url(part) else { throw ToolError.message("The \(name) isn't valid base64url.") }
+        guard let data = try? DevEncoding.base64Decode(String(part)) else { throw ToolError.message("The \(name) isn't valid base64url.") }
         guard let value = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else {
             throw ToolError.message("The \(name) isn't JSON.")
         }

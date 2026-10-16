@@ -98,7 +98,8 @@ enum AITools {
             guard !text.isEmpty else { throw ToolError.message("No text found in \(url.lastPathComponent).") }
             ctx.showText(text)
             return []
-        }
+        },
+        traits: [.takesClipboardImage, .copiesTextResult]
     )
 
     // MARK: - Summarize

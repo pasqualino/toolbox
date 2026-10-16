@@ -1,41 +1,7 @@
 import AppKit
+import ToolboxCore
 
-/// Languages the code panes can color. Picked per tool, for input and output separately.
-enum CodeLanguage {
-    case json, yaml, graphql, sql, xml, go, typescript, javascript, diff
-
-    /// Language of a tool's output, by tool id.
-    static func output(for toolID: String) -> CodeLanguage? {
-        switch toolID {
-        case "format-json", "minify-json", "sort-json", "yaml-to-json", "csv-to-json", "query-to-json",
-             "unwrap-log-json", "graphql-variables", "evaluate-js", "decode-jwt": .json
-        case "json-to-yaml": .yaml
-        case "format-graphql", "minify-graphql": .graphql
-        case "format-sql", "minify-sql": .sql
-        case "format-xml", "minify-xml": .xml
-        case "json-to-go": .go
-        case "json-to-typescript": .typescript
-        case "text-diff": .diff
-        default: nil
-        }
-    }
-
-    /// Language of a tool's input, by tool id.
-    static func input(for toolID: String) -> CodeLanguage? {
-        switch toolID {
-        case "format-json", "minify-json", "sort-json", "json-to-yaml", "json-to-csv", "json-to-query",
-             "json-to-go", "json-to-typescript": .json
-        case "yaml-to-json": .yaml
-        case "format-graphql", "minify-graphql", "graphql-variables": .graphql
-        case "format-sql", "minify-sql": .sql
-        case "format-xml", "minify-xml": .xml
-        case "evaluate-js": .javascript
-        default: nil
-        }
-    }
-}
-
-/// Regex-based coloring. Rules run in order; a later rule never recolors text an earlier one claimed,
+/// Regex-based coloring for each `Syntax` a tool declares. Rules run in order; a later rule never recolors text an earlier one claimed,
 /// so strings and comments win over keywords and numbers inside them.
 enum Highlighter {
     /// Above this size, skip coloring so pasting a huge file stays instant.
@@ -62,7 +28,7 @@ enum Highlighter {
     private static let comment = NSColor.secondaryLabelColor
     private static let punctuation = NSColor.tertiaryLabelColor
 
-    private static let rules: [CodeLanguage: [Rule]] = [
+    private static let rules: [Syntax: [Rule]] = [
         .json: [
             rule(#""(?:[^"\\\n]|\\.)*"(?=\s*:)"#, key),
             rule(#""(?:[^"\\\n]|\\.)*""#, string),
@@ -126,48 +92,69 @@ enum Highlighter {
         ],
     ]
 
+    /// One colored range.
+    struct Span: @unchecked Sendable {
+        let range: NSRange
+        let color: NSColor
+        var background: NSColor?
+    }
+
     /// Applies colors to the whole text storage. Resets to the base color first.
-    static func apply(_ language: CodeLanguage, to storage: NSTextStorage, baseFont: NSFont) {
-        let full = NSRange(location: 0, length: storage.length)
+    static func apply(_ language: Syntax, to storage: NSTextStorage, baseFont: NSFont) {
         guard storage.length <= maxLength else { return }
+        apply(spans(language, in: storage.string), to: storage, baseFont: baseFont)
+    }
+
+    /// Resets the storage to the base color, then colors the spans, in one edit.
+    static func apply(_ spans: [Span], to storage: NSTextStorage, baseFont: NSFont) {
         storage.beginEditing()
-        storage.setAttributes([.font: baseFont, .foregroundColor: NSColor.labelColor], range: full)
-        if language == .diff {
-            applyDiff(storage)
-        } else if let rules = rules[language] {
-            let text = storage.string
-            var claimed = IndexSet()
-            for rule in rules {
-                for match in rule.regex.matches(in: text, range: full) {
-                    let range = match.range(at: rule.group)
-                    guard range.location != NSNotFound, range.length > 0 else { continue }
-                    let span = range.location..<(range.location + range.length)
-                    if claimed.intersects(integersIn: span) { continue }
-                    claimed.insert(integersIn: span)
-                    storage.addAttribute(.foregroundColor, value: rule.color, range: range)
-                }
-            }
+        storage.setAttributes([.font: baseFont, .foregroundColor: NSColor.labelColor],
+                              range: NSRange(location: 0, length: storage.length))
+        for span in spans {
+            var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: span.color]
+            if let background = span.background { attributes[.backgroundColor] = background }
+            storage.addAttributes(attributes, range: span.range)
         }
         storage.endEditing()
     }
 
+    /// The ranges to color. Pure, so large texts can be matched off the main thread.
+    static func spans(_ language: Syntax, in text: String) -> [Span] {
+        if language == .diff { return diffSpans(text) }
+        guard let rules = rules[language] else { return [] }
+        let full = NSRange(location: 0, length: (text as NSString).length)
+        var claimed = IndexSet()
+        var spans: [Span] = []
+        for rule in rules {
+            for match in rule.regex.matches(in: text, range: full) {
+                let range = match.range(at: rule.group)
+                guard range.location != NSNotFound, range.length > 0 else { continue }
+                let span = range.location..<(range.location + range.length)
+                if claimed.intersects(integersIn: span) { continue }
+                claimed.insert(integersIn: span)
+                spans.append(Span(range: range, color: rule.color))
+            }
+        }
+        return spans
+    }
+
     /// Whole-line tints for unified diffs: additions green, removals red, hunk headers blue.
-    private static func applyDiff(_ storage: NSTextStorage) {
-        let text = storage.string as NSString
+    private static func diffSpans(_ text: String) -> [Span] {
+        let text = text as NSString
+        var spans: [Span] = []
         text.enumerateSubstrings(in: NSRange(location: 0, length: text.length), options: [.byLines, .substringNotRequired]) { _, range, enclosing, _ in
             let first = range.length > 0 ? text.substring(with: NSRange(location: range.location, length: 1)) : ""
             switch first {
             case "+":
-                storage.addAttributes([.foregroundColor: NSColor.systemGreen,
-                                       .backgroundColor: NSColor.systemGreen.withAlphaComponent(0.10)], range: enclosing)
+                spans.append(Span(range: enclosing, color: .systemGreen, background: NSColor.systemGreen.withAlphaComponent(0.10)))
             case "-":
-                storage.addAttributes([.foregroundColor: NSColor.systemRed,
-                                       .backgroundColor: NSColor.systemRed.withAlphaComponent(0.10)], range: enclosing)
+                spans.append(Span(range: enclosing, color: .systemRed, background: NSColor.systemRed.withAlphaComponent(0.10)))
             case "@":
-                storage.addAttributes([.foregroundColor: NSColor.systemBlue], range: range)
+                spans.append(Span(range: range, color: .systemBlue))
             default:
                 break
             }
         }
+        return spans
     }
 }
