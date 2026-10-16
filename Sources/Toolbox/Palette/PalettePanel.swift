@@ -28,10 +28,12 @@ final class PalettePanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    func present(files: [URL]) {
-        let fromFinder = files.isEmpty && FinderSelection.finderIsFrontmost
+    func present(files: [URL], text: String? = nil) {
+        let fromFinder = files.isEmpty && text == nil && FinderSelection.finderIsFrontmost
             && UserDefaults.standard.bool(forKey: Prefs.useFinderSelection)
+            && PermissionPrimer.ensure(.finderAutomation)
         state.reset(files: files)
+        state.text = text
         if fromFinder {
             Task { @MainActor in
                 let selected = FinderSelection.fetch()

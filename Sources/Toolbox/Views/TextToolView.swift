@@ -56,7 +56,7 @@ struct TextToolView: View {
                     .padding(.bottom, 12)
             }
 
-            if tool.options.contains(where: { session.options.isVisible($0) }) {
+            if tool.options.contains(where: { session.options.isVisible($0, among: session.tool.options) }) {
                 InlineOptions(session: session)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 12)
@@ -98,6 +98,7 @@ struct TextToolView: View {
                 }
                 Divider()
                 CodeTextView(text: $session.text, placeholder: "Type, paste, or drop a file",
+                             language: CodeLanguage.input(for: tool.id),
                              focusToken: model.focusToken, onDropFiles: load)
                 if twoInputs {
                     Divider()
@@ -128,7 +129,8 @@ struct TextToolView: View {
                 Divider()
                 ZStack(alignment: .bottom) {
                     CodeTextView(text: .constant(output), editable: false, wraps: false,
-                                 placeholder: isGenerator ? "" : "Output appears as you type")
+                                 placeholder: isGenerator ? "" : "Output appears as you type",
+                                 language: CodeLanguage.output(for: tool.id))
                         // Stale while the input has an error.
                         .opacity(error == nil ? 1 : 0.35)
                     if let error {
@@ -332,7 +334,7 @@ private struct InlineOptions: View {
     var body: some View {
         FlowLayout(spacing: 18, lineSpacing: 10) {
             ForEach(session.tool.options) { spec in
-                if session.options.isVisible(spec) {
+                if session.options.isVisible(spec, among: session.tool.options) {
                     InlineOption(spec: spec, session: session)
                 }
             }

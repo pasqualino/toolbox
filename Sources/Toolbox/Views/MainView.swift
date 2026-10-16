@@ -19,6 +19,9 @@ struct MainView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 1000, minHeight: 580)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) { JobsButton() }
+        }
         .searchable(text: $model.searchQuery, placement: .toolbar, prompt: "Search tools")
         .searchFocused($searchFocused)
         .onSubmit(of: .search) { openTopResult() }
@@ -59,6 +62,9 @@ private struct CategorySidebar: View {
     var body: some View {
         List(selection: selection) {
             Section {
+                row(title: "Favorites", symbol: "star.fill", tint: .yellow,
+                    count: model.favoriteIDs.isEmpty ? nil : model.favoriteIDs.count, shortcut: "⌘9")
+                    .tag(SidebarItem.favorites)
                 row(title: "Recent", symbol: "clock.fill", tint: .gray, count: nil, shortcut: "⌘0")
                     .tag(SidebarItem.recent)
             }
@@ -102,7 +108,8 @@ private struct EntryList: View {
             set: { entryID in
                 guard let entryID, let entry = sections.lazy.flatMap(\.entries).first(where: { $0.id == entryID }),
                       let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
-                model.open(tool)
+                // Changing the route inside the table's selection callback re-enters NSTableView; defer it.
+                Task { @MainActor in model.open(tool) }
             })
     }
 
@@ -111,6 +118,7 @@ private struct EntryList: View {
     private var sections: [ToolSection] {
         if searching { return model.searchSections }
         return switch model.sidebar {
+        case .favorites: model.favoriteSections
         case .recent: model.recentSections
         case .category(let c): ToolRegistry.sections(in: c)
         }
@@ -121,7 +129,9 @@ private struct EntryList: View {
         ScrollViewReader { proxy in
         List(selection: selection) {
             if sections.isEmpty {
-                Text(searching ? "No tool matches “\(model.searchQuery)”." : "Tools you use show up here.")
+                Text(searching ? "No tool matches “\(model.searchQuery)”."
+                     : model.sidebar == .favorites ? "Right-click a tool and choose Add to Favorites."
+                     : "Tools you use show up here.")
                     .foregroundStyle(.secondary)
                     .font(.callout)
                     .padding(.vertical, 8)
@@ -132,13 +142,18 @@ private struct EntryList: View {
                         EntryRow(entry: entry, tint: tint(for: entry))
                             .tag(entry.id)
                             .id(entry.id)
+                            .contextMenu { EntryMenu(entry: entry) }
                     }
+                    // Favorites keep the order you drag them into.
+                    .onMove(perform: model.sidebar == .favorites && !searching ? { model.moveFavorites(from: $0, to: $1) } : nil)
                 } header: {
                     if let title = section.title { Text(title) }
                 }
             }
         }
         .listStyle(.sidebar)
+        // Rows scrolled under the column title overlapped it; a hard edge keeps the title readable.
+        .scrollEdgeEffectStyle(.hard, for: .top)
         .navigationTitle(title)
         // Bring the selected entry into view when it's opened from the palette or a card.
         .onChange(of: model.route, initial: true) {
@@ -152,6 +167,7 @@ private struct EntryList: View {
     private var title: String {
         if searching { return "Results" }
         return switch model.sidebar {
+        case .favorites: "Favorites"
         case .recent: "Recent"
         case .category(let c): c.title
         }
@@ -184,6 +200,8 @@ private struct EntryRow: View {
             Spacer(minLength: 0)
             if isRunning {
                 ProgressView().controlSize(.mini)
+            } else if model.isFavorite(entry), model.sidebar != .favorites {
+                Image(systemName: "star.fill").font(.system(size: 9)).foregroundStyle(.yellow)
             }
         }
         .padding(.vertical, 3)
@@ -200,5 +218,18 @@ private struct EntryRow: View {
     private var isRunning: Bool {
         guard case .tool(let tool) = entry else { return false }
         return model.sessions[tool.id]?.phase == .running
+    }
+}
+
+/// Right-click menu for any tool row or card.
+struct EntryMenu: View {
+    let entry: ToolEntry
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Button(model.isFavorite(entry) ? "Remove from Favorites" : "Add to Favorites") { model.toggleFavorite(entry) }
+        if let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) {
+            Button("Open in New Window") { WindowController.shared.openToolWindow(tool) }
+        }
     }
 }

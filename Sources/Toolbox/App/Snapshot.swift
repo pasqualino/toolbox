@@ -36,11 +36,29 @@ enum Snapshot {
                 window.setContentSize(NSSize(width: w, height: 640))
             }
             if let q = env["TOOLBOX_SEARCH"] { AppModel.shared.searchQuery = q }
+            if let favs = env["TOOLBOX_FAVORITES"] {
+                AppModel.shared.favoriteIDs = favs.split(separator: ",").map(String.init)
+                AppModel.shared.select(.favorites)
+            }
+            // Calls one of our Services through the system, the way another app's Services menu does.
+            if let name = env["TOOLBOX_SERVICE"] {
+                let pb = NSPasteboard(name: NSPasteboard.Name("toolbox.service.test"))
+                pb.clearContents()
+                pb.setString(env["TOOLBOX_SERVICE_TEXT"] ?? "", forType: .string)
+                let ok = NSPerformService(name, pb)
+                print("service \(name) ok=\(ok) result=\(pb.string(forType: .string) ?? "nil")")
+            }
             if let cat = env["TOOLBOX_CATEGORY"], let c = ToolCategory(rawValue: cat) {
                 AppModel.shared.select(.category(c))
             }
             if let id = env["TOOLBOX_ROUTE"], let tool = ToolRegistry.tool(id: id) {
                 AppModel.shared.open(tool, files: files, text: env["TOOLBOX_TEXT"])
+                // TOOLBOX_OPTIONS="key=value|key=value" sets options before the snapshot.
+                for pair in (env["TOOLBOX_OPTIONS"] ?? "").split(separator: "|") {
+                    let kv = pair.split(separator: "=", maxSplits: 1).map(String.init)
+                    if kv.count == 2 { AppModel.shared.session(for: tool).options[kv[0]] = kv[1] }
+                }
+                if env["TOOLBOX_WINDOW"] == "1" { WindowController.shared.openToolWindow(tool) }
                 if let second = env["TOOLBOX_TEXT2"] { AppModel.shared.session(for: tool).secondary = second }
                 if let other = env["TOOLBOX_SWITCH"] {
                     try? await Task.sleep(for: .milliseconds(400))
@@ -60,6 +78,15 @@ enum Snapshot {
                     for (i, v) in rewrite.versions.enumerated() { print("v\(i + 1): \(v)") }
                 }
                 if env["TOOLBOX_SIDEBAR"] == "recent" { AppModel.shared.sidebar = .recent }
+                if env["TOOLBOX_PASTE"] == "1" {
+                    print("pasted: \(PasteShortcut.paste(into: AppModel.shared.session(for: tool)))")
+                }
+                if env["TOOLBOX_CLIP_OCR"] == "1" {
+                    PasteboardImport.runOnClipboard(tool)
+                    try? await Task.sleep(for: .milliseconds(300))
+                    while AppModel.shared.session(for: tool).phase == .running { try? await Task.sleep(for: .milliseconds(100)) }
+                    print("clipboard: \(NSPasteboard.general.string(forType: .string) ?? "nil")")
+                }
                 if env["TOOLBOX_CLIPBOARD_APPLY"] == "1" {
                     ClipboardAction.apply(tool)
                     print("clipboard: \(NSPasteboard.general.string(forType: .string) ?? "")")

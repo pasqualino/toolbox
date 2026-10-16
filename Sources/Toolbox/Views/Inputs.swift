@@ -21,6 +21,7 @@ struct Panel<Content: View>: View {
 
 struct DropZone: View {
     let session: ToolSession
+    @State private var pasteEmpty = false
 
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -43,9 +44,24 @@ struct DropZone: View {
                     .foregroundStyle(.secondary)
                     .font(.callout)
             }
-            Button("Choose Files…") { model.chooseFiles() }
-                .controlSize(.large)
-                .keyboardShortcut("o")
+            HStack(spacing: 10) {
+                Button("Choose Files…") { model.chooseFiles(for: session) }
+                    .keyboardShortcut("o")
+                if PasteboardImport.takes(.image, session.tool) || PasteboardImport.takes(.pdf, session.tool) {
+                    Button {
+                        if !PasteShortcut.paste(into: session) { pasteEmpty = true }
+                    } label: {
+                        Label("Paste", systemImage: "doc.on.clipboard")
+                    }
+                    .help("Add the image or files on the clipboard (⌘V)")
+                }
+            }
+            .controlSize(.large)
+            if pasteEmpty {
+                Text("Nothing to paste. Copy an image or a file first.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
             if let rejected {
                 Label("\(rejected) file\(rejected == 1 ? "" : "s") skipped: not supported here", systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
@@ -79,13 +95,18 @@ struct DropZone: View {
         case .pdf: session.tool.accepts.contains(.pdf) ? "PDFs" : "images"
         case .ai: "files"
         case .files, .developer: "files"
+        case .mac: "apps"
         }
-        return targeted ? "Release to add" : "Drop \(noun) here"
+        return targeted ? "Release to add" : "Drop or paste \(noun) here"
     }
 
     private var typesHint: String {
         if session.tool.minimumInputs > 1 { return "Add at least \(session.tool.minimumInputs). Drag to set the order." }
-        return "Or a whole folder. Originals are never changed."
+        switch session.tool.id {
+        case "fix-app": return "Only the download quarantine flag is removed; nothing else in the app changes."
+        case "batch-rename": return "Or a whole folder. Copies are renamed unless you choose Rename originals."
+        default: return "Or a whole folder. Originals are never changed."
+        }
     }
 }
 
@@ -113,11 +134,17 @@ struct FileList: View {
                     .lineLimit(1)
                     Spacer(minLength: 0)
                     Button {
-                        model.chooseFiles()
+                        model.chooseFiles(for: session)
                     } label: {
                         Label("Add", systemImage: "plus")
                     }
                     .help("Add files (⌘O)")
+                    Button {
+                        PasteShortcut.paste(into: session)
+                    } label: {
+                        Label("Paste", systemImage: "doc.on.clipboard")
+                    }
+                    .help("Add the image or files on the clipboard (⌘V)")
                     Button {
                         session.clear()
                     } label: {
@@ -330,7 +357,7 @@ struct LinkInput: View {
                     .font(.system(size: 15))
                     .lineLimit(1...6)
                     .focused($focused)
-                    .onSubmit { model.runCurrent() }
+                    .onSubmit { model.run(session) }
                 HStack {
                     Button {
                         if let s = NSPasteboard.general.string(forType: .string) {
@@ -503,7 +530,7 @@ struct FileStrip: View {
                     Text(item.name).lineLimit(1).truncationMode(.middle)
                         .font(.subheadline.weight(.semibold))
                     if session.items.count > 1 {
-                        Text("Editing the first of \(session.items.count) files")
+                        Text("Showing the first of \(session.items.count) files. Settings apply to all.")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
                         Text(Format.bytes(item.size)).font(.caption).foregroundStyle(.secondary)

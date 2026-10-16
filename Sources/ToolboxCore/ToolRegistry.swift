@@ -4,6 +4,7 @@ public enum ToolRegistry {
     /// Every tool, ready ones first within each category.
     public static let all: [Tool] = {
         let tools = VideoTools.all + AudioTools.all + ImageTools.all + PDFTools.all + AITools.all + FileTools.all + DownloadTools.all
+            + MediaExtraTools.all + ImageEditTools.all + QRTools.all + MacTools.all
             + DevEncodingTools.all + DevFormatTools.all + DevTextTools.all + DevWorkflowTools.all
         return ToolCategory.allCases.flatMap { cat in
             let inCategory = tools.filter { $0.category == cat }

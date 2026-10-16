@@ -1,9 +1,10 @@
+import CoreGraphics
 import Foundation
 import UniformTypeIdentifiers
 
 public enum ToolCategory: String, CaseIterable, Identifiable, Sendable {
     // Display order: sidebar, ⌘1…⌘7, grids and the CLI list all follow it.
-    case developer, ai, pdf, images, video, audio, files
+    case developer, ai, pdf, images, video, audio, files, mac
 
     public var id: String { rawValue }
 
@@ -16,6 +17,7 @@ public enum ToolCategory: String, CaseIterable, Identifiable, Sendable {
         case .ai: "On-device AI"
         case .files: "Files"
         case .developer: "Developer"
+        case .mac: "Mac"
         }
     }
 
@@ -28,6 +30,7 @@ public enum ToolCategory: String, CaseIterable, Identifiable, Sendable {
         case .ai: "sparkles"
         case .files: "folder"
         case .developer: "chevron.left.forwardslash.chevron.right"
+        case .mac: "laptopcomputer"
         }
     }
 }
@@ -42,6 +45,22 @@ public enum InputKind: Sendable {
     case textOrFiles
     /// Live text transform (developer tools). Output updates as you type; nothing is saved to disk.
     case text
+    /// No input: one button runs it (Capture Text, Network Speed Test). Uses the `.text` runner with empty text.
+    case action
+}
+
+/// What a preview renders from: the first file, or the typed text (Make QR Code).
+public struct PreviewSource: Sendable {
+    public let url: URL?
+    public let text: String
+    /// Longest side to render at, for speed.
+    public let maxPixelSize: Int
+
+    public init(url: URL?, text: String, maxPixelSize: Int = 1200) {
+        self.url = url
+        self.text = text
+        self.maxPixelSize = maxPixelSize
+    }
 }
 
 /// Input to a live text transform.
@@ -126,6 +145,8 @@ public struct Tool: Identifiable, Sendable {
     public let actionTitle: String
     public let runner: ToolRunner?
     public let traits: TextToolTraits
+    /// Live preview of the result, rendered by the same code the tool uses (Beautify, Redact, Make QR Code).
+    public let preview: (@Sendable (PreviewSource, Options) throws -> CGImage)?
 
     public init(
         id: String,
@@ -143,7 +164,8 @@ public struct Tool: Identifiable, Sendable {
         status: ToolStatus = .ready,
         actionTitle: String,
         runner: ToolRunner?,
-        traits: TextToolTraits = []
+        traits: TextToolTraits = [],
+        preview: (@Sendable (PreviewSource, Options) throws -> CGImage)? = nil
     ) {
         self.id = id
         self.name = name
@@ -161,6 +183,7 @@ public struct Tool: Identifiable, Sendable {
         self.actionTitle = actionTitle
         self.runner = runner
         self.traits = traits
+        self.preview = preview
     }
 
     /// A live text transform in the Developer category.

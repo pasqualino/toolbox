@@ -13,8 +13,11 @@ struct ToolboxApp: App {
         }
         .commands { AppCommands() }
 
-        MenuBarExtra("Toolbox", systemImage: "square.grid.2x2.fill", isInserted: $showMenuBarIcon) {
+        MenuBarExtra(isInserted: $showMenuBarIcon) {
             MenuBarContent()
+        } label: {
+            // A cup while Keep Awake is on, so it's visible at a glance.
+            Image(systemName: KeepAwakeModel.shared.isActive ? "cup.and.saucer.fill" : "square.grid.2x2.fill")
         }
     }
 }
@@ -26,7 +29,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Prefs.showMenuBarIcon: true,
             Prefs.useFinderSelection: true,
         ])
+        MainActor.assumeIsolated {
+            Appearance.apply()
+            KeepAwakeModel.shared.refresh()
+        }
         if MainActor.assumeIsolated({ Snapshot.runIfRequested() }) { return }
+        MainActor.assumeIsolated { PasteShortcut.install() }
+        NSApp.servicesProvider = ServiceProvider()
+        NSUpdateDynamicServices()
         HotKey.shared.start {
             Task { @MainActor in WindowController.shared.togglePalette() }
         }
@@ -70,10 +80,21 @@ struct AppCommands: Commands {
             Button("Show Results in Finder") { AppModel.shared.revealResults() }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
             Divider()
+            Button("Add to Favorites / Remove") {
+                if let tool = AppModel.shared.currentTool { AppModel.shared.toggleFavorite(AppModel.entry(for: tool)) }
+            }
+            .keyboardShortcut("d")
+            Button("Open in New Window") {
+                if let tool = AppModel.shared.currentTool { WindowController.shared.openToolWindow(tool) }
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
+            Divider()
             Button("Clear Files") { AppModel.shared.currentSession?.clear() }
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
         }
         CommandGroup(after: .sidebar) {
+            Button("Favorites") { AppModel.shared.select(.favorites) }
+                .keyboardShortcut("9")
             Button("Recent") { AppModel.shared.select(.recent) }
                 .keyboardShortcut("0")
             ForEach(ToolCategory.allCases) { category in
@@ -89,7 +110,14 @@ struct AppCommands: Commands {
 }
 
 struct MenuBarContent: View {
+    private var awake: KeepAwakeModel { .shared }
+
     var body: some View {
+        if awake.isActive {
+            Text(awake.statusLine)
+            Button("Stop Keeping Awake") { awake.stop() }
+            Divider()
+        }
         Button("Find Tool…  \(HotKey.shared.shortcut.display)") { WindowController.shared.showPalette() }
         Button("Open Toolbox") { WindowController.shared.showMain() }
         let recent = History.ids.prefix(5).compactMap(ToolRegistry.tool(id:))
@@ -110,5 +138,17 @@ struct MenuBarContent: View {
             .keyboardShortcut(",")
         Button("Quit Toolbox") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
+    }
+}
+
+@MainActor
+enum Appearance {
+    /// "system", "light" or "dark" from Settings.
+    static func apply() {
+        switch UserDefaults.standard.string(forKey: Prefs.appearance) {
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        default: NSApp.appearance = nil
+        }
     }
 }

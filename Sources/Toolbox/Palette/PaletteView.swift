@@ -6,6 +6,8 @@ import UniformTypeIdentifiers
 final class PaletteState {
     var query = ""
     var files: [URL] = []
+    /// Text handed over by the "Open Text in Toolbox" service: only text tools show, and the text preloads.
+    var text: String?
     var selection = 0
     var focusToken = 0
 
@@ -23,7 +25,9 @@ struct PaletteView: View {
     @State private var dropTargeted = false
 
     private var results: [Tool] {
-        ToolSearch.rank(ToolRegistry.all, query: state.query, files: state.files)
+        let ranked = ToolSearch.rank(ToolRegistry.all, query: state.query, files: state.files)
+        guard state.text != nil else { return ranked }
+        return ranked.filter { $0.isTransform || $0.id == "rewrite" || $0.inputKind == .textOrFiles }
     }
 
     var body: some View {
@@ -75,7 +79,8 @@ struct PaletteView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(.secondary)
-            TextField(state.files.isEmpty ? "Search tools, or drop files" : "What do you want to do with \(fileSummary)?",
+            TextField(state.text != nil ? "What do you want to do with this text?"
+                      : state.files.isEmpty ? "Search tools, or drop files" : "What do you want to do with \(fileSummary)?",
                       text: $state.query)
                 .textFieldStyle(.plain)
                 .font(.system(size: 22, weight: .regular))
@@ -212,7 +217,21 @@ struct PaletteView: View {
     private func open(_ results: [Tool]) {
         guard results.indices.contains(state.selection) else { return }
         let tool = results[state.selection]
+        // Capture Text goes straight to the crosshair; no window needed.
+        if tool.id == "capture-text" {
+            CaptureFlow.run()
+            return
+        }
         var text = tool.inputKind == .url && ToolSearch.looksLikeURL(state.query) ? state.query : nil
+        if let handed = state.text {
+            AppModel.shared.session(for: tool).text = ""
+            if tool.id == "rewrite" {
+                AppModel.shared.rewrite.reset()
+                AppModel.shared.rewrite.autoStart = true
+            }
+            AppModel.shared.open(tool, text: handed)
+            return
+        }
         // Text tools start from the clipboard when their editor is empty, so Return shows a result at once.
         let takesClipboard = (tool.isTransform && !tool.traits.contains(.generator)) || tool.id == "rewrite"
         if takesClipboard, AppModel.shared.session(for: tool).text.isEmpty || tool.id == "rewrite",
@@ -227,7 +246,15 @@ struct PaletteView: View {
            let data = try? Data(contentsOf: file), let contents = String(data: data, encoding: .utf8) {
             text = contents
         }
-        AppModel.shared.open(tool, files: tool.isTransform ? [] : state.files, text: text)
+        var files = tool.isTransform ? [] : state.files
+        // Screenshot tools start from the image on the clipboard, the way text tools start from copied text.
+        if files.isEmpty, PasteboardImport.screenshotTools.contains(tool.id),
+           AppModel.shared.session(for: tool).items.isEmpty {
+            files = PasteboardImport.files(for: tool)
+        }
+        AppModel.shared.open(tool, files: files, text: text)
+        // Action tools you open from the palette are ones you want to run now (Network Speed Test).
+        if tool.inputKind == .action, tool.id != "keep-awake" { AppModel.shared.runCurrent() }
     }
 }
 

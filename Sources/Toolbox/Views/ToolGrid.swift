@@ -209,6 +209,7 @@ struct ToolCard: View {
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
+        .contextMenu { EntryMenu(entry: entry) }
         .onHover { hovering = $0 }
         .animation(.snappy(duration: 0.15), value: hovering)
         .help(entry.isReady ? entry.summary : comingSoonReason)

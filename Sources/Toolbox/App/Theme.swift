@@ -12,6 +12,7 @@ extension ToolCategory {
         case .ai: Color(red: 0.20, green: 0.62, blue: 0.95)
         case .files: Color(red: 0.25, green: 0.70, blue: 0.48)
         case .developer: Color(red: 0.36, green: 0.42, blue: 0.52)
+        case .mac: Color(red: 0.45, green: 0.47, blue: 0.53)
         }
     }
 

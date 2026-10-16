@@ -13,6 +13,24 @@ Press **⌃⌥Space** from any app, type what you need, drop files, press Return
 
 From the CLI: `toolbox-cli <tool-id> --text "..."` or pipe stdin.
 
+## In every app
+
+Select text or files anywhere, right-click → **Services**:
+
+| Service | Does |
+|---|---|
+| Toolbox: Rewrite / Fix Grammar | Replaces the selection with the rewritten text (on-device model) |
+| Toolbox: Format JSON | Replaces the selection with formatted JSON |
+| Toolbox: Decode JWT | Opens Decode JWT with the token |
+| Toolbox: Open Text in Toolbox | Palette with text tools, text preloaded |
+| Toolbox: Open in Toolbox (files) | Palette filtered to tools for the selected files |
+
+Give any of them a shortcut in System Settings → Keyboard → Keyboard Shortcuts → Services.
+
+## Navigation
+
+Favorites (right-click a tool, or ⌘D), Recent, 8 categories, toolbar search (⌘F), the Jobs button for runs in progress, and Open in New Window (⌘⇧N) to keep a tool beside the main window.
+
 ## Build and run
 
 ```bash

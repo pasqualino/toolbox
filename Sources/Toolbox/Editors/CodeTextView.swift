@@ -11,6 +11,8 @@ struct CodeTextView: NSViewRepresentable {
     var placeholder = ""
     /// Monospaced by default; prose tools (Rewrite) pass the system font.
     var font: NSFont = .monospacedSystemFont(ofSize: 12.5, weight: .regular)
+    /// Syntax coloring for code; nil for plain text.
+    var language: CodeLanguage?
     var focusToken = 0
     /// Called with dropped file URLs; return true to accept them instead of inserting their paths.
     var onDropFiles: (([URL]) -> Bool)?
@@ -61,6 +63,7 @@ struct CodeTextView: NSViewRepresentable {
         textView.isEditable = editable
         textView.isSelectable = true
         textView.placeholder = placeholder
+        context.coordinator.highlight(textView, now: true)
         return scroll
     }
 
@@ -71,6 +74,7 @@ struct CodeTextView: NSViewRepresentable {
             // Keep the caret where it was when the change came from outside (Use as Input, paste from palette).
             let selection = textView.selectedRanges
             textView.string = text
+            context.coordinator.highlight(textView, now: true)
             // Programmatic changes don't trigger a redraw of the placeholder.
             textView.needsDisplay = true
             if editable, let first = selection.first as? NSRange, first.location <= (text as NSString).length {
@@ -97,6 +101,22 @@ struct CodeTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let view = notification.object as? NSTextView else { return }
             parent.text = view.string
+            highlight(view, now: false)
+        }
+
+        private var pending: DispatchWorkItem?
+
+        /// Colors the text. While typing, waits a beat so fast typing doesn't re-run the regexes per key.
+        func highlight(_ view: NSTextView, now: Bool) {
+            pending?.cancel()
+            guard let language = parent.language, let storage = view.textStorage else { return }
+            let font = parent.font
+            let work = DispatchWorkItem { [weak view] in
+                guard view != nil else { return }
+                Highlighter.apply(language, to: storage, baseFont: font)
+            }
+            pending = work
+            if now { work.perform() } else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work) }
         }
     }
 }

@@ -32,6 +32,124 @@
 	<string>Toolbox reads the files you've selected in Finder so it can suggest tools for them.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Toolbox records audio for voice notes and dictation.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Toolbox: Rewrite</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>rewrite</string>
+			<key>NSPortName</key>
+			<string>Toolbox</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSReturnTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSTimeout</key>
+			<string>25000</string>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Toolbox: Fix Grammar</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>fixGrammar</string>
+			<key>NSPortName</key>
+			<string>Toolbox</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSReturnTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSTimeout</key>
+			<string>25000</string>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Toolbox: Format JSON</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>formatJSON</string>
+			<key>NSPortName</key>
+			<string>Toolbox</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSReturnTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSTimeout</key>
+			<string>25000</string>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Toolbox: Decode JWT</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>decodeJWT</string>
+			<key>NSPortName</key>
+			<string>Toolbox</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSTimeout</key>
+			<string>25000</string>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Toolbox: Open Text in Toolbox</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>openText</string>
+			<key>NSPortName</key>
+			<string>Toolbox</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+			<key>NSTimeout</key>
+			<string>25000</string>
+		</dict>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Toolbox: Open in Toolbox</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>openFiles</string>
+			<key>NSPortName</key>
+			<string>Toolbox</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSFilenamesPboardType</string>
+				<string>public.file-url</string>
+			</array>
+			<key>NSTimeout</key>
+			<string>25000</string>
+		</dict>
+	</array>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

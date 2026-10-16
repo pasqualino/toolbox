@@ -196,9 +196,22 @@ enum ImageTools {
         accepts: [.image],
         options: [
             OptionSpec("crop", "Crop to subject", .toggle(default: false)),
+            OptionSpec("fill", "Background", .choice([
+                Choice("transparent", "Transparent"), Choice("white", "White"), Choice("black", "Black"),
+                Choice("gray", "Gray"), Choice("custom", "Custom"),
+            ], default: "transparent")),
+            OptionSpec("color", "Color", .text(default: "#FFFFFF", placeholder: "#RRGGBB"),
+                       visibleWhen: ("fill", ["custom"])),
         ],
         actionTitle: "Remove",
         runner: .perFile { url, ctx in
+            let fill: CGColor? = switch ctx.options.string("fill") {
+            case "white": CGColor(gray: 1, alpha: 1)
+            case "black": CGColor(gray: 0, alpha: 1)
+            case "gray": CGColor(gray: 0.5, alpha: 1)
+            case "custom": try ImageEdit.color(hex: ctx.options.string("color"))
+            default: nil
+            }
             let src = try ImageIOHelpers.source(url)
             let image = try ImageIOHelpers.image(src)
             ctx.progress(0.1)
@@ -216,8 +229,17 @@ enum ImageTools {
             let masked = CIImage(cvPixelBuffer: buffer)
             let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
                 ?? CGColorSpace(name: CGColorSpace.sRGB)!
-            guard let cutout = CIContext().createCGImage(masked, from: masked.extent, format: .RGBA8, colorSpace: space) else {
+            guard var cutout = CIContext().createCGImage(masked, from: masked.extent, format: .RGBA8, colorSpace: space) else {
                 throw ToolError.message("Couldn't build the cutout.")
+            }
+            if let fill {
+                let canvas = try ImageEdit.canvas(width: cutout.width, height: cutout.height, alpha: false)
+                let rect = CGRect(x: 0, y: 0, width: cutout.width, height: cutout.height)
+                canvas.setFillColor(fill)
+                canvas.fill(rect)
+                canvas.draw(cutout, in: rect)
+                guard let flat = canvas.makeImage() else { throw ToolError.message("Couldn't build the cutout.") }
+                cutout = flat
             }
             let out = ctx.output(for: url, suffix: " cutout", ext: "png")
             try await ImageIOHelpers.write(cutout, to: out, format: .png, quality: 1)

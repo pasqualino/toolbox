@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage(Prefs.revealWhenDone) private var revealWhenDone = false
     @AppStorage(Prefs.showMenuBarIcon) private var showMenuBarIcon = true
     @AppStorage(Prefs.useFinderSelection) private var useFinderSelection = true
+    @AppStorage(Prefs.appearance) private var appearance = "system"
     @State private var installer = Installer()
     @State private var refresh = 0
 
@@ -24,6 +25,15 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Toggle("Show in menu bar", isOn: $showMenuBarIcon)
+            }
+            Section("Appearance") {
+                Picker("Theme", selection: $appearance) {
+                    Text("Match System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: appearance) { Appearance.apply() }
             }
             Section("Results") {
                 LabeledContent("Save to") {

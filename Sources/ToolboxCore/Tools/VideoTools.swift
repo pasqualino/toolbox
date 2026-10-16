@@ -15,22 +15,38 @@ enum VideoTools {
         summary: "Make videos smaller to share",
         category: .video,
         symbol: "arrow.down.right.and.arrow.up.left",
-        keywords: ["shrink", "smaller", "reduce", "size", "mp4", "h264", "hevc", "email", "share"],
+        keywords: ["shrink", "smaller", "reduce", "size", "mp4", "h264", "hevc", "email", "share",
+                   "target size", "file size", "mb", "fit", "limit", "discord", "whatsapp", "gmail", "attachment"],
         accepts: videoTypes,
         options: [
+            OptionSpec("mode", "Compress", .choice([
+                Choice("quality", "By quality"), Choice("size", "To a size"),
+            ], default: "quality")),
             OptionSpec("quality", "Quality", .choice([
                 Choice("small", "Smallest"), Choice("balanced", "Balanced"), Choice("high", "High"),
-            ], default: "balanced")),
+            ], default: "balanced"), visibleWhen: ("mode", ["quality"])),
             OptionSpec("size", "Max size", .choice([
                 Choice("original", "Original"), Choice("1080", "1080p"), Choice("720", "720p"),
-            ], default: "original")),
+            ], default: "original"), visibleWhen: ("mode", ["quality"])),
             OptionSpec("hevc", "Use HEVC (smaller)", .toggle(default: false),
-                       help: "Smaller files that play on Apple devices. Slower to encode."),
+                       help: "Smaller files that play on Apple devices. Slower to encode.",
+                       visibleWhen: ("mode", ["quality"])),
+            OptionSpec("target", "Fit in", .choice([
+                Choice("8", "8 MB"), Choice("10", "10 MB (Discord)"), Choice("16", "16 MB (WhatsApp)"),
+                Choice("25", "25 MB (Gmail)"), Choice("50", "50 MB"), Choice("100", "100 MB"),
+                Choice("custom", "Custom"),
+            ], default: "10"), help: "Lowers the resolution when the size is too small for it.",
+                       visibleWhen: ("mode", ["size"])),
+            OptionSpec("custommb", "Size", .number(0.1...10000, default: 20, unit: "MB"),
+                       visibleWhen: ("target", ["custom"])),
         ],
         requirements: [.ffmpeg],
         actionTitle: "Compress",
         runner: .perFile { url, ctx in
             let info = try await videoInfo(url)
+            if ctx.options.string("mode") == "size" {
+                return try await compressToSize(url, info: info, context: ctx)
+            }
             let crf = switch ctx.options.string("quality") {
             case "small": 30
             case "high": 22
@@ -369,10 +385,16 @@ enum VideoTools {
         summary: "Put new music or a voiceover on a video",
         category: .video,
         symbol: "music.note.tv",
-        keywords: ["soundtrack", "music", "background music", "voiceover", "dub", "add audio", "swap audio", "song"],
+        keywords: ["soundtrack", "music", "background music", "voiceover", "dub", "add audio", "swap audio", "song",
+                   "mix", "overlay", "add music", "narration"],
         accepts: videoTypes,
         options: [
             OptionSpec("audio", "New audio", .file([.audio, .movie], placeholder: "Choose a song or recording")),
+            OptionSpec("mix", "Original sound", .choice([
+                Choice("replace", "Replace"), Choice("mix", "Mix with original"),
+            ], default: "replace")),
+            OptionSpec("origvol", "Original volume", .slider(0...1, step: 0.05, default: 0.2, format: "%.0f%%"),
+                       help: "The new audio plays at full volume.", visibleWhen: ("mix", ["mix"])),
             OptionSpec("fit", "If lengths differ", .choice([
                 Choice("trim", "Trim to video"), Choice("loop", "Loop audio"),
             ], default: "trim")),
@@ -389,11 +411,22 @@ enum VideoTools {
             guard audioInfo.hasAudio else { throw ToolError.message("\(audio.lastPathComponent) has no sound.") }
 
             let ext = Media.reencodeExtension(for: url)
+            let loop = ctx.options.string("fit") == "loop"
             var args = ["-i", url.path]
-            if ctx.options.string("fit") == "loop" { args += ["-stream_loop", "-1"] }
-            args += ["-i", audio.path, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy"]
-            args += Media.audioArgs(forExtension: ext)
-            if ctx.options.string("fit") != "loop" { args += ["-af", "apad"] }
+            if loop { args += ["-stream_loop", "-1"] }
+            args += ["-i", audio.path, "-map", "0:v:0"]
+            if ctx.options.string("mix") == "mix", info.hasAudio {
+                // The original keeps its place under the new audio; both end with the video via -t.
+                let volume = String(format: "%.3f", min(max(ctx.options.double("origvol"), 0), 1))
+                let newAudio = loop ? "[1:a:0]anull[n]" : "[1:a:0]apad[n]"
+                args += ["-filter_complex",
+                         "[0:a:0]volume=\(volume),apad[o];\(newAudio);[o][n]amix=inputs=2:duration=longest:normalize=0[a]",
+                         "-map", "[a]"]
+            } else {
+                args += ["-map", "1:a:0"]
+                if !loop { args += ["-af", "apad"] }
+            }
+            args += ["-c:v", "copy"] + Media.audioArgs(forExtension: ext)
             args += ["-t", Media.time(info.duration)] + Media.containerArgs(ext)
             let out = ctx.output(for: url, suffix: " new audio", ext: ext)
             try await FFmpeg.run(args + [out.path], duration: info.duration, context: ctx)
@@ -443,6 +476,24 @@ enum VideoTools {
     )
 
     // MARK: Helpers
+
+    /// Compress Video in "To a size" mode.
+    static func compressToSize(_ url: URL, info: MediaInfo, context ctx: ToolContext) async throws -> [URL] {
+        let choice = ctx.options.string("target")
+        let mb = choice == "custom" ? ctx.options.double("custommb") : (Double(choice) ?? 10)
+        guard mb > 0 else { throw ToolError.message("Enter a target size in MB.") }
+        let bytes = Int64(mb * 1_000_000)
+        // Already small enough: hand back an untouched copy rather than re-encoding it bigger or worse.
+        if ImageIOHelpers.fileSize(url) <= bytes {
+            let out = ctx.output(for: url, suffix: " compressed")
+            try FileManager.default.copyItem(at: url, to: out)
+            ctx.showText("\(url.lastPathComponent) is already under \(MediaTargetSize.label(bytes)), so this is an unchanged copy.")
+            return [out]
+        }
+        let out = ctx.output(for: url, suffix: " compressed", ext: "mp4")
+        try await MediaTargetSize.encode(url, to: out, bytes: bytes, info: info, context: ctx)
+        return [out]
+    }
 
     /// Probes a video and fails clearly when there is no picture.
     static func videoInfo(_ url: URL) async throws -> MediaInfo {

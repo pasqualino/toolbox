@@ -30,6 +30,8 @@ public enum OptionKind: Sendable {
     case language(default: String, allowsDetect: Bool)
     /// Value: file path.
     case file([UTType], placeholder: String)
+    /// Value: rectangles "x,y,w,h;…" normalized 0...1 to the upright image, top-left origin. Drawn on the preview.
+    case regions
 }
 
 public struct OptionSpec: Identifiable, Sendable {
@@ -57,7 +59,7 @@ public struct OptionSpec: Identifiable, Sendable {
         case .number(_, let d, _): Self.format(d)
         case .text(let d, _): d
         case .language(let d, _): d
-        case .secureText, .timeRange, .pageSelection, .pageArrangement, .file: ""
+        case .secureText, .timeRange, .pageSelection, .pageArrangement, .file, .regions: ""
         }
     }
 
@@ -95,5 +97,13 @@ public struct Options: Sendable, Codable, Equatable {
     public func isVisible(_ spec: OptionSpec) -> Bool {
         guard let rule = spec.visibleWhen else { return true }
         return rule.values.contains(string(rule.key))
+    }
+
+    /// Like `isVisible`, but an option is also hidden when the option it depends on is hidden
+    /// (Custom MB under Target under "To a size").
+    public func isVisible(_ spec: OptionSpec, among specs: [OptionSpec]) -> Bool {
+        guard isVisible(spec) else { return false }
+        guard let parentKey = spec.visibleWhen?.key, let parent = specs.first(where: { $0.id == parentKey }) else { return true }
+        return isVisible(parent, among: specs)
     }
 }

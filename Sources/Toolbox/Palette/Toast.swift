@@ -85,7 +85,8 @@ private struct ToastView: View {
 @MainActor
 enum ClipboardAction {
     static func supports(_ tool: Tool) -> Bool {
-        tool.isTransform || tool.id == "rewrite"
+        tool.isTransform || ["rewrite", "capture-text", "keep-awake"].contains(tool.id)
+            || PasteboardImport.clipboardTextTools.contains(tool.id)
     }
 
     /// Rewrite takes a few seconds, so it shows a progress toast and replaces the clipboard when done.
@@ -120,6 +121,25 @@ enum ClipboardAction {
     }
 
     static func apply(_ tool: Tool) {
+        if PasteboardImport.clipboardTextTools.contains(tool.id) {
+            PasteboardImport.runOnClipboard(tool)
+            return
+        }
+        if tool.id == "capture-text" {
+            CaptureFlow.run()
+            return
+        }
+        if tool.id == "keep-awake" {
+            let model = KeepAwakeModel.shared
+            if model.isActive {
+                model.stop()
+                Toast.show("Keep Awake off", symbol: "cup.and.saucer", tint: .secondary)
+            } else {
+                model.start(AppModel.shared.session(for: tool).options)
+                Toast.show("Keeping your Mac awake", detail: model.statusLine, symbol: "cup.and.saucer.fill", tint: tool.tint)
+            }
+            return
+        }
         if tool.id == "rewrite" {
             rewriteClipboard(tool)
             return

@@ -9,6 +9,7 @@ enum Route: Hashable {
 }
 
 enum SidebarItem: Hashable {
+    case favorites
     case recent
     case category(ToolCategory)
 }
@@ -72,7 +73,7 @@ final class AppModel {
     func select(_ item: SidebarItem) {
         sidebar = item
         switch item {
-        case .recent: route = .home
+        case .recent, .favorites: route = .home
         case .category(let c): route = .category(c)
         }
     }
@@ -95,6 +96,34 @@ final class AppModel {
         next.text = session.text
         next.secondary = session.secondary
         open(tool)
+    }
+
+    // MARK: Favorites
+
+    /// Pinned entry ids in the user's order ("format-json", "group:case").
+    var favoriteIDs: [String] = UserDefaults.standard.stringArray(forKey: "favorites") ?? [] {
+        didSet { UserDefaults.standard.set(favoriteIDs, forKey: "favorites") }
+    }
+
+    func isFavorite(_ entry: ToolEntry) -> Bool { favoriteIDs.contains(entry.id) }
+
+    func toggleFavorite(_ entry: ToolEntry) {
+        if let i = favoriteIDs.firstIndex(of: entry.id) { favoriteIDs.remove(at: i) } else { favoriteIDs.append(entry.id) }
+    }
+
+    /// The entry a tool belongs to: its group, or itself.
+    static func entry(for tool: Tool) -> ToolEntry {
+        ToolRegistry.group(containing: tool.id).map(ToolEntry.group) ?? .tool(tool)
+    }
+
+    var favoriteSections: [ToolSection] {
+        let all = ToolRegistry.all.map(Self.entry(for:))
+        let entries = favoriteIDs.compactMap { id in all.first { $0.id == id } }
+        return entries.isEmpty ? [] : [ToolSection(title: nil, entries: entries)]
+    }
+
+    func moveFavorites(from source: IndexSet, to destination: Int) {
+        favoriteIDs.move(fromOffsets: source, toOffset: destination)
     }
 
     /// Search results across every category, one section per category. Group members show individually,
@@ -121,7 +150,16 @@ final class AppModel {
     }
 
     func runCurrent() {
-        currentSession?.run(outputRoot: Prefs.outputRoot)
+        if let session = currentSession { run(session) }
+    }
+
+    /// Runs a specific session; tool windows call this so they don't run the main window's tool.
+    func run(_ session: ToolSession) {
+        if session.tool.id == "capture-text" {
+            CaptureFlow.run(showResultInApp: true)
+            return
+        }
+        session.run(outputRoot: Prefs.outputRoot)
     }
 
     func cancelCurrent() {
@@ -129,7 +167,11 @@ final class AppModel {
     }
 
     func chooseFiles() {
-        guard let session = currentSession, session.acceptsFiles else { return }
+        if let session = currentSession { chooseFiles(for: session) }
+    }
+
+    func chooseFiles(for session: ToolSession) {
+        guard session.acceptsFiles else { return }
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = true

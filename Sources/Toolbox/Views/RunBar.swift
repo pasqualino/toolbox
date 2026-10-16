@@ -85,6 +85,8 @@ struct RunBar: View {
             return session.canRun ? "Ready." : "Add text or a document to start."
         case .text:
             return ""
+        case .action:
+            return "Ready."
         }
     }
 
@@ -198,7 +200,7 @@ struct RunBar: View {
             }
         case .idle:
             Button {
-                model.runCurrent()
+                model.run(session)
             } label: {
                 HStack(spacing: 8) {
                     Text(session.tool.actionTitle)

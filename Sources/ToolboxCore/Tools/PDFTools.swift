@@ -166,20 +166,32 @@ enum PDFTools {
         accepts: [.pdf],
         options: [
             OptionSpec("password", "Password", .secureText(placeholder: "Required")),
+            OptionSpec("print", "Allow printing", .toggle(default: true)),
+            OptionSpec("copy", "Allow copying text", .toggle(default: true)),
         ],
         actionTitle: "Protect",
         runner: .perFile { url, ctx in
             let password = ctx.options.string("password")
             guard !password.isEmpty else { throw ToolError.message("Enter a password.") }
+            let allowPrint = ctx.options.bool("print"), allowCopy = ctx.options.bool("copy")
             let doc = try PDFHelpers.open(url)
             let out = ctx.output(for: url, suffix: " protected", ext: "pdf")
-            try PDFHelpers.write(doc, to: out, options: [
-                .userPasswordOption: password,
-                .ownerPasswordOption: password,
-            ])
-            // Never hand back a file that isn't really locked.
+            var options: [PDFDocumentWriteOption: Any] = [.userPasswordOption: password, .ownerPasswordOption: password]
+            if !allowPrint || !allowCopy {
+                // Restrictions only bind the user password, so the owner password must be another, unknown one.
+                options[.ownerPasswordOption] = UUID().uuidString + UUID().uuidString
+                // PDFAccessPermissions is imported as a plain enum, so combine the raw bit values.
+                var allowed: [PDFAccessPermissions] = [.allowsDocumentChanges, .allowsDocumentAssembly,
+                                                       .allowsCommenting, .allowsFormFieldEntry, .allowsContentAccessibility]
+                if allowPrint { allowed += [.allowsLowQualityPrinting, .allowsHighQualityPrinting] }
+                if allowCopy { allowed.append(.allowsContentCopying) }
+                options[.accessPermissionsOption] = NSNumber(value: allowed.reduce(0) { $0 | $1.rawValue })
+            }
+            try PDFHelpers.write(doc, to: out, options: options)
+            // Never hand back a file that isn't really locked, or that doesn't enforce the chosen permissions.
             guard let check = PDFDocument(url: out), check.isEncrypted, check.isLocked,
-                  check.unlock(withPassword: password) else {
+                  check.unlock(withPassword: password),
+                  check.allowsPrinting == allowPrint, check.allowsCopying == allowCopy else {
                 try? FileManager.default.removeItem(at: out)
                 throw ToolError.message("Couldn't encrypt \(url.lastPathComponent).")
             }

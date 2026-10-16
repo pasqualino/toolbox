@@ -10,7 +10,7 @@ struct ToolView: View {
     private var tool: Tool { session.tool }
 
     private var hasOptions: Bool {
-        tool.options.contains { session.options.isVisible($0) && $0.id != session.primaryEditor?.id }
+        tool.options.contains { session.options.isVisible($0, among: session.tool.options) && $0.id != session.primaryEditor?.id }
     }
 
     var body: some View {
@@ -18,6 +18,8 @@ struct ToolView: View {
             ComingSoonView(tool: tool, reason: reason)
         } else if tool.id == "rewrite" {
             RewriteView(session: session)
+        } else if tool.id == "keep-awake" {
+            KeepAwakeView(session: session)
         } else if tool.isTransform {
             TextToolView(session: session)
         } else {
@@ -102,6 +104,8 @@ private struct InputArea: View {
             VStack(spacing: 12) {
                 if session.items.isEmpty {
                     DropZone(session: session)
+                } else if session.tool.preview != nil {
+                    PreviewArea(session: session)
                 } else if let editor = session.primaryEditor, let first = session.items.first {
                     EditorArea(session: session, spec: editor, url: first.url)
                 } else {
@@ -124,6 +128,15 @@ private struct InputArea: View {
             }
         case .text:
             EmptyView()
+        case .action:
+            ActionArea(session: session)
+        case .textOrFiles where session.tool.preview != nil:
+            HStack(spacing: 12) {
+                TextEntry(session: session)
+                    .frame(maxWidth: .infinity)
+                Panel { PreviewPane(session: session) }
+                    .frame(maxWidth: .infinity)
+            }
         case .textOrFiles:
             VStack(spacing: 12) {
                 TextEntry(session: session)
@@ -169,5 +182,28 @@ private struct EditorArea: View {
             }
         }
         .disabled(session.phase == .running)
+    }
+}
+
+/// File strip above a live preview of the result; the regions editor draws on it for Redact.
+private struct PreviewArea: View {
+    let session: ToolSession
+
+    var body: some View {
+        Panel {
+            VStack(spacing: 0) {
+                FileStrip(session: session)
+                Divider()
+                PreviewPane(session: session, regionsOption: regionsOption)
+            }
+        }
+        .disabled(session.phase == .running)
+    }
+
+    private var regionsOption: String? {
+        session.tool.options.first { spec in
+            if case .regions = spec.kind { return session.options.isVisible(spec, among: session.tool.options) }
+            return false
+        }?.id
     }
 }

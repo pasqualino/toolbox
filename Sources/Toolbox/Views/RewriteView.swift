@@ -341,7 +341,7 @@ private struct RewriteOptions: View {
     var body: some View {
         FlowLayout(spacing: 18, lineSpacing: 10) {
             ForEach(session.tool.options.filter { $0.id != "feedback" }) { spec in
-                if session.options.isVisible(spec) {
+                if session.options.isVisible(spec, among: session.tool.options) {
                     OptionControl(spec: spec, session: session)
                 }
             }

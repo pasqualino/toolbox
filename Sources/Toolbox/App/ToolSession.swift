@@ -48,6 +48,9 @@ final class ToolSession {
         didSet { saveOptions() }
     }
     var phase: Phase = .idle
+    /// When the last run started and finished, for the Jobs list.
+    var startedAt: Date?
+    var finishedAt: Date?
     /// Whole-run progress for batch/text runners, 0...1.
     var batchProgress: Double = 0
     var result: RunResult?
@@ -108,7 +111,8 @@ final class ToolSession {
         return urls.flatMap { url -> [URL] in
             var isDir: ObjCBool = false
             guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { return [] }
-            guard isDir.boolValue else { return [url] }
+            // Packages (.app, .bundle) are one item, not folders to walk into.
+            guard isDir.boolValue, !NSWorkspace.shared.isFilePackage(atPath: url.path) else { return [url] }
             let walker = fm.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey],
                                        options: [.skipsHiddenFiles, .skipsPackageDescendants])
             var files: [URL] = []
@@ -128,7 +132,7 @@ final class ToolSession {
         guard tool.minimumInputs <= 1 else { return nil }
         return tool.options.first { spec in
             switch spec.kind {
-            case .pageSelection, .pageArrangement, .timeRange: options.isVisible(spec)
+            case .pageSelection, .pageArrangement, .timeRange, .regions: options.isVisible(spec, among: tool.options)
             default: false
             }
         }
@@ -136,7 +140,7 @@ final class ToolSession {
 
     /// Why the run button is disabled even though inputs are present.
     var blocker: String? {
-        for spec in tool.options where options.isVisible(spec) {
+        for spec in tool.options where options.isVisible(spec, among: tool.options) {
             if case .pageSelection = spec.kind, options[spec.id].trimmingCharacters(in: .whitespaces).isEmpty {
                 return "Select pages first."
             }
@@ -154,6 +158,7 @@ final class ToolSession {
         case .url: return !trimmedText.isEmpty
         case .textOrFiles: return !trimmedText.isEmpty || !items.isEmpty
         case .text: return false
+        case .action: return true
         }
     }
 
@@ -182,6 +187,8 @@ final class ToolSession {
         guard canRun else { return }
         resetResults()
         phase = .running
+        startedAt = Date()
+        finishedAt = nil
         let tool = tool
         let inputs = items.map(\.url)
         let text = trimmedText
@@ -210,7 +217,9 @@ final class ToolSession {
                 }
             }
             self.phase = result.cancelled && result.outputs.isEmpty ? .idle : .finished
+            self.finishedAt = Date()
             if result.cancelled { self.resetStatuses() }
+            if tool.id == "speed-test", !self.resultText.isEmpty { SpeedHistory.add(self.resultText) }
             if !result.outputs.isEmpty || !self.resultText.isEmpty {
                 History.record(tool.id)
                 if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), let folder = result.folder {
@@ -345,7 +354,29 @@ enum History {
     }
 }
 
+/// Past Network Speed Test reports, newest first.
+enum SpeedHistory {
+    struct Entry: Codable, Hashable {
+        let date: Date
+        let report: String
+    }
+
+    static let key = "speedHistory"
+
+    static var entries: [Entry] {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
+        return (try? JSONDecoder().decode([Entry].self, from: data)) ?? []
+    }
+
+    static func add(_ report: String) {
+        let list = [Entry(date: Date(), report: report)] + entries
+        if let data = try? JSONEncoder().encode(Array(list.prefix(20))) { UserDefaults.standard.set(data, forKey: key) }
+    }
+}
+
 enum Prefs {
+    static let appearance = "appearance"
+
     static let outputFolder = "outputFolder"
     static let revealWhenDone = "revealWhenDone"
     static let showMenuBarIcon = "showMenuBarIcon"

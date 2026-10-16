@@ -12,6 +12,10 @@ struct MediaInfo: Sendable {
     let hasAudio: Bool
     let videoCodec: String
     let audioCodec: String
+    /// Bits per second of the main video stream, 0 when unknown.
+    var videoBitrate: Int = 0
+    /// Bits per second of the whole file, 0 when unknown.
+    var overallBitrate: Int = 0
 
     static func inspect(_ url: URL) async throws -> MediaInfo {
         guard let ffprobe = Toolchain.ffprobe else { throw ToolError.missingRequirement(.ffmpeg) }
@@ -52,10 +56,19 @@ struct MediaInfo: Sendable {
         var height = video?["height"] as? Int ?? 0
         if let video, Self.rotation(of: video) % 180 != 0 { swap(&width, &height) }
 
+        var overall = Int(format["bit_rate"] as? String ?? "") ?? 0
+        if overall == 0, duration > 0, let size = Double(format["size"] as? String ?? "") {
+            overall = Int(size * 8 / duration)
+        }
+        let audioRate = Int(audio?["bit_rate"] as? String ?? "") ?? 0
+        // MKV and WebM leave stream bitrates out; estimate the video share from the whole file.
+        let videoRate = Int(video?["bit_rate"] as? String ?? "") ?? max(0, overall - audioRate)
+
         return MediaInfo(duration: duration, width: width, height: height, frameRate: fps,
                          hasVideo: video != nil, hasAudio: audio != nil,
                          videoCodec: video?["codec_name"] as? String ?? "",
-                         audioCodec: audio?["codec_name"] as? String ?? "")
+                         audioCodec: audio?["codec_name"] as? String ?? "",
+                         videoBitrate: videoRate, overallBitrate: overall)
     }
 
     /// Absolute rotation in degrees from the display matrix or the legacy "rotate" tag.

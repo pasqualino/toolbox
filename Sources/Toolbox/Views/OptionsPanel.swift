@@ -25,7 +25,7 @@ struct OptionsPanel: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         ForEach(session.tool.options) { spec in
-                            if session.options.isVisible(spec), spec.id != session.primaryEditor?.id {
+                            if session.options.isVisible(spec, among: session.tool.options), spec.id != session.primaryEditor?.id {
                                 OptionRow(spec: spec, session: session)
                                     .transition(.opacity)
                             }
@@ -127,6 +127,8 @@ private struct OptionRow: View {
             } else {
                 hint("Add a PDF to pick pages.")
             }
+        case .regions:
+            hint("Draw boxes on the preview.")
         case .pageArrangement:
             if let url = session.items.first?.url {
                 PageArrangementEditor(url: url, value: value)
