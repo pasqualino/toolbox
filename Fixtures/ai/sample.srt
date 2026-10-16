@@ -1,0 +1,12 @@
+1
+00:00:01,000 --> 00:00:03,500
+Hello, and welcome to the show.
+
+2
+00:00:04,000 --> 00:00:07,250
+Today we are going to talk about trains.
+They are faster than you think.
+
+3
+00:00:08,000 --> 00:00:10,000
+Thank you for watching.

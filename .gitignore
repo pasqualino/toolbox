@@ -1,0 +1,5 @@
+.build/
+.build-*/
+.swiftpm/
+Toolbox.app/
+.DS_Store
