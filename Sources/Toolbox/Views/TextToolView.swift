@@ -31,7 +31,11 @@ struct TextToolView: View {
         @Bindable var session = session
         VStack(spacing: 0) {
             HStack(alignment: .center) {
-                ToolHeader(tool: tool)
+                if let group = ToolRegistry.group(containing: tool.id) {
+                    GroupHeader(group: group, tool: tool)
+                } else {
+                    ToolHeader(tool: tool)
+                }
                 if isGenerator {
                     Button {
                         session.generation += 1
@@ -45,6 +49,12 @@ struct TextToolView: View {
             .padding(.horizontal, 24)
             .padding(.top, 18)
             .padding(.bottom, 12)
+
+            if let group = ToolRegistry.group(containing: tool.id) {
+                MemberChips(group: group, session: session)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 12)
+            }
 
             if tool.options.contains(where: { session.options.isVisible($0) }) {
                 InlineOptions(session: session)
@@ -159,7 +169,7 @@ struct TextToolView: View {
                     .frame(minWidth: 130)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(copied ? .green : tool.category.tint)
+                .tint(copied ? .green : tool.tint)
                 .controlSize(.large)
                 .disabled(output.isEmpty || error != nil)
                 .keyboardShortcut(.return, modifiers: .command)
@@ -228,6 +238,71 @@ struct TextToolView: View {
               let text = String(data: data, encoding: .utf8) else { return false }
         session.text = text
         return true
+    }
+}
+
+/// Group name and the current member's summary, in place of the single-tool header.
+private struct GroupHeader: View {
+    let group: ToolGroup
+    let tool: Tool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ToolIcon(symbol: group.symbol, tint: tool.tint, size: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(group.name)
+                    .font(.system(size: 22, weight: .bold))
+                Text(tool.summary)
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.opacity)
+            }
+            Spacer()
+        }
+    }
+}
+
+/// Capsule chips that switch between a group's members. Text carries over.
+private struct MemberChips: View {
+    let group: ToolGroup
+    let session: ToolSession
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        FlowLayout(spacing: 6, lineSpacing: 6) {
+            ForEach(group.members, id: \.toolID) { member in
+                let selected = member.toolID == session.tool.id
+                Button {
+                    model.switchMember(from: session, to: member.toolID)
+                } label: {
+                    Text(member.label)
+                        .font(.system(size: 12.5, weight: selected ? .semibold : .regular))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 5)
+                        .foregroundStyle(selected ? Color.white : Color.primary)
+                        .background {
+                            Capsule().fill(selected ? AnyShapeStyle(session.tool.tint)
+                                                    : AnyShapeStyle(Color.primary.opacity(0.06)))
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .help(ToolRegistry.tool(id: member.toolID)?.summary ?? "")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.15), value: session.tool.id)
+        .background {
+            // ⌃Tab and ⌃⇧Tab step through members.
+            Button("") { step(1) }.keyboardShortcut(.tab, modifiers: .control).hidden()
+            Button("") { step(-1) }.keyboardShortcut(.tab, modifiers: [.control, .shift]).hidden()
+        }
+    }
+
+    private func step(_ delta: Int) {
+        guard let i = group.members.firstIndex(where: { $0.toolID == session.tool.id }) else { return }
+        let next = group.members[(i + delta + group.members.count) % group.members.count]
+        model.switchMember(from: session, to: next.toolID)
     }
 }
 

@@ -54,6 +54,11 @@ struct AppCommands: Commands {
                 .keyboardShortcut("o")
         }
         CommandGroup(after: .newItem) {
+            Button("Search Tools") {
+                WindowController.shared.showMain()
+                AppModel.shared.searchFocusToken += 1
+            }
+            .keyboardShortcut("f")
             Button("Find Tool…") { WindowController.shared.showPalette() }
                 .keyboardShortcut("k")
         }
@@ -69,10 +74,10 @@ struct AppCommands: Commands {
                 .keyboardShortcut(.delete, modifiers: [.command, .shift])
         }
         CommandGroup(after: .sidebar) {
-            Button("All Tools") { AppModel.shared.route = .home }
+            Button("Recent") { AppModel.shared.select(.recent) }
                 .keyboardShortcut("0")
             ForEach(ToolCategory.allCases) { category in
-                Button(category.title) { AppModel.shared.route = .category(category) }
+                Button(category.title) { AppModel.shared.select(.category(category)) }
                     .keyboardShortcut(KeyEquivalent(Character(String(category.shortcutIndex))))
             }
             Divider()

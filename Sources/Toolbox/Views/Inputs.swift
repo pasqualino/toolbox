@@ -27,7 +27,7 @@ struct DropZone: View {
     @State private var targeted = false
     @State private var rejected: Int?
 
-    private var tint: Color { session.tool.category.tint }
+    private var tint: Color { session.tool.tint }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -159,7 +159,7 @@ struct FileList: View {
         .overlay {
             if targeted {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(session.tool.category.tint, lineWidth: 2)
+                    .strokeBorder(session.tool.tint, lineWidth: 2)
                     .allowsHitTesting(false)
             }
         }
@@ -425,7 +425,7 @@ struct TextEntry: View {
         .overlay {
             if targeted {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(session.tool.category.tint, lineWidth: 2)
+                    .strokeBorder(session.tool.tint, lineWidth: 2)
                     .allowsHitTesting(false)
             }
         }

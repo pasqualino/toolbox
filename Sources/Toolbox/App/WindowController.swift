@@ -12,19 +12,19 @@ final class WindowController: NSObject, NSWindowDelegate {
     func showMain() {
         if mainWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 1080, height: 720),
+                contentRect: NSRect(x: 0, y: 0, width: 1240, height: 760),
                 styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                 backing: .buffered, defer: false)
             window.title = "Toolbox"
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
             window.isReleasedWhenClosed = false
-            window.minSize = NSSize(width: 880, height: 560)
+            window.minSize = NSSize(width: 1000, height: 580)
             let host = NSHostingController(rootView: MainView().environment(AppModel.shared))
             // Let the window keep its own size instead of shrinking to the content's minimum.
             host.sizingOptions = []
             window.contentViewController = host
-            window.setContentSize(NSSize(width: 1080, height: 720))
+            window.setContentSize(NSSize(width: 1240, height: 760))
             window.center()
             window.setFrameAutosaveName("MainWindow")
             window.delegate = self

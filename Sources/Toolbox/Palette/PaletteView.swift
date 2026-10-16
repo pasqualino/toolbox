@@ -251,7 +251,8 @@ private struct PaletteRow: View {
             if selected {
                 KeyCap(text: "↩")
             } else {
-                Text(tool.category.title)
+                // Group members say where they live ("Change Case"), others their category.
+                Text(ToolRegistry.group(containing: tool.id)?.name ?? tool.category.title)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

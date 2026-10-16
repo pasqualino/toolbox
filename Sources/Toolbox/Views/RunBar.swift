@@ -7,7 +7,7 @@ struct RunBar: View {
     let session: ToolSession
     @Environment(AppModel.self) private var model
 
-    private var tint: Color { session.tool.category.tint }
+    private var tint: Color { session.tool.tint }
 
     var body: some View {
         VStack(spacing: 0) {

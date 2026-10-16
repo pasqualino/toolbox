@@ -21,6 +21,25 @@ if first == "list" {
     exit(0)
 }
 
+if first == "layout" {
+    // Prints each category's sections and flags group members that don't exist.
+    for cat in ToolCategory.allCases {
+        print("\(cat.title) (\(ToolRegistry.entryCount(in: cat)) rows)")
+        for section in ToolRegistry.sections(in: cat) {
+            print("  [\(section.title ?? "-")]")
+            for entry in section.entries {
+                if case .group(let g) = entry {
+                    let missing = g.members.filter { ToolRegistry.tool(id: $0.toolID) == nil }.map(\.toolID)
+                    print("    \(g.name): \(g.members.map(\.label).joined(separator: " | "))\(missing.isEmpty ? "" : "  MISSING \(missing)")")
+                } else {
+                    print("    \(entry.name)")
+                }
+            }
+        }
+    }
+    exit(0)
+}
+
 guard let tool = ToolRegistry.tool(id: first) else {
     FileHandle.standardError.write("unknown tool \(first)\n".data(using: .utf8)!)
     exit(2)

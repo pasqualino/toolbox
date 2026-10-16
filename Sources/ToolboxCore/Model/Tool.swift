@@ -2,7 +2,8 @@ import Foundation
 import UniformTypeIdentifiers
 
 public enum ToolCategory: String, CaseIterable, Identifiable, Sendable {
-    case video, audio, images, pdf, ai, files, developer
+    // Display order: sidebar, ⌘1…⌘7, grids and the CLI list all follow it.
+    case developer, ai, pdf, images, video, audio, files
 
     public var id: String { rawValue }
 

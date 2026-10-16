@@ -19,6 +19,23 @@ extension ToolCategory {
     var shortcutIndex: Int { ToolCategory.allCases.firstIndex(of: self)! + 1 }
 }
 
+extension Tool {
+    /// Category color, or a per-section color for developer tools so their long list is easier to scan.
+    var tint: Color {
+        guard category == .developer, let section = ToolRegistry.developerSection(of: id) else { return category.tint }
+        return switch section {
+        case "Encode & Decode": Color(red: 0.16, green: 0.62, blue: 0.62)
+        case "Hash & Sign": Color(red: 0.40, green: 0.38, blue: 0.85)
+        case "Format": Color(red: 0.22, green: 0.52, blue: 0.92)
+        case "Convert": Color(red: 0.90, green: 0.50, blue: 0.18)
+        case "Text": Color(red: 0.28, green: 0.66, blue: 0.40)
+        case "Inspect & Debug": Color(red: 0.66, green: 0.36, blue: 0.80)
+        case "Generate": Color(red: 0.88, green: 0.34, blue: 0.52)
+        default: category.tint
+        }
+    }
+}
+
 /// Rounded gradient tile with a white symbol. The app's main visual motif.
 struct ToolIcon: View {
     let symbol: String
@@ -28,7 +45,7 @@ struct ToolIcon: View {
 
     init(_ tool: Tool, size: CGFloat = 28) {
         symbol = tool.symbol
-        tint = tool.category.tint
+        tint = tool.tint
         self.size = size
         dimmed = !tool.isReady
     }

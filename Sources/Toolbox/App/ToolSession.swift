@@ -316,6 +316,7 @@ enum History {
         var list = ids.filter { $0 != id }
         list.insert(id, at: 0)
         UserDefaults.standard.set(Array(list.prefix(12)), forKey: key)
+        Task { @MainActor in AppModel.shared.historyVersion += 1 }
     }
 
     /// 0 for unused, higher for more recent.

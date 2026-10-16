@@ -32,9 +32,22 @@ enum Snapshot {
 
         Task { @MainActor in
             WindowController.shared.showMain()
+            if let w = env["TOOLBOX_WIDTH"].flatMap(Double.init), let window = WindowController.shared.mainWindow {
+                window.setContentSize(NSSize(width: w, height: 640))
+            }
+            if let q = env["TOOLBOX_SEARCH"] { AppModel.shared.searchQuery = q }
+            if let cat = env["TOOLBOX_CATEGORY"], let c = ToolCategory(rawValue: cat) {
+                AppModel.shared.select(.category(c))
+            }
             if let id = env["TOOLBOX_ROUTE"], let tool = ToolRegistry.tool(id: id) {
                 AppModel.shared.open(tool, files: files, text: env["TOOLBOX_TEXT"])
                 if let second = env["TOOLBOX_TEXT2"] { AppModel.shared.session(for: tool).secondary = second }
+                if let other = env["TOOLBOX_SWITCH"] {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    AppModel.shared.switchMember(from: AppModel.shared.session(for: tool), to: other)
+                    print("switched to \(AppModel.shared.currentTool?.id ?? "-") text=\(AppModel.shared.currentSession?.text ?? "")")
+                }
+                if env["TOOLBOX_SIDEBAR"] == "recent" { AppModel.shared.sidebar = .recent }
                 if env["TOOLBOX_CLIPBOARD_APPLY"] == "1" {
                     ClipboardAction.apply(tool)
                     print("clipboard: \(NSPasteboard.general.string(forType: .string) ?? "")")

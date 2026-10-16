@@ -79,12 +79,12 @@ struct ToolGrid: View {
 
     @ViewBuilder
     private var recent: some View {
-        let tools = History.ids.prefix(4).compactMap(ToolRegistry.tool(id:))
-        if !tools.isEmpty {
+        let entries = Array((model.recentSections.first?.entries ?? []).prefix(4))
+        if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 SectionTitle(text: "Recent", symbol: "clock")
                 LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(tools) { ToolCard(tool: $0) }
+                    ForEach(entries) { ToolCard(entry: $0) }
                 }
             }
         }
@@ -95,8 +95,16 @@ struct ToolGrid: View {
             if categories.count > 1 {
                 SectionTitle(text: category.title, symbol: category.symbol, shortcut: "⌘\(category.shortcutIndex)")
             }
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(model.tools.filter { $0.category == category }) { ToolCard(tool: $0) }
+            ForEach(ToolRegistry.sections(in: category)) { section in
+                if let title = section.title, categories.count == 1 {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 6)
+                }
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(section.entries) { ToolCard(entry: $0) }
+                }
             }
         }
     }
@@ -141,26 +149,44 @@ private struct SectionTitle: View {
 }
 
 struct ToolCard: View {
-    let tool: Tool
+    let entry: ToolEntry
     var action: (() -> Void)?
+
+    init(tool: Tool, action: (() -> Void)? = nil) {
+        entry = ToolRegistry.group(containing: tool.id).map(ToolEntry.group) ?? .tool(tool)
+        self.action = action
+    }
+
+    init(entry: ToolEntry) {
+        self.entry = entry
+    }
+
+    private var tint: Color { ToolRegistry.tool(id: entry.primaryToolID)?.tint ?? .gray }
 
     @Environment(AppModel.self) private var model
     @State private var hovering = false
 
     var body: some View {
         Button {
-            if let action { action() } else { model.open(tool) }
+            if let action {
+                action()
+            } else if let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) {
+                model.open(tool)
+            }
         } label: {
             HStack(spacing: 12) {
-                ToolIcon(tool, size: 38)
+                ToolIcon(symbol: entry.symbol, tint: tint, size: 38)
+                    .saturation(entry.isReady ? 1 : 0)
+                    .opacity(entry.isReady ? 1 : 0.55)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text(tool.name)
+                        Text(entry.name)
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(tool.isReady ? .primary : .secondary)
-                        if !tool.isReady { Badge(text: "Soon") }
+                            .foregroundStyle(entry.isReady ? .primary : .secondary)
+                        if !entry.isReady { Badge(text: "Soon") }
+                        if case .group(let g) = entry { Badge(text: "\(g.members.count)") }
                     }
-                    Text(tool.summary)
+                    Text(entry.summary)
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
@@ -177,7 +203,7 @@ struct ToolCard: View {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(hovering ? tool.category.tint.opacity(0.5) : Color.primary.opacity(0.06), lineWidth: 1)
+                    .strokeBorder(hovering ? tint.opacity(0.5) : Color.primary.opacity(0.06), lineWidth: 1)
             }
             .scaleEffect(hovering ? 1.01 : 1)
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -185,11 +211,11 @@ struct ToolCard: View {
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .animation(.snappy(duration: 0.15), value: hovering)
-        .help(tool.isReady ? tool.summary : comingSoonReason)
+        .help(entry.isReady ? entry.summary : comingSoonReason)
     }
 
     private var comingSoonReason: String {
-        if case .comingSoon(let reason) = tool.status { return "Coming soon. \(reason)" }
+        if case .tool(let tool) = entry, case .comingSoon(let reason) = tool.status { return "Coming soon. \(reason)" }
         return ""
     }
 }
