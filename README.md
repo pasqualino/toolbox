@@ -44,7 +44,3 @@ for s in Fixtures/dev/check-*.sh; do TZ=Europe/Berlin zsh $s </dev/null; done
 ## Output
 
 Each run writes to `~/Downloads/Toolbox/<date> <tool>/` (changeable in Settings). Originals are never changed, except by Batch Rename in "Rename originals" mode.
-
-## Not built yet
-
-Listed in the app as "Coming Soon": Record Screen, Burn In Subtitles, Record Audio, Clean Up Audio, Compress PDF, Sign PDF, Dictation, Search Files.

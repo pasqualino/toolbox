@@ -9,6 +9,9 @@ pass=0; fail=0
 
 run() { "$CLI" "$@" --out "$OUT" 2>&1 | sed -n 's/^-> //p'; }
 first() { run "$@" | head -1; }
+# Text-only tools print their result as "text: ..." and save nothing.
+textout() { "$CLI" "$@" --out "$OUT" 2>&1 | awk '/^text: /{on=1; sub(/^text: /,"")} /^(ok   |FAIL |-> )/{on=0} on'; }
+nofile() { [[ -z "$("$CLI" "$@" --out "$OUT" 2>&1 | sed -n 's/^-> //p')" ]] && echo ok || echo no; }
 check() { if [[ "$2" == ok ]]; then echo "PASS $1 ${3:-}"; pass=$((pass+1)); else echo "FAIL $1 ${3:-}"; fail=$((fail+1)); fi; }
 is() { [[ "$1" == "$2" ]] && echo ok || echo no; }
 dims() { sips -g pixelWidth -g pixelHeight "$1" 2>/dev/null | awk '/pixel/{print $2}' | paste -sd x -; }
@@ -40,14 +43,17 @@ c=$(run pdf-to-images $P/two.pdf | wc -l | tr -d ' '); check pdf-to-images "$(is
 
 # AI
 A=$F/ai
-o=$(first transcribe $A/speech.m4a); check transcribe "$(grep -qi 'fox' $o && echo ok)" "$(head -c 60 $o)"
+t=$(textout transcribe $A/speech.m4a); check transcribe "$(grep -qi 'fox' <<< "$t" && echo ok)" "${t:0:60}"
+check transcribe-no-file "$(nofile transcribe $A/speech.m4a)"
 o=$(first transcribe format=srt $A/speech.mp4); check transcribe-srt "$(grep -q -- '-->' $o && echo ok)"
-o=$(first extract-text $A/scanned.pdf); check extract-text "$([[ -s $o ]] && echo ok)" "$(head -c 50 $o | tr '\n' ' ')"
+t=$(textout extract-text $A/scanned.pdf); check extract-text "$([[ -n "$t" ]] && echo ok)" "${t:0:50}"
+check extract-text-no-file "$(nofile extract-text $A/text-image.png)"
 # Summarize: real summary when Apple Intelligence is on, clear error when it's off.
 if "$CLI" summarize --text "Hello world" --out "$OUT" 2>&1 | grep -q "Apple Intelligence"; then
   check summarize-unavailable ok "clear error"
 else
-  o=$(first summarize $A/article.txt); check summarize "$(grep -qi 'train' $o && echo ok)" "$(head -c 70 $o)"
+  t=$(textout summarize $A/article.txt); check summarize "$(grep -qi 'train' <<< "$t" && echo ok)" "${t:0:70}"
+  check summarize-no-file "$(nofile summarize $A/article.txt)"
   "$CLI" summarize --text "Hello world" --out "$OUT" 2>&1 | grep -q "too short" && check summarize-short ok || check summarize-short no
 fi
 "$CLI" translate --text "Hello world" --out "$OUT" 2>&1 | grep -qE "Translation Languages|aren't downloaded" && check translate-missing-langs ok "clear error" || check translate-missing-langs no

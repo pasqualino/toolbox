@@ -2,14 +2,48 @@ import Foundation
 import UniformTypeIdentifiers
 
 enum AITools {
-    static let all: [Tool] = [transcribe, extractText, summarize, translate]
+    static let all: [Tool] = [rewrite, transcribe, extractText, summarize, translate]
 
-    /// Longest text shown inline; the full result is always in the file.
-    static let previewLimit = 5_000
+    /// Shared by the app's Rewrite view and the palette's clipboard action.
+    public static let rewriteOptions: [OptionSpec] = [
+        OptionSpec("mode", "Mode", .choice([Choice("rewrite", "Improve"), Choice("fix", "Fix Grammar Only")], default: "rewrite")),
+        OptionSpec("tone", "Tone", .choice([
+            Choice("keep", "Keep Mine"), Choice("friendly", "Friendly"), Choice("professional", "Professional"),
+            Choice("casual", "Casual"), Choice("direct", "Direct"), Choice("diplomatic", "Diplomatic"),
+            Choice("confident", "Confident"),
+        ], default: "keep"), visibleWhen: ("mode", ["rewrite"])),
+        OptionSpec("length", "Length", .choice([
+            Choice("shorter", "Shorter"), Choice("same", "Same"), Choice("longer", "Longer"),
+        ], default: "same"), visibleWhen: ("mode", ["rewrite"])),
+        OptionSpec("slack", "Slack message", .toggle(default: true),
+                   help: "Keeps it conversational and preserves Slack formatting."),
+        OptionSpec("nodash", "No em dashes", .toggle(default: true)),
+        OptionSpec("feedback", "Feedback", .text(default: "", placeholder: "Then refine with…"),
+                   help: "CLI only: one refine pass after the rewrite."),
+    ]
 
-    static func preview(_ text: String) -> String {
-        text.count > previewLimit ? String(text.prefix(previewLimit)) + "…" : text
-    }
+    static let rewrite = Tool(
+        id: "rewrite",
+        name: "Rewrite",
+        summary: "Fix grammar, wording and tone before you send",
+        category: .ai,
+        symbol: "pencil.and.scribble",
+        keywords: ["grammar", "spelling", "proofread", "tone", "polish", "rephrase", "reword", "slack",
+                   "message", "edit", "improve", "fix", "writing", "friendly", "professional"],
+        inputKind: .text,
+        minimumInputs: 0,
+        options: rewriteOptions,
+        requirements: [.appleIntelligence],
+        actionTitle: "Rewrite",
+        runner: .text { text, _, ctx in
+            let session = RewriteSession(settings: .init(ctx.options))
+            var result = try await session.rewrite(text) { _ in }
+            let feedback = ctx.options.string("feedback")
+            if !feedback.isEmpty { result = try await session.refine(feedback) { _ in } }
+            ctx.showText(result)
+            return []
+        }
+    )
 
     // MARK: - Transcribe
 
@@ -23,9 +57,9 @@ enum AITools {
                    "dictate", "voice", "audio", "video", "meeting", "podcast", "interview"],
         accepts: [.audiovisualContent] + [UTType(filenameExtension: "mkv")].compactMap { $0 },
         options: [
-            OptionSpec("format", "Save as", .choice([
+            OptionSpec("format", "Output", .choice([
                 Choice("txt", "Text"), Choice("srt", "SRT"), Choice("vtt", "WebVTT"),
-            ], default: "txt"), help: "SRT and WebVTT are timed subtitles for video players and editors."),
+            ], default: "txt"), help: "Text shows the transcript here. SRT and WebVTT save timed subtitle files."),
             OptionSpec("language", "Spoken language", .language(default: Locale.current.identifier(.bcp47), allowsDetect: false)),
         ],
         actionTitle: "Transcribe",
@@ -36,15 +70,12 @@ enum AITools {
                 throw ToolError.message("No speech found in \(url.lastPathComponent).")
             }
             let format = ctx.options.string("format")
-            let body: String
-            switch format {
-            case "srt": body = SpeechCaptions.srt(transcript.words)
-            case "vtt": body = SpeechCaptions.vtt(transcript.words)
-            default: body = transcript.phrases.joined(separator: "\n") + "\n"
-            }
-            let out = ctx.output(for: url, ext: ["srt", "vtt"].contains(format) ? format : "txt")
+            ctx.showText(transcript.phrases.joined(separator: "\n"))
+            // Plain text is shown, not saved; subtitles are files people load into players and editors.
+            guard format == "srt" || format == "vtt" else { return [] }
+            let body = format == "srt" ? SpeechCaptions.srt(transcript.words) : SpeechCaptions.vtt(transcript.words)
+            let out = ctx.output(for: url, ext: format)
             try body.write(to: out, atomically: true, encoding: .utf8)
-            ctx.showText(preview(transcript.phrases.joined(separator: "\n")))
             return [out]
         }
     )
@@ -65,10 +96,8 @@ enum AITools {
             let isPDF = UTType(filenameExtension: url.pathExtension.lowercased())?.conforms(to: .pdf) == true
             let text = isPDF ? try await TextExtraction.pdf(url) { ctx.progress($0) } : try await TextExtraction.recognize(url)
             guard !text.isEmpty else { throw ToolError.message("No text found in \(url.lastPathComponent).") }
-            let out = ctx.output(for: url, ext: "txt")
-            try (text + "\n").write(to: out, atomically: true, encoding: .utf8)
-            ctx.showText(preview(text))
-            return [out]
+            ctx.showText(text)
+            return []
         }
     )
 
@@ -98,32 +127,27 @@ enum AITools {
             guard !typed.isEmpty || !files.isEmpty else {
                 throw ToolError.message("Type, paste or drop some text to summarize.")
             }
-            var outputs: [URL] = []
             var shown: [String] = []
             let total = Double(files.count + (typed.isEmpty ? 0 : 1))
             var done = 0.0
 
-            func run(_ source: String, title: String?, out: URL) async throws {
+            func run(_ source: String, title: String?) async throws {
                 let offset = done
                 let summary = try await AISummarizer.summarize(source, length: length) {
                     ctx.progress((offset + $0) / total)
                 }
-                try (summary + "\n").write(to: out, atomically: true, encoding: .utf8)
-                outputs.append(out)
                 shown.append(title.map { "\($0)\n\(summary)" } ?? summary)
                 done += 1
             }
 
-            if !typed.isEmpty {
-                try await run(typed, title: nil, out: ctx.output(named: "Summary", ext: "txt"))
-            }
+            if !typed.isEmpty { try await run(typed, title: nil) }
             for file in files {
                 let source = try await TextExtraction.read(file)
-                try await run(source, title: total > 1 ? file.lastPathComponent : nil,
-                              out: ctx.output(for: file, suffix: " summary", ext: "txt"))
+                try await run(source, title: total > 1 ? file.lastPathComponent : nil)
             }
-            ctx.showText(preview(shown.joined(separator: "\n\n")))
-            return outputs
+            // The summary is the result; there's no file to save.
+            ctx.showText(shown.joined(separator: "\n\n"))
+            return []
         }
     )
 
@@ -165,9 +189,6 @@ enum AITools {
             if !typed.isEmpty {
                 let session = try await TextTranslation.session(source: source, target: target, sample: typed)
                 let result = try await TextTranslation.translate(typed, session: session) { ctx.progress($0 / total) }
-                let out = ctx.output(named: "Translation \(target)", ext: "txt")
-                try (result + "\n").write(to: out, atomically: true, encoding: .utf8)
-                outputs.append(out)
                 shown.append(result)
                 done += 1
             }
@@ -183,13 +204,17 @@ enum AITools {
                 let result = isSubtitles
                     ? try await TextTranslation.translateSubtitles(content, session: session, progress: progress)
                     : try await TextTranslation.translate(content, session: session, progress: progress)
-                let out = ctx.output(for: file, suffix: " \(target)", ext: isSubtitles ? ext : "txt")
-                try (result + "\n").write(to: out, atomically: true, encoding: .utf8)
-                outputs.append(out)
-                if !isSubtitles { shown.append(result) }
+                if isSubtitles {
+                    // Translated subtitles are files for video players; plain text is shown, not saved.
+                    let out = ctx.output(for: file, suffix: " \(target)", ext: ext)
+                    try (result + "\n").write(to: out, atomically: true, encoding: .utf8)
+                    outputs.append(out)
+                } else {
+                    shown.append(files.count + (typed.isEmpty ? 0 : 1) > 1 ? "\(file.lastPathComponent)\n\(result)" : result)
+                }
                 done += 1
             }
-            if !shown.isEmpty { ctx.showText(preview(shown.joined(separator: "\n\n"))) }
+            if !shown.isEmpty { ctx.showText(shown.joined(separator: "\n\n")) }
             return outputs
         }
     )

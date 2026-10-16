@@ -52,6 +52,8 @@ final class ToolSession {
     var batchProgress: Double = 0
     var result: RunResult?
     var resultText = ""
+    /// Text per input item, joined into `resultText` in input order.
+    private var texts: [Int: String] = [:]
     /// Error for runs that aren't per-file (merge, summarize).
     var runError: String?
 
@@ -209,7 +211,7 @@ final class ToolSession {
             }
             self.phase = result.cancelled && result.outputs.isEmpty ? .idle : .finished
             if result.cancelled { self.resetStatuses() }
-            if !result.outputs.isEmpty {
+            if !result.outputs.isEmpty || !self.resultText.isEmpty {
                 History.record(tool.id)
                 if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), let folder = result.folder {
                     NSWorkspace.shared.activateFileViewerSelecting(result.outputs.isEmpty ? [folder] : result.outputs)
@@ -237,14 +239,31 @@ final class ToolSession {
             if perFile, items.indices.contains(i) { items[i].status = .done(outputs) } else { batchProgress = 1 }
         case .itemFailed(let i, let message):
             if perFile, items.indices.contains(i) { items[i].status = .failed(message) } else { runError = message }
-        case .text(let text):
-            resultText = text
+        case .text(let i, let text):
+            texts[i] = text
+            resultText = joinedTexts(perFile: perFile)
         }
+    }
+
+    /// One file: its text. Several: each under its file name, in the order the files were added.
+    private func joinedTexts(perFile: Bool) -> String {
+        let keys = texts.keys.sorted()
+        guard perFile, keys.count > 1 || items.count > 1 else { return keys.compactMap { texts[$0] }.joined(separator: "\n\n") }
+        return keys.map { i in
+            let name = items.indices.contains(i) ? items[i].name : "Item \(i + 1)"
+            return "\(name)\n\(String(repeating: "-", count: min(name.count, 60)))\n\(texts[i] ?? "")"
+        }.joined(separator: "\n\n")
+    }
+
+    /// Text-only result: the tool showed text and saved no files.
+    var isTextResult: Bool {
+        phase == .finished && !resultText.isEmpty && (result?.outputs.isEmpty ?? true)
     }
 
     func resetResults() {
         result = nil
         resultText = ""
+        texts = [:]
         runError = nil
         batchProgress = 0
         phase = .idle

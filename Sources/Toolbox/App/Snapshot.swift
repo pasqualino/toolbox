@@ -47,6 +47,18 @@ enum Snapshot {
                     AppModel.shared.switchMember(from: AppModel.shared.session(for: tool), to: other)
                     print("switched to \(AppModel.shared.currentTool?.id ?? "-") text=\(AppModel.shared.currentSession?.text ?? "")")
                 }
+                if env["TOOLBOX_REWRITE"] == "1" {
+                    let session = AppModel.shared.session(for: tool)
+                    let rewrite = AppModel.shared.rewrite
+                    rewrite.rewrite(session.text, options: session.options)
+                    while rewrite.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+                    if let feedback = env["TOOLBOX_FEEDBACK"] {
+                        rewrite.refine(feedback)
+                        while rewrite.isRunning { try? await Task.sleep(for: .milliseconds(100)) }
+                    }
+                    print("versions: \(rewrite.versions.count) error: \(rewrite.error ?? "none")")
+                    for (i, v) in rewrite.versions.enumerated() { print("v\(i + 1): \(v)") }
+                }
                 if env["TOOLBOX_SIDEBAR"] == "recent" { AppModel.shared.sidebar = .recent }
                 if env["TOOLBOX_CLIPBOARD_APPLY"] == "1" {
                     ClipboardAction.apply(tool)
@@ -61,6 +73,13 @@ enum Snapshot {
                 }
             }
             try? await Task.sleep(for: .seconds(1.5))
+            // Simulate typing into the first editable text view, as the keyboard would.
+            if let typed = env["TOOLBOX_TYPE"], let window = WindowController.shared.mainWindow,
+               let field = Self.textViews(in: window.contentView).first(where: \.isEditable) {
+                window.makeFirstResponder(field)
+                for ch in typed { field.insertText(String(ch), replacementRange: field.selectedRange()) }
+                try? await Task.sleep(for: .milliseconds(300))
+            }
             if let window = WindowController.shared.mainWindow {
                 await save(window, to: out.appendingPathComponent("main.png"))
             }
@@ -73,6 +92,11 @@ enum Snapshot {
             NSApp.terminate(nil)
         }
         return true
+    }
+
+    static func textViews(in view: NSView?) -> [NSTextView] {
+        guard let view else { return [] }
+        return (view as? NSTextView).map { [$0] } ?? view.subviews.flatMap { textViews(in: $0) }
     }
 
     /// Captures one of our own windows. Current-process capture needs no screen-recording consent.

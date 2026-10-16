@@ -93,12 +93,17 @@ if tool.isTransform {
 }
 
 // Ctrl-C cancels the run, which terminates any child process (ffmpeg) and cleans up staging.
+final class TextFlag: @unchecked Sendable { var seen = false }
+let gotText = TextFlag()
 let run = Task {
     await ToolEngine.run(tool, inputs: files, text: text, options: options, outputRoot: outRoot) { event in
         switch event {
         case .itemFailed(let i, let message): print("FAIL [\(i)] \(message)")
-        case .itemFinished(let i, let outputs): print("ok   [\(i)] \(outputs.map(\.lastPathComponent).joined(separator: ", "))")
-        case .text(let t): print("text: \(t.prefix(300))")
+        case .itemFinished(let i, let outputs):
+            print("ok   [\(i)] \(outputs.isEmpty ? "(text)" : outputs.map(\.lastPathComponent).joined(separator: ", "))")
+        case .text(_, let t):
+            gotText.seen = true
+            print("text: \(t)")
         default: break
         }
     }
@@ -109,4 +114,4 @@ interrupt.setEventHandler { run.cancel() }
 interrupt.resume()
 let result = await run.value
 for url in result.outputs { print("-> \(url.path)") }
-exit(result.failures == 0 && !result.outputs.isEmpty ? 0 : 1)
+exit(result.failures == 0 && (!result.outputs.isEmpty || gotText.seen) ? 0 : 1)

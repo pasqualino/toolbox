@@ -251,6 +251,11 @@ private struct FileRow: View {
                 .font(.caption)
                 .foregroundStyle(.red)
                 .lineLimit(2)
+        case .done(let outputs) where outputs.isEmpty:
+            // Text-only tools: the result is in the panel below, not a file.
+            Text("\(Format.bytes(item.size)) · text below")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         case .done(let outputs):
             HStack(spacing: 4) {
                 Text(Format.bytes(item.size))
@@ -449,7 +454,8 @@ struct TextResult: View {
                     Spacer()
                     if session.phase == .running {
                         ProgressView().controlSize(.small)
-                    } else {
+                    } else if !session.isTextResult {
+                        // Text-only results have Copy and Save As in the bottom bar.
                         Button {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(session.resultText, forType: .string)
@@ -468,13 +474,9 @@ struct TextResult: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 Divider()
-                ScrollView {
-                    Text(session.resultText.isEmpty ? " " : session.resultText)
-                        .font(.system(size: 14))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                }
+                CodeTextView(text: .constant(session.resultText), editable: false,
+                             placeholder: session.phase == .running ? "Working…" : "",
+                             font: .systemFont(ofSize: 14))
             }
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))

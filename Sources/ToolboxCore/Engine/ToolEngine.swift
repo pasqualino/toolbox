@@ -5,7 +5,8 @@ public enum RunEvent: Sendable {
     case itemProgress(Int, Double)
     case itemFinished(Int, outputs: [URL])
     case itemFailed(Int, message: String)
-    case text(String)
+    /// Text result for an item. Text-only tools (Summarize, Extract Text) return no files, only this.
+    case text(Int, String)
 }
 
 public struct RunResult: Sendable {
@@ -54,7 +55,7 @@ public enum ToolEngine {
         func context(_ index: Int) -> ToolContext {
             ToolContext(options: options, outputDirectory: staging, names: names,
                         onProgress: { events(.itemProgress(index, $0)) },
-                        onText: { events(.text($0)) })
+                        onText: { events(.text(index, $0)) })
         }
 
         var produced: [Int: [URL]] = [:]
@@ -116,7 +117,7 @@ public enum ToolEngine {
             // Live tools normally run in the app without the engine; here (CLI) save the output as a text file.
             await attempt(0) {
                 let output = try body(TextInput(text), options)
-                events(.text(output))
+                events(.text(0, output))
                 let url = context(0).output(named: tool.name, ext: "txt")
                 try output.write(to: url, atomically: true, encoding: .utf8)
                 return [url]

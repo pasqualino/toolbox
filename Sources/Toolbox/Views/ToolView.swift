@@ -16,6 +16,8 @@ struct ToolView: View {
     var body: some View {
         if case .comingSoon(let reason) = tool.status {
             ComingSoonView(tool: tool, reason: reason)
+        } else if tool.id == "rewrite" {
+            RewriteView(session: session)
         } else if tool.isTransform {
             TextToolView(session: session)
         } else {
@@ -103,11 +105,13 @@ private struct InputArea: View {
                 } else if let editor = session.primaryEditor, let first = session.items.first {
                     EditorArea(session: session, spec: editor, url: first.url)
                 } else {
+                    // Once there's text, the result is what matters: the list shrinks to make room.
                     FileList(session: session)
+                        .frame(maxHeight: session.resultText.isEmpty ? .infinity : 170)
                 }
                 if !session.resultText.isEmpty {
                     TextResult(session: session)
-                        .frame(maxHeight: 260)
+                        .frame(maxHeight: .infinity)
                 }
             }
         case .url:

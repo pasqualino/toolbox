@@ -190,13 +190,13 @@ struct PaletteView: View {
 
     private var selectedIsTransform: Bool {
         let results = results
-        return results.indices.contains(state.selection) && results[state.selection].isTransform
+        return results.indices.contains(state.selection) && ClipboardAction.supports(results[state.selection])
     }
 
     private func applyToClipboard(_ results: [Tool]) {
         guard results.indices.contains(state.selection) else { return }
         let tool = results[state.selection]
-        guard tool.isTransform else {
+        guard ClipboardAction.supports(tool) else {
             open(results)
             return
         }
@@ -214,10 +214,14 @@ struct PaletteView: View {
         let tool = results[state.selection]
         var text = tool.inputKind == .url && ToolSearch.looksLikeURL(state.query) ? state.query : nil
         // Text tools start from the clipboard when their editor is empty, so Return shows a result at once.
-        if tool.isTransform, !tool.traits.contains(.generator),
-           AppModel.shared.session(for: tool).text.isEmpty,
+        let takesClipboard = (tool.isTransform && !tool.traits.contains(.generator)) || tool.id == "rewrite"
+        if takesClipboard, AppModel.shared.session(for: tool).text.isEmpty || tool.id == "rewrite",
            let clip = NSPasteboard.general.string(forType: .string), clip.utf8.count < 5_000_000 {
             text = clip
+        }
+        if tool.id == "rewrite", text != nil {
+            AppModel.shared.rewrite.reset()
+            AppModel.shared.rewrite.autoStart = true
         }
         if tool.isTransform, let file = state.files.first,
            let data = try? Data(contentsOf: file), let contents = String(data: data, encoding: .utf8) {

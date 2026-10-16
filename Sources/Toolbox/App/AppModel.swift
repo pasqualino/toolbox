@@ -20,6 +20,7 @@ final class AppModel {
 
     var route: Route = .home
     var sidebar: SidebarItem = .recent
+    let rewrite = RewriteModel()
     /// Text in the window's search field. Non-empty replaces the middle column with results.
     var searchQuery = ""
     /// Bumped by ⌘F to focus the search field.

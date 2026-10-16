@@ -8,7 +8,8 @@ enum Toast {
     private static var panel: NSPanel?
     private static var hideTask: Task<Void, Never>?
 
-    static func show(_ title: String, detail: String? = nil, symbol: String = "checkmark.circle.fill", tint: Color = .green) {
+    static func show(_ title: String, detail: String? = nil, symbol: String = "checkmark.circle.fill",
+                     tint: Color = .green, duration: Double = 1.6) {
         let view = ToastView(title: title, detail: detail, symbol: symbol, tint: tint)
         let host = NSHostingView(rootView: view)
         host.layoutSubtreeIfNeeded()
@@ -39,7 +40,7 @@ enum Toast {
 
         hideTask?.cancel()
         hideTask = Task {
-            try? await Task.sleep(for: .seconds(1.6))
+            try? await Task.sleep(for: .seconds(duration))
             guard !Task.isCancelled else { return }
             await NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.25
@@ -83,7 +84,46 @@ private struct ToastView: View {
 /// Runs a text tool on the clipboard and writes the result back. The palette's ⌥Return.
 @MainActor
 enum ClipboardAction {
+    static func supports(_ tool: Tool) -> Bool {
+        tool.isTransform || tool.id == "rewrite"
+    }
+
+    /// Rewrite takes a few seconds, so it shows a progress toast and replaces the clipboard when done.
+    static func rewriteClipboard(_ tool: Tool) {
+        let pasteboard = NSPasteboard.general
+        guard let input = pasteboard.string(forType: .string),
+              !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            Toast.show("Clipboard is empty", detail: "Copy your message, then try again.",
+                       symbol: "doc.on.clipboard", tint: .orange)
+            return
+        }
+        let options = AppModel.shared.session(for: tool).options
+        let change = pasteboard.changeCount
+        Toast.show("Rewriting…", detail: RewriteModel.describe(options), symbol: "sparkles", tint: tool.tint, duration: 30)
+        Task { @MainActor in
+            do {
+                let output = try await RewriteSession(settings: .init(options)).rewrite(input) { _ in }
+                // Don't clobber something the user copied while the model was working.
+                guard pasteboard.changeCount == change else {
+                    Toast.show("Clipboard changed", detail: "Rewrite discarded.", symbol: "xmark.circle", tint: .orange)
+                    return
+                }
+                pasteboard.clearContents()
+                pasteboard.setString(output, forType: .string)
+                History.record(tool.id)
+                Toast.show("Copied · Rewrite", detail: output.split(whereSeparator: \.isNewline).first.map(String.init))
+            } catch {
+                Toast.show("Rewrite failed", detail: error.localizedDescription,
+                           symbol: "exclamationmark.triangle.fill", tint: .red)
+            }
+        }
+    }
+
     static func apply(_ tool: Tool) {
+        if tool.id == "rewrite" {
+            rewriteClipboard(tool)
+            return
+        }
         let pasteboard = NSPasteboard.general
         let input = pasteboard.string(forType: .string) ?? ""
         let isGenerator = tool.traits.contains(.generator)

@@ -9,6 +9,8 @@ struct CodeTextView: NSViewRepresentable {
     /// Soft-wrap long lines. Off keeps aligned output (reports, code) intact and scrolls sideways.
     var wraps = true
     var placeholder = ""
+    /// Monospaced by default; prose tools (Rewrite) pass the system font.
+    var font: NSFont = .monospacedSystemFont(ofSize: 12.5, weight: .regular)
     var focusToken = 0
     /// Called with dropped file URLs; return true to accept them instead of inserting their paths.
     var onDropFiles: (([URL]) -> Bool)?
@@ -49,7 +51,7 @@ struct CodeTextView: NSViewRepresentable {
         textView.isGrammarCheckingEnabled = false
         textView.isAutomaticLinkDetectionEnabled = false
         textView.smartInsertDeleteEnabled = false
-        textView.font = .monospacedSystemFont(ofSize: 12.5, weight: .regular)
+        textView.font = font
         textView.textColor = .labelColor
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 10, height: 10)
@@ -105,11 +107,17 @@ final class DropTextView: NSTextView {
         didSet { needsDisplay = true }
     }
 
+    // Typing only invalidates the glyphs it touches, which left the rest of the placeholder painted.
+    override func didChangeText() {
+        super.didChangeText()
+        needsDisplay = true
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard string.isEmpty, !placeholder.isEmpty else { return }
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: font ?? .monospacedSystemFont(ofSize: 12.5, weight: .regular),
+            .font: font ?? NSFont.monospacedSystemFont(ofSize: 12.5, weight: .regular),
             .foregroundColor: NSColor.placeholderTextColor,
         ]
         let origin = NSPoint(x: textContainerInset.width + (textContainer?.lineFragmentPadding ?? 5),
