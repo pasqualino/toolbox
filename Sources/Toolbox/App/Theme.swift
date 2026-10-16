@@ -37,6 +37,18 @@ extension Tool {
     }
 }
 
+extension ToolEntry {
+    var tint: Color { ToolRegistry.tool(id: primaryToolID)?.tint ?? .gray }
+}
+
+extension ToolRegistry {
+    /// Entry for a sidebar row id ("json-format" or "group:json").
+    static func entry(id: String) -> ToolEntry? {
+        if id.hasPrefix("group:") { return groups.first { "group:" + $0.id == id }.map(ToolEntry.group) }
+        return tool(id: id).map(ToolEntry.init)
+    }
+}
+
 /// Rounded gradient tile with a white symbol. The app's main visual motif.
 struct ToolIcon: View {
     let symbol: String

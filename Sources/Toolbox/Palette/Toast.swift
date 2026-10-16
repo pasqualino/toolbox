@@ -101,7 +101,7 @@ private struct ToastView: View {
 @MainActor
 enum ClipboardAction {
     static func supports(_ tool: Tool) -> Bool {
-        tool.isTransform || tool.flow != .standard || tool.traits.contains(.copiesTextResult)
+        tool.isTransform || (tool.flow != .standard && tool.flow != .speedTest && tool.flow != .networkHealth) || tool.traits.contains(.copiesTextResult)
     }
 
     /// Rewrite takes a few seconds, so it shows a progress toast and replaces the clipboard when done.
@@ -153,6 +153,9 @@ enum ClipboardAction {
             return
         case .rewrite:
             rewriteClipboard(tool)
+            return
+        case .speedTest, .networkHealth:
+            _ = tool.flow.openFromPalette()
             return
         case .standard:
             break

@@ -2,7 +2,7 @@ import Foundation
 import UniformTypeIdentifiers
 
 enum MacTools {
-    static let all: [Tool] = [captureText, keepAwake, speedTest, fixApp]
+    static let all: [Tool] = [captureText, keepAwake, speedTest, fixApp, networkHealth]
 
     /// Hidden in the app (no option has this key), settable from the CLI for tests.
     private static let cliOnly: (key: String, values: [String]) = ("cli", ["true"])

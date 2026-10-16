@@ -11,6 +11,10 @@ enum ToolFlow {
     case captureText
     /// Holds a power assertion outside any run.
     case keepAwake
+    /// Runs Apple's network test directly and keeps structured results for the chart.
+    case speedTest
+    /// Runs the network checks directly and shows the verdict and check cards.
+    case networkHealth
 
     /// Something a tool keeps doing outside a run, listed under Jobs.
     struct BackgroundJob {
@@ -28,7 +32,7 @@ enum ToolFlow {
 
     /// What's running outside a run, in the order the Jobs list shows it.
     @MainActor static var backgroundJobs: [BackgroundJob] {
-        [ToolFlow.keepAwake, .rewrite].compactMap(\.backgroundJob)
+        [ToolFlow.keepAwake, .rewrite, .speedTest, .networkHealth].compactMap(\.backgroundJob)
     }
 
     @MainActor private var backgroundJob: BackgroundJob? {
@@ -42,6 +46,14 @@ enum ToolFlow {
             let rewrite = AppModel.shared.rewrite
             guard rewrite.isRunning else { return nil }
             return BackgroundJob(tool: tool, status: "Rewriting…", showsProgress: true) { rewrite.stop() }
+        case .speedTest:
+            let test = SpeedTestModel.shared
+            guard test.running else { return nil }
+            return BackgroundJob(tool: tool, status: "Testing…", showsProgress: true) { test.stop() }
+        case .networkHealth:
+            let health = NetworkHealthModel.shared
+            guard health.running else { return nil }
+            return BackgroundJob(tool: tool, status: "Checking…", showsProgress: true) { health.stop() }
         case .standard, .captureText:
             return nil
         }
@@ -56,6 +68,17 @@ enum ToolFlow {
 
     /// Opening from the palette. Returns true when the flow handled it and no window should open.
     @MainActor func openFromPalette() -> Bool {
+        if self == .networkHealth {
+            if let tool { AppModel.shared.open(tool) }
+            NetworkHealthModel.shared.run()
+            return true
+        }
+        if self == .speedTest {
+            // Opening Speed Test from the palette is asking for a test now.
+            if let tool { AppModel.shared.open(tool) }
+            SpeedTestModel.shared.run(sequential: tool.map { AppModel.shared.session(for: $0).options.bool("sequential") } ?? false)
+            return true
+        }
         guard self == .captureText else { return false }
         // Capture Text goes straight to the crosshair; no window needed.
         CaptureFlow.run()
@@ -77,6 +100,8 @@ extension Tool {
         case "rewrite": .rewrite
         case "capture-text": .captureText
         case "keep-awake": .keepAwake
+        case "speed-test": .speedTest
+        case "network-health": .networkHealth
         default: .standard
         }
     }
@@ -84,9 +109,6 @@ extension Tool {
     /// Action tools opened from the palette are ones you want to run now (Network Speed Test).
     /// Keep Awake waits for you to pick how long.
     var runsWhenOpenedFromPalette: Bool {
-        inputKind == .action && flow != .keepAwake
+        inputKind == .action && flow == .standard
     }
-
-    /// Network Speed Test keeps its past reports to compare against.
-    var keepsSpeedHistory: Bool { id == "speed-test" }
 }

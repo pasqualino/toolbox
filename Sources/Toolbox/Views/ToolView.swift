@@ -18,6 +18,10 @@ struct ToolView: View {
             RewriteView(session: session)
         } else if tool.flow == .keepAwake {
             KeepAwakeView(session: session)
+        } else if tool.flow == .speedTest {
+            SpeedTestView(session: session)
+        } else if tool.flow == .networkHealth {
+            NetworkHealthView(session: session)
         } else if tool.isTransform {
             TextToolView(session: session)
         } else {

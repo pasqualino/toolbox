@@ -1,7 +1,7 @@
 import SwiftUI
 import ToolboxCore
 
-/// Three columns: categories, the tools in the selected one, then the tool.
+/// Two columns: one collapsible sidebar (Favorites, Recent, then each category as a section), and the tool.
 struct MainView: View {
     @Environment(AppModel.self) private var model
     @FocusState private var searchFocused: Bool
@@ -9,20 +9,17 @@ struct MainView: View {
     var body: some View {
         @Bindable var model = model
         NavigationSplitView {
-            CategorySidebar()
-                .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
-        } content: {
-            EntryList()
-                .navigationSplitViewColumnWidth(min: 210, ideal: 250, max: 320)
+            ToolSidebar()
+                .navigationSplitViewColumnWidth(min: 210, ideal: 250, max: 340)
         } detail: {
             detail
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 1000, minHeight: 580)
+        .frame(minWidth: 860, minHeight: 580)
         .toolbar {
             ToolbarItem(placement: .primaryAction) { JobsButton() }
         }
-        .searchable(text: $model.searchQuery, placement: .toolbar, prompt: "Search tools")
+        .searchable(text: $model.searchQuery, placement: .sidebar, prompt: "Search tools")
         .searchFocused($searchFocused)
         .onSubmit(of: .search) { openTopResult() }
         .onChange(of: model.searchFocusToken) { searchFocused = true }
@@ -42,6 +39,7 @@ struct MainView: View {
             if let tool = ToolRegistry.tool(id: id) {
                 ToolView(session: model.session(for: tool))
                     .id(id)
+                    .transition(.opacity)
             }
         case .category(let category):
             ToolGrid(title: category.title, categories: [category])
@@ -51,171 +49,179 @@ struct MainView: View {
     }
 }
 
-/// Recent plus one row per category, each with its tile and a count.
-private struct CategorySidebar: View {
+/// The source list. Each category is a section that remembers whether it's open; searching shows every match.
+private struct ToolSidebar: View {
     @Environment(AppModel.self) private var model
 
-    private var selection: Binding<SidebarItem?> {
-        Binding(get: { model.sidebar }, set: { if let item = $0 { model.select(item) } })
-    }
-
-    var body: some View {
-        List(selection: selection) {
-            Section {
-                row(title: "Favorites", symbol: "star.fill", tint: .yellow,
-                    count: model.favoriteIDs.isEmpty ? nil : model.favoriteIDs.count, shortcut: "⌘9")
-                    .tag(SidebarItem.favorites)
-                row(title: "Recent", symbol: "clock.fill", tint: .gray, count: nil, shortcut: "⌘0")
-                    .tag(SidebarItem.recent)
-            }
-            Section("Categories") {
-                ForEach(ToolCategory.allCases) { category in
-                    row(title: category.title, symbol: category.symbol, tint: category.tint,
-                        count: ToolRegistry.entryCount(in: category), shortcut: "⌘\(category.shortcutIndex)")
-                        .tag(SidebarItem.category(category))
-                }
-            }
-        }
-        .listStyle(.sidebar)
-    }
-
-    private func row(title: String, symbol: String, tint: Color, count: Int?, shortcut: String) -> some View {
-        HStack(spacing: 9) {
-            ToolIcon(symbol: symbol, tint: tint, size: 22)
-            Text(title)
-            Spacer(minLength: 0)
-            if let count {
-                Text("\(count)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding(.vertical, 2)
-        .help("\(title) (\(shortcut))")
-    }
-}
-
-/// Middle column: the entries of the selected category, sectioned. Groups show once.
-private struct EntryList: View {
-    @Environment(AppModel.self) private var model
+    private var searching: Bool { !model.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
 
     private var selection: Binding<String?> {
         Binding(
             get: {
                 guard case .tool(let id) = model.route else { return nil }
-                return sections.lazy.flatMap(\.entries).first { $0.contains(id) }?.id
+                return ToolEntry(ToolRegistry.tool(id: id)!).id
             },
             set: { entryID in
-                guard let entryID, let entry = sections.lazy.flatMap(\.entries).first(where: { $0.id == entryID }),
+                guard let entryID, let entry = ToolRegistry.entry(id: entryID),
                       let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
                 // Changing the route inside the table's selection callback re-enters NSTableView; defer it.
                 Task { @MainActor in model.open(tool) }
             })
     }
 
-    private var searching: Bool { !model.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
-
-    private var sections: [ToolSection] {
-        if searching { return model.searchSections }
-        return switch model.sidebar {
-        case .favorites: model.favoriteSections
-        case .recent: model.recentSections
-        case .category(let c): ToolRegistry.sections(in: c)
-        }
-    }
-
     var body: some View {
-        let sections = sections
         ScrollViewReader { proxy in
-        List(selection: selection) {
-            if sections.isEmpty {
-                Text(searching ? "No tool matches “\(model.searchQuery)”."
-                     : model.sidebar == .favorites ? "Right-click a tool and choose Add to Favorites."
-                     : "Tools you use show up here.")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
-                    .padding(.vertical, 8)
-            }
-            ForEach(sections) { section in
-                Section {
-                    ForEach(section.entries) { entry in
-                        EntryRow(entry: entry, tint: tint(for: entry))
-                            .tag(entry.id)
-                            .id(entry.id)
-                            .contextMenu { EntryMenu(entry: entry) }
+            List(selection: selection) {
+                if searching {
+                    searchResults
+                } else {
+                    pinned
+                    ForEach(ToolCategory.allCases) { category in
+                        CategorySection(category: category)
                     }
-                    // Favorites keep the order you drag them into.
-                    .onMove(perform: model.sidebar == .favorites && !searching ? { model.moveFavorites(from: $0, to: $1) } : nil)
-                } header: {
-                    if let title = section.title { Text(title) }
+                }
+            }
+            .listStyle(.sidebar)
+            // Rows scrolled under the search field overlapped it; a hard edge keeps it readable.
+            .scrollEdgeEffectStyle(.hard, for: .top)
+            // Keep the opened tool in view (palette, search, cards all open tools from elsewhere).
+            .onChange(of: model.route, initial: true) {
+                if let id = selection.wrappedValue {
+                    Task { @MainActor in proxy.scrollTo(id, anchor: .center) }
                 }
             }
         }
-        .listStyle(.sidebar)
-        // Rows scrolled under the column title overlapped it; a hard edge keeps the title readable.
-        .scrollEdgeEffectStyle(.hard, for: .top)
-        .navigationTitle(title)
-        // Bring the selected entry into view when it's opened from the palette or a card.
-        .onChange(of: model.route, initial: true) {
-            if let id = selection.wrappedValue {
-                Task { @MainActor in proxy.scrollTo(id, anchor: .center) }
+    }
+
+    @ViewBuilder
+    private var pinned: some View {
+        @Bindable var model = model
+        if !model.favoriteSections.isEmpty {
+            Section(isExpanded: model.expansion("favorites")) {
+                ForEach(model.favoriteSections[0].entries) { entry in
+                    EntryRow(entry: entry)
+                }
+                .onMove { model.moveFavorites(from: $0, to: $1) }
+            } header: {
+                SectionLabel(title: "Favorites", symbol: "star.fill", tint: .yellow, shortcut: "⌘9")
             }
         }
+        if !model.recentSections.isEmpty {
+            Section(isExpanded: model.expansion("recent")) {
+                ForEach(model.recentSections[0].entries.prefix(6)) { entry in
+                    EntryRow(entry: entry, showStar: true)
+                }
+            } header: {
+                SectionLabel(title: "Recent", symbol: "clock.fill", tint: .gray, shortcut: "⌘0")
+            }
         }
     }
 
-    private var title: String {
-        if searching { return "Results" }
-        return switch model.sidebar {
-        case .favorites: "Favorites"
-        case .recent: "Recent"
-        case .category(let c): c.title
+    @ViewBuilder
+    private var searchResults: some View {
+        let sections = model.searchSections
+        if sections.isEmpty {
+            Text("No tool matches “\(model.searchQuery)”.")
+                .foregroundStyle(.secondary)
+                .font(.callout)
         }
-    }
-
-    private func tint(for entry: ToolEntry) -> Color {
-        ToolRegistry.tool(id: entry.primaryToolID)?.tint ?? .gray
+        ForEach(sections) { section in
+            Section(section.title ?? "") {
+                ForEach(section.entries) { entry in
+                    EntryRow(entry: entry, showGroup: true)
+                }
+            }
+        }
     }
 }
 
-private struct EntryRow: View {
-    let entry: ToolEntry
-    let tint: Color
+/// One category: a collapsible section with its tools; Developer keeps its sub-headings.
+private struct CategorySection: View {
+    let category: ToolCategory
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        HStack(spacing: 10) {
-            ToolIcon(symbol: entry.symbol, tint: tint, size: 26)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(entry.name)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+        Section(isExpanded: model.expansion(category.rawValue)) {
+            let sections = ToolRegistry.sections(in: category)
+            ForEach(sections) { section in
+                if let title = section.title, sections.count > 1 {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 4)
+                        .selectionDisabled()
+                }
+                ForEach(section.entries) { entry in
+                    EntryRow(entry: entry, showStar: true)
+                }
+            }
+        } header: {
+            SectionLabel(title: category.title, symbol: category.symbol, tint: category.tint,
+                         shortcut: "⌘\(category.shortcutIndex)", count: ToolRegistry.entryCount(in: category))
+        }
+    }
+}
+
+private struct SectionLabel: View {
+    let title: String
+    let symbol: String
+    let tint: Color
+    let shortcut: String
+    var count: Int?
+
+    var body: some View {
+        HStack(spacing: 7) {
+            ToolIcon(symbol: symbol, tint: tint, size: 16)
+            Text(title)
+            Spacer(minLength: 0)
+            if let count {
+                Text("\(count)").monospacedDigit().foregroundStyle(.tertiary)
+            }
+        }
+        .help("\(title) (\(shortcut))")
+    }
+}
+
+/// A compact tool row: icon and name. The summary shows as a tooltip, so long categories stay scannable.
+private struct EntryRow: View {
+    let entry: ToolEntry
+    var showStar = false
+    var showGroup = false
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ToolIcon(symbol: entry.symbol, tint: entry.tint, size: 20)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(entry.name).lineLimit(1)
+                if showGroup, let group = groupName {
+                    Text(group).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
             if isRunning {
                 ProgressView().controlSize(.mini)
-            } else if model.isFavorite(entry), model.sidebar != .favorites {
-                Image(systemName: "star.fill").font(.system(size: 9)).foregroundStyle(.yellow)
+            } else if showStar, model.isFavorite(entry) {
+                Image(systemName: "star.fill").font(.system(size: 8)).foregroundStyle(.yellow)
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, 1)
+        .tag(entry.id)
+        .id(entry.id)
+        .help(entry.summary)
+        .contextMenu { EntryMenu(entry: entry) }
     }
 
-    /// Group members found by search say which group they belong to.
-    private var subtitle: String {
-        if case .tool(let tool) = entry, let group = ToolRegistry.group(containing: tool.id) {
-            return "\(group.name) · \(tool.summary)"
-        }
-        return entry.summary
+    private var groupName: String? {
+        if case .tool(let tool) = entry { return ToolRegistry.group(containing: tool.id)?.name }
+        return nil
     }
 
     private var isRunning: Bool {
-        guard case .tool(let tool) = entry else { return false }
-        return model.sessions[tool.id]?.phase == .running
+        switch entry {
+        case .tool(let tool): model.sessions[tool.id]?.phase == .running
+        case .group(let group): group.members.contains { model.sessions[$0.toolID]?.phase == .running }
+        }
     }
 }
 

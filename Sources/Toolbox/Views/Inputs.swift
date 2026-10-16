@@ -490,9 +490,14 @@ struct TextResult: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 Divider()
-                CodeTextView(text: .constant(session.resultText), editable: false,
-                             placeholder: session.phase == .running ? "Working…" : "",
-                             font: .systemFont(ofSize: 14))
+                // Reports ("Label  value" rows) read as a table; anything else stays selectable plain text.
+                if session.phase != .running, ReportView.looksLikeReport(session.resultText) {
+                    ReportView(text: session.resultText)
+                } else {
+                    CodeTextView(text: .constant(session.resultText), editable: false,
+                                 placeholder: session.phase == .running ? "Working…" : "",
+                                 font: .systemFont(ofSize: 14))
+                }
             }
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))

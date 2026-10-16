@@ -21,6 +21,18 @@ final class AppModel {
 
     var route: Route = .home
     var sidebar: SidebarItem = .recent
+
+    // MARK: Sidebar sections
+
+    /// Sidebar sections that are open ("favorites", "recent", or a category's rawValue). Remembered across launches.
+    var expandedSections: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "sidebar.expanded") ?? ["favorites", "recent"]) {
+        didSet { UserDefaults.standard.set(Array(expandedSections), forKey: "sidebar.expanded") }
+    }
+
+    func expansion(_ key: String) -> Binding<Bool> {
+        Binding(get: { self.expandedSections.contains(key) },
+                set: { open in if open { self.expandedSections.insert(key) } else { self.expandedSections.remove(key) } })
+    }
     let rewrite = RewriteModel()
     /// Text in the window's search field. Non-empty replaces the middle column with results.
     var searchQuery = ""
@@ -68,6 +80,8 @@ final class AppModel {
         if sidebar != .recent || !recentSections.contains(where: { $0.entries.contains { $0.contains(tool.id) } }) {
             sidebar = .category(tool.category)
         }
+        // Show where the tool lives, so the sidebar can select and scroll to it.
+        expandedSections.insert(tool.category.rawValue)
         if let group = ToolRegistry.group(containing: tool.id) {
             UserDefaults.standard.set(tool.id, forKey: Self.memberKey(group))
         }
@@ -77,6 +91,11 @@ final class AppModel {
 
     func select(_ item: SidebarItem) {
         sidebar = item
+        switch item {
+        case .favorites: expandedSections.insert("favorites")
+        case .recent: expandedSections.insert("recent")
+        case .category(let c): expandedSections.insert(c.rawValue)
+        }
         switch item {
         case .recent, .favorites: route = .home
         case .category(let c): route = .category(c)

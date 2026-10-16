@@ -20,7 +20,7 @@ final class WindowController: NSObject, NSWindowDelegate {
             window.titlebarAppearsTransparent = true
             window.toolbarStyle = .unified
             window.isReleasedWhenClosed = false
-            window.minSize = NSSize(width: 1000, height: 580)
+            window.minSize = NSSize(width: 860, height: 580)
             let host = NSHostingController(rootView: MainView().environment(AppModel.shared))
             // Let the window keep its own size instead of shrinking to the content's minimum.
             host.sizingOptions = []

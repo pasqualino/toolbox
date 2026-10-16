@@ -52,6 +52,11 @@ enum Snapshot {
                     AppModel.shared.switchMember(from: AppModel.shared.session(for: tool), to: other)
                     print("switched to \(AppModel.shared.currentTool?.id ?? "-") text=\(AppModel.shared.currentSession?.text ?? "")")
                 }
+                if env["TOOLBOX_HEALTH"] == "1" {
+                    NetworkHealthModel.shared.run()
+                    try? await Task.sleep(for: .milliseconds(200))
+                    while NetworkHealthModel.shared.running { try? await Task.sleep(for: .milliseconds(100)) }
+                }
                 if env["TOOLBOX_REWRITE"] == "1" {
                     let session = AppModel.shared.session(for: tool)
                     let rewrite = AppModel.shared.rewrite

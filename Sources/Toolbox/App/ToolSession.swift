@@ -265,7 +265,6 @@ final class ToolSession {
             self.phase = result.cancelled && result.outputs.isEmpty ? .idle : .finished
             self.finishedAt = Date()
             if result.cancelled { self.resetStatuses() }
-            if tool.keepsSpeedHistory, !self.resultText.isEmpty { SpeedHistory.add(self.resultText) }
             if !result.outputs.isEmpty || !self.resultText.isEmpty {
                 History.record(tool.id)
                 if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), let folder = result.folder {
@@ -467,33 +466,6 @@ enum History {
         var boost: [String: Double] = [:]
         for (index, id) in ids.enumerated() where boost[id] == nil { boost[id] = Double(12 - index) / 12 }
         return boost
-    }
-}
-
-/// Past Network Speed Test reports, newest first. Read from UserDefaults once, then kept in memory.
-@MainActor
-enum SpeedHistory {
-    struct Entry: Codable, Hashable {
-        let date: Date
-        let report: String
-    }
-
-    static let key = "speedHistory"
-
-    private static var cached: [Entry]?
-
-    static var entries: [Entry] {
-        if let cached { return cached }
-        let data = UserDefaults.standard.data(forKey: key)
-        let decoded = data.flatMap { try? JSONDecoder().decode([Entry].self, from: $0) } ?? []
-        cached = decoded
-        return decoded
-    }
-
-    static func add(_ report: String) {
-        let list = Array(([Entry(date: Date(), report: report)] + entries).prefix(20))
-        cached = list
-        if let data = try? JSONEncoder().encode(list) { UserDefaults.standard.set(data, forKey: key) }
     }
 }
 
