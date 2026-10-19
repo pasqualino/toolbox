@@ -104,24 +104,19 @@ private struct ToolSidebar: View {
 
     @ViewBuilder
     private var pinned: some View {
-        @Bindable var model = model
         if !model.favoriteSections.isEmpty {
-            Section(isExpanded: model.expansion("favorites")) {
+            Disclosure(key: "favorites", title: "Favorites", symbol: "star.fill", tint: .yellow, shortcut: "⌘9") {
                 ForEach(model.favoriteSections[0].entries) { entry in
                     EntryRow(entry: entry)
                 }
                 .onMove { model.moveFavorites(from: $0, to: $1) }
-            } header: {
-                SectionLabel(title: "Favorites", symbol: "star.fill", tint: .yellow, shortcut: "⌘9")
             }
         }
         if !model.recentSections.isEmpty {
-            Section(isExpanded: model.expansion("recent")) {
+            Disclosure(key: "recent", title: "Recent", symbol: "clock.fill", tint: .gray, shortcut: "⌘0") {
                 ForEach(model.recentSections[0].entries.prefix(6)) { entry in
                     EntryRow(entry: entry, showStar: true)
                 }
-            } header: {
-                SectionLabel(title: "Recent", symbol: "clock.fill", tint: .gray, shortcut: "⌘0")
             }
         }
     }
@@ -144,50 +139,67 @@ private struct ToolSidebar: View {
     }
 }
 
-/// One category: a collapsible section with its tools; Developer keeps its sub-headings.
+/// One category as a disclosure row with its tools; Developer keeps small sub-headings.
 private struct CategorySection: View {
     let category: ToolCategory
-    @Environment(AppModel.self) private var model
 
     var body: some View {
-        Section(isExpanded: model.expansion(category.rawValue)) {
-            let sections = ToolRegistry.sections(in: category)
+        let sections = ToolRegistry.sections(in: category)
+        Disclosure(key: category.rawValue, title: category.title, symbol: category.symbol, tint: category.tint,
+                   shortcut: "⌘\(category.shortcutIndex)", count: ToolRegistry.entryCount(in: category)) {
             ForEach(sections) { section in
                 if let title = section.title, sections.count > 1 {
                     Text(title)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.tertiary)
-                        .padding(.top, 4)
+                        .padding(.top, 2)
                         .selectionDisabled()
                 }
                 ForEach(section.entries) { entry in
                     EntryRow(entry: entry, showStar: true)
                 }
             }
-        } header: {
-            SectionLabel(title: category.title, symbol: category.symbol, tint: category.tint,
-                         shortcut: "⌘\(category.shortcutIndex)", count: ToolRegistry.entryCount(in: category))
         }
     }
 }
 
-private struct SectionLabel: View {
+/// A full-size, collapsible sidebar row. A DisclosureGroup, not a Section header: section headers use the
+/// small grey header font and animate poorly when toggled. Clicking the label toggles it too.
+private struct Disclosure<Content: View>: View {
+    let key: String
     let title: String
     let symbol: String
     let tint: Color
     let shortcut: String
     var count: Int?
+    @ViewBuilder var content: Content
+
+    @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 7) {
-            ToolIcon(symbol: symbol, tint: tint, size: 16)
-            Text(title)
-            Spacer(minLength: 0)
-            if let count {
-                Text("\(count)").monospacedDigit().foregroundStyle(.tertiary)
+        let open = model.expansion(key)
+        DisclosureGroup(isExpanded: open) {
+            content
+        } label: {
+            HStack(spacing: 9) {
+                ToolIcon(symbol: symbol, tint: tint, size: 22)
+                Text(title).font(.body.weight(.medium))
+                Spacer(minLength: 0)
+                if let count {
+                    Text("\(count)")
+                        .font(.callout.monospacedDigit())
+                        .foregroundStyle(.tertiary)
+                }
             }
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) { open.wrappedValue.toggle() }
+            }
+            .help("\(title) (\(shortcut))")
         }
-        .help("\(title) (\(shortcut))")
+        .selectionDisabled()
     }
 }
 

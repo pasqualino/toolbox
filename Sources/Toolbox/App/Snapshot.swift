@@ -1,5 +1,6 @@
 #if TOOLBOX_DEBUG_HOOKS
 import AppKit
+import SwiftUI
 import ScreenCaptureKit
 import ToolboxCore
 
@@ -102,6 +103,16 @@ enum Snapshot {
                 window.makeFirstResponder(field)
                 for ch in typed { field.insertText(String(ch), replacementRange: field.selectedRange()) }
                 try? await Task.sleep(for: .milliseconds(300))
+            }
+            // TOOLBOX_TOGGLE=<section key>: expand it with animation and capture frames while it moves.
+            if let key = env["TOOLBOX_TOGGLE"], let window = WindowController.shared.mainWindow {
+                try? await Task.sleep(for: .seconds(1))
+                await save(window, to: out.appendingPathComponent("frame0.png"))
+                withAnimation(.snappy(duration: 0.22)) { AppModel.shared.expansion(key).wrappedValue.toggle() }
+                for i in 1...4 {
+                    try? await Task.sleep(for: .milliseconds(45))
+                    await save(window, to: out.appendingPathComponent("frame\(i).png"))
+                }
             }
             if let window = WindowController.shared.mainWindow {
                 await save(window, to: out.appendingPathComponent("main.png"))
