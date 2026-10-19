@@ -63,7 +63,7 @@ struct NetworkHealthView: View {
             .padding(.bottom, 14)
 
             ScrollView {
-                VStack(spacing: 14) {
+                VStack(spacing: 16) {
                     if let report = model.report {
                         VerdictCard(report: report, running: model.running, progress: model.progress)
                         ForEach(groups(report), id: \.0) { name, checks in

@@ -32,9 +32,10 @@ struct DropZone: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Image(systemName: targeted ? "arrow.down.circle.fill" : "plus.circle")
+            Image(systemName: targeted ? "arrow.down.circle.fill" : symbol)
                 .font(.system(size: 44, weight: .light))
-                .foregroundStyle(targeted ? tint : .secondary)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(tint)
                 .symbolEffect(.bounce, value: targeted)
                 .contentTransition(.symbolEffect(.replace))
             VStack(spacing: 4) {
@@ -74,11 +75,15 @@ struct DropZone: View {
                 .fill(targeted ? tint.opacity(0.08) : Color.primary.opacity(0.025))
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(targeted ? tint : Color.primary.opacity(0.15),
-                              style: StrokeStyle(lineWidth: targeted ? 2 : 1.5, dash: [7, 5]))
+            // Marching ants while files hover over the zone; still otherwise.
+            TimelineView(.animation(paused: !targeted || reduceMotion)) { context in
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(targeted ? tint : Color.primary.opacity(0.15),
+                                  style: StrokeStyle(lineWidth: targeted ? 2 : 1.5, dash: [7, 5],
+                                                     dashPhase: targeted && !reduceMotion ? dashPhase(context.date) : 0))
+            }
         }
-        .scaleEffect(targeted && !reduceMotion ? 1.01 : 1)
+        .scaleEffect(targeted && !reduceMotion ? 1.015 : 1)
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: targeted)
         .dropDestination(for: URL.self) { urls, _ in
             Task {
@@ -87,6 +92,23 @@ struct DropZone: View {
             }
             return true
         } isTargeted: { targeted = $0 }
+    }
+
+    /// One dash and gap (12 pt) every 0.6 s.
+    private func dashPhase(_ date: Date) -> CGFloat {
+        CGFloat(date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 0.6) / 0.6) * -12
+    }
+
+    /// The category's own symbol, so an empty tool still says what it works on.
+    private var symbol: String {
+        switch session.tool.category {
+        case .video: "film.stack"
+        case .audio: "waveform.circle"
+        case .images: "photo.stack"
+        case .pdf: session.tool.accepts.contains(.pdf) ? "doc.richtext" : "photo.stack"
+        case .mac: "app.dashed"
+        case .ai, .files, .developer: "doc.on.doc"
+        }
     }
 
     private var prompt: String {
@@ -112,6 +134,7 @@ struct FileList: View {
     let session: ToolSession
 
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: Set<InputItem.ID> = []
     @State private var targeted = false
 
@@ -122,6 +145,7 @@ struct FileList: View {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 8) {
                             Text(countLabel).font(.subheadline.weight(.semibold))
+                                .contentTransition(.numericText())
                             if session.tool.ordered {
                                 Text("Drag to reorder").font(.caption).foregroundStyle(.tertiary)
                             }
@@ -130,6 +154,7 @@ struct FileList: View {
                         Text("\(session.items.count) files").font(.subheadline.weight(.semibold))
                     }
                     .lineLimit(1)
+                    .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: session.items.count)
                     Spacer(minLength: 0)
                     Button {
                         model.chooseFiles(for: session)
@@ -151,18 +176,22 @@ struct FileList: View {
                     .help("Remove all files (⌘⇧⌫)")
                     .disabled(session.phase == .running)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.accessoryBar)
                 .labelStyle(.iconOnly)
                 .font(.callout)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.leading, 14)
+                .padding(.trailing, 8)
+                .frame(height: 36)
                 Divider()
                 let renamed = session.plan?.names ?? []
                 List(selection: $selection) {
                     ForEach(Array(session.items.enumerated()), id: \.element.id) { index, item in
                         FileRow(item: item, showIndex: session.tool.ordered ? index + 1 : nil,
-                                newName: renamed.indices.contains(index) ? renamed[index] : nil)
+                                newName: renamed.indices.contains(index) ? renamed[index] : nil,
+                                compare: { session.comparing = item.id })
                             .tag(item.id)
+                            .listRowSeparator(.hidden)
+                            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
                             .contextMenu { menu(for: item) }
                     }
                     .onMove(perform: session.tool.ordered && session.phase != .running ? { session.move(from: $0, to: $1) } : nil)
@@ -201,6 +230,9 @@ struct FileList: View {
 
     @ViewBuilder
     private func menu(for item: InputItem) -> some View {
+        if item.comparableOutput != nil {
+            Button("Compare Before and After") { session.comparing = item.id }
+        }
         if case .done(let outputs) = item.status, !outputs.isEmpty {
             Button("Open Result") { outputs.forEach { NSWorkspace.shared.open($0) } }
             Button("Show Result in Finder") { NSWorkspace.shared.activateFileViewerSelecting(outputs) }
@@ -228,6 +260,11 @@ private struct FileRow: View {
     var showIndex: Int?
     /// Batch Rename preview.
     var newName: String?
+    /// Shows before and after; offered once an image result is in.
+    var compare: () -> Void = {}
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -237,8 +274,9 @@ private struct FileRow: View {
                     .foregroundStyle(.tertiary)
                     .frame(width: 18)
             }
+            // The result's own thumbnail once there is one: the compressed poster frame, the merged PDF's first page.
             Group {
-                if let thumb = item.thumbnail {
+                if let thumb = item.outputThumbnail ?? item.thumbnail {
                     Image(nsImage: thumb)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -248,6 +286,9 @@ private struct FileRow: View {
             }
             .frame(width: 34, height: 34)
             .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .id(item.outputThumbnail == nil)
+            .transition(.opacity)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: item.outputThumbnail == nil)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
@@ -256,9 +297,25 @@ private struct FileRow: View {
                 detail
             }
             Spacer(minLength: 8)
+            if item.comparableOutput != nil {
+                Button(action: compare) {
+                    Label("Compare", systemImage: "square.split.2x1")
+                }
+                .buttonStyle(.accessoryBar)
+                .font(.caption)
+                .help("Compare before and after")
+                .transition(.opacity)
+            }
             status
         }
         .padding(.vertical, 3)
+        .background {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Color.primary.opacity(hovering ? 0.04 : 0))
+                .padding(.horizontal, -6)
+        }
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
         .draggable(draggedURL)
         .task { item.loadThumbnail() }
     }
@@ -294,6 +351,9 @@ private struct FileRow: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(item.outputSize < item.size ? .green : .orange)
                 }
+                if let duration = item.outputDuration {
+                    Text("· \(duration)").monospacedDigit()
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -318,25 +378,44 @@ private struct FileRow: View {
         }
     }
 
-    @ViewBuilder
     private var status: some View {
-        switch item.status {
-        case .pending:
-            EmptyView()
-        case .running(let p):
-            ProgressView(value: p)
-                .progressViewStyle(.circular)
-                .controlSize(.small)
-        case .done:
+        ItemStatusMark(status: item.status)
+    }
+}
+
+/// Spinner while running, then a check that bounces once, or a red mark.
+/// The check stays in the tree (hidden) so the bounce fires on the change to done, not on every row reuse.
+struct ItemStatusMark: View {
+    let status: InputItem.Status
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var done: Bool {
+        if case .done = status { return true }
+        return false
+    }
+
+    var body: some View {
+        ZStack {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(.green)
                 .font(.system(size: 16))
-                .transition(.scale.combined(with: .opacity))
-        case .failed:
-            Image(systemName: "exclamationmark.circle.fill")
-                .foregroundStyle(.red)
-                .font(.system(size: 16))
+                .symbolEffect(.bounce, options: .nonRepeating, value: reduceMotion ? false : done)
+                .opacity(done ? 1 : 0)
+                .scaleEffect(done || reduceMotion ? 1 : 0.5)
+            switch status {
+            case .running(let p):
+                ProgressView(value: p)
+                    .progressViewStyle(.circular)
+                    .controlSize(.small)
+            case .failed:
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.red)
+                    .font(.system(size: 16))
+            case .pending, .done:
+                EmptyView()
+            }
         }
+        .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: done)
     }
 }
 
@@ -474,21 +553,15 @@ struct TextResult: View {
     var body: some View {
         Panel {
             VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Label("Result", systemImage: "text.alignleft")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
+                PaneHeader(title: "Result", symbol: "text.alignleft") {
                     if session.phase == .running {
                         ProgressView().controlSize(.small)
                     } else if !session.isTextResult {
                         // Text-only results have Copy and Save As in the bottom bar.
                         CopyButton(text: session.resultText, flash: 1.5)
-                            .buttonStyle(.borderless)
                             .keyboardShortcut("c", modifiers: [.command, .shift])
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
                 Divider()
                 // Reports ("Label  value" rows) read as a table; anything else stays selectable plain text.
                 if session.phase != .running, ReportView.looksLikeReport(session.resultText) {
@@ -500,7 +573,7 @@ struct TextResult: View {
                 }
             }
         }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .opacity))
     }
 }
 
@@ -513,7 +586,7 @@ struct FileStrip: View {
         if let item = session.items.first {
             HStack(spacing: 10) {
                 Group {
-                    if let thumb = item.thumbnail {
+                    if let thumb = item.outputThumbnail ?? item.thumbnail {
                         Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fit)
                     } else {
                         RoundedRectangle(cornerRadius: 4).fill(.quaternary)
@@ -532,17 +605,27 @@ struct FileStrip: View {
                 }
                 Spacer()
                 ItemStatusView(item: item)
+                if item.comparableOutput != nil {
+                    Button {
+                        session.comparing = item.id
+                    } label: {
+                        Label("Compare", systemImage: "square.split.2x1")
+                    }
+                    .help("Compare before and after")
+                    .fixedSize()
+                }
                 Button {
                     session.clear()
                     model.focusToken += 1
                 } label: {
                     Label("Remove", systemImage: "xmark")
                 }
-                .buttonStyle(.borderless)
                 .fixedSize()
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .buttonStyle(.accessoryBar)
+            .padding(.leading, 14)
+            .padding(.trailing, 8)
+            .padding(.vertical, 8)
             .draggable(item.url)
             .task(id: item.id) { item.loadThumbnail() }
         }
@@ -553,16 +636,11 @@ struct ItemStatusView: View {
     let item: InputItem
 
     var body: some View {
-        switch item.status {
-        case .pending:
-            EmptyView()
-        case .running(let p):
-            ProgressView(value: p).progressViewStyle(.circular).controlSize(.small)
-        case .done:
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).font(.system(size: 16))
-        case .failed(let message):
+        if case .failed(let message) = item.status {
             Label(message, systemImage: "exclamationmark.circle.fill")
                 .foregroundStyle(.red).font(.caption).lineLimit(2)
+        } else {
+            ItemStatusMark(status: item.status)
         }
     }
 }

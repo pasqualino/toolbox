@@ -4,6 +4,7 @@ import ToolboxCore
 /// Two columns: one collapsible sidebar (Favorites, Recent, then each category as a section), and the tool.
 struct MainView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -12,8 +13,12 @@ struct MainView: View {
             ToolSidebar()
                 .navigationSplitViewColumnWidth(min: 210, ideal: 250, max: 340)
         } detail: {
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // A quick crossfade between tools and pages.
+            ZStack {
+                detail
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: model.route)
         }
         .frame(minWidth: 860, minHeight: 580)
         .toolbar {
@@ -43,8 +48,12 @@ struct MainView: View {
             }
         case .category(let category):
             ToolGrid(title: category.title, categories: [category])
+                .id(model.route)
+                .transition(.opacity)
         case .home:
             ToolGrid(title: "All Tools", categories: ToolCategory.allCases)
+                .id(model.route)
+                .transition(.opacity)
         }
     }
 }

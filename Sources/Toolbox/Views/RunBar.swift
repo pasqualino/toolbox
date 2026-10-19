@@ -6,6 +6,7 @@ import ToolboxCore
 struct RunBar: View {
     let session: ToolSession
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var tint: Color { session.tool.tint }
 
@@ -18,20 +19,58 @@ struct RunBar: View {
                         Rectangle()
                             .fill(tint)
                             .frame(width: geo.size.width * max(session.progress, 0.02), height: 2)
-                            .animation(.linear(duration: 0.2), value: session.progress)
                     }
                     .frame(height: 2)
+                    .transition(.opacity)
                 }
             }
             HStack(spacing: 12) {
                 statusView
-                Spacer()
-                actions
+                Spacer(minLength: 12)
+                if session.phase == .finished, let savings {
+                    // Hidden rather than squeezed when the window is narrow.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 0) {
+                            SavingsBar(before: savings.before, after: savings.after)
+                            Spacer(minLength: 12)
+                        }
+                        HStack(spacing: 0) {
+                            SavingsBar(before: savings.before, after: savings.after, compact: true)
+                            Spacer(minLength: 12)
+                        }
+                        Color.clear.frame(width: 0, height: 0)
+                    }
+                }
+                HStack(spacing: 12) { actions }
+                    .fixedSize()
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
         }
+        .background {
+            // A faint wash of the tool's color fills the bar as the run progresses.
+            GeometryReader { geo in
+                Rectangle()
+                    .fill(tint.opacity(session.phase == .running ? 0.07 : 0))
+                    .frame(width: geo.size.width * (session.phase == .running ? max(session.progress, 0.02) : 0))
+            }
+        }
         .background(.bar)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.35), value: session.progress)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: session.phase)
+    }
+
+    /// Total size in and out over the files whose result is the same kind (image to image, video to video).
+    private var savings: (before: Int64, after: Int64)? {
+        var before: Int64 = 0, after: Int64 = 0
+        for item in session.items {
+            guard case .done(let outputs) = item.status, outputs.count == 1, Format.sameKind(item.url, outputs[0]) else { continue }
+            before += item.size
+            after += item.outputSize
+        }
+        // More than double is a tool that adds (Beautify, Remove Background), not one about size; the rows say it.
+        guard before > 0, after > 0, after <= before * 2 else { return nil }
+        return (before, after)
     }
 
     @ViewBuilder
@@ -54,7 +93,10 @@ struct RunBar: View {
         case .running:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(runningText).foregroundStyle(.secondary).monospacedDigit()
+                Text(runningText)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
             }
         case .finished:
             finishedStatus
@@ -99,12 +141,12 @@ struct RunBar: View {
         if let result = session.result {
             let failed = result.failures
             HStack(spacing: 8) {
-                Image(systemName: failed == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(failed == 0 ? .green : .orange)
-                    .font(.system(size: 16))
+                FinishedMark(ok: failed == 0)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(summary(result))
                         .fontWeight(.medium)
+                        .lineLimit(1)
+                        .fixedSize()
                     if let folder = result.folder {
                         Button {
                             NSWorkspace.shared.activateFileViewerSelecting(result.outputs.isEmpty ? [folder] : result.outputs)
@@ -293,5 +335,96 @@ enum SystemPane {
             return URL(string: "x-apple.systempreferences:com.apple.Siri-Settings.extension")
         }
         return nil
+    }
+}
+
+/// Status icon of a finished run. Bounces once as it appears.
+private struct FinishedMark: View {
+    let ok: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var bounce = 0
+
+    var body: some View {
+        Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+            .foregroundStyle(ok ? .green : .orange)
+            .font(.system(size: 18))
+            .symbolEffect(.bounce, value: bounce)
+            .task {
+                guard !reduceMotion else { return }
+                try? await Task.sleep(for: .milliseconds(80))
+                bounce += 1
+            }
+    }
+}
+
+/// "4.0 MB → 2.7 MB · 33% smaller" over a bar: the track is the input, the fill the output.
+struct SavingsBar: View {
+    let before: Int64
+    let after: Int64
+    /// Just "33% smaller", for narrow windows.
+    var compact = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
+
+    private var smaller: Bool { after <= before }
+    private var color: Color { smaller ? .green : .orange }
+
+    private var change: String {
+        let percent = Int((abs(Double(after - before)) / Double(before) * 100).rounded())
+        if percent == 0 { return "same size" }
+        return smaller ? "\(percent)% smaller" : "\(percent)% bigger"
+    }
+
+    var body: some View {
+        if compact {
+            Badge(text: change, tint: color)
+                .help("\(Format.bytes(before)) → \(Format.bytes(after))")
+        } else {
+            bar
+        }
+    }
+
+    private var bar: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 4) {
+                Text("\(Format.bytes(before)) → \(Format.bytes(after))")
+                    .foregroundStyle(.secondary)
+                Text("·").foregroundStyle(.tertiary)
+                Text(change)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(color)
+            }
+            .font(.caption)
+            .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
+            GeometryReader { geo in
+                let ratio = CGFloat(after) / CGFloat(max(before, 1))
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.09))
+                    Capsule()
+                        .fill(LinearGradient(colors: [color.opacity(0.75), color], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: geo.size.width * (shown ? min(ratio, 1) : 0))
+                    if !smaller {
+                        // Where the input ended: the part past it is growth.
+                        Rectangle()
+                            .fill(Color.primary.opacity(0.5))
+                            .frame(width: 1.5, height: 10)
+                            .offset(x: geo.size.width / ratio - 0.75)
+                    }
+                }
+            }
+            .frame(height: 6)
+        }
+        .frame(minWidth: 150, idealWidth: 190, maxWidth: 260)
+        .help("Total size of the originals and the results")
+        .onAppear {
+            if reduceMotion {
+                shown = true
+            } else {
+                withAnimation(.smooth(duration: 0.6).delay(0.1)) { shown = true }
+            }
+        }
     }
 }

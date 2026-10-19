@@ -26,7 +26,7 @@ struct ToolGrid: View {
                     }
                 }
             }
-            .padding(28)
+            .padding(24)
             .frame(maxWidth: 1100, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
@@ -54,7 +54,10 @@ struct ToolGrid: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .center, spacing: 14) {
+            if categories.count == 1 {
+                ToolIcon(symbol: categories[0].symbol, tint: categories[0].tint, size: 46)
+            }
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 28, weight: .bold))
@@ -62,6 +65,16 @@ struct ToolGrid: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if categories.count > 1 {
+                // One tile per category, overlapping a little.
+                HStack(spacing: -5) {
+                    ForEach(categories) { category in
+                        ToolIcon(symbol: category.symbol, tint: category.tint, size: 26)
+                    }
+                }
+                .padding(.trailing, 6)
+                .accessibilityHidden(true)
+            }
             Button {
                 WindowController.shared.showPalette()
             } label: {
@@ -70,6 +83,18 @@ struct ToolGrid: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
             .help("Find Tool (⌘K)")
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .background {
+            // A faint wash of the page's colors.
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(LinearGradient(colors: categories.map { $0.tint.opacity(0.11) } + (categories.count == 1 ? [categories[0].tint.opacity(0.03)] : []),
+                                     startPoint: .leading, endPoint: .trailing))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
         }
     }
 

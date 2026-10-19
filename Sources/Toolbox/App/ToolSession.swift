@@ -1,7 +1,9 @@
 import AppKit
+import AVFoundation
 import QuickLookThumbnailing
 import SwiftUI
 import ToolboxCore
+import UniformTypeIdentifiers
 
 /// One dropped file and how its run went.
 @Observable
@@ -20,6 +22,10 @@ final class InputItem: Identifiable {
     var thumbnail: NSImage?
     var status: Status = .pending
     var outputSize: Int64 = 0
+    /// The result's thumbnail (poster frame, first page), shown in place of the original's once done.
+    var outputThumbnail: NSImage?
+    /// "0:42" for video and audio results.
+    var outputDuration: String?
 
     init(url: URL, size: Int64) {
         self.url = url
@@ -30,6 +36,34 @@ final class InputItem: Identifiable {
     func loadThumbnail() {
         guard thumbnail == nil else { return }
         Thumbnails.load(for: url, size: 96) { self.thumbnail = $0 }
+    }
+
+    /// Loads the result's thumbnail and, for media, its duration. Called once the run has delivered the file.
+    func loadOutputPreview() {
+        guard case .done(let outputs) = status, outputs.count == 1, let output = outputs.first,
+              let type = UTType(filenameExtension: output.pathExtension) else { return }
+        if [.image, .movie, .pdf].contains(where: type.conforms(to:)) {
+            Thumbnails.load(for: output, size: 96) { image in
+                // A new run may have started meanwhile.
+                if case .done(let now) = self.status, now == outputs { self.outputThumbnail = image }
+            }
+        }
+        if type.conforms(to: .movie) || type.conforms(to: .audio) {
+            Task { @MainActor in
+                guard let duration = try? await AVURLAsset(url: output).load(.duration), duration.seconds.isFinite,
+                      case .done(let now) = self.status, now == outputs else { return }
+                self.outputDuration = Duration.seconds(duration.seconds.rounded())
+                    .formatted(.time(pattern: duration.seconds >= 3600 ? .hourMinuteSecond : .minuteSecond))
+            }
+        }
+    }
+
+    /// One image in, one image out: the run can be shown as before and after.
+    var comparableOutput: URL? {
+        guard case .done(let outputs) = status, outputs.count == 1,
+              let a = UTType(filenameExtension: url.pathExtension), let b = UTType(filenameExtension: outputs[0].pathExtension),
+              a.conforms(to: .image), b.conforms(to: .image) else { return nil }
+        return outputs[0]
     }
 
     var name: String { url.lastPathComponent }
@@ -73,6 +107,8 @@ final class ToolSession {
     var batchProgress: Double = 0
     var result: RunResult?
     var resultText = ""
+    /// The finished item shown as before and after in place of the file list.
+    var comparing: InputItem.ID?
     /// Text per input item, joined into `resultText` in input order.
     private var texts: [String?] = []
     /// Set while a burst of text events is being coalesced; `textsDirty` says a join is still owed.
@@ -121,6 +157,7 @@ final class ToolSession {
 
     func remove(_ ids: Set<InputItem.ID>) {
         items.removeAll { ids.contains($0.id) }
+        if let comparing, ids.contains(comparing) { self.comparing = nil }
         if items.isEmpty { resetResults() }
         updatePlan()
     }
@@ -260,6 +297,7 @@ final class ToolSession {
                     let delivered = outputs.compactMap { deliveredByName[$0.lastPathComponent] }
                     item.status = .done(delivered.isEmpty ? outputs : delivered)
                     item.outputSize = (delivered.isEmpty ? outputs : delivered).reduce(0) { $0 + Format.fileSize($1) }
+                    item.loadOutputPreview()
                 }
             }
             self.phase = result.cancelled && result.outputs.isEmpty ? .idle : .finished
@@ -360,6 +398,7 @@ final class ToolSession {
         textsDirty = false
         runError = nil
         batchProgress = 0
+        comparing = nil
         phase = .idle
         resetStatuses()
     }
@@ -368,6 +407,8 @@ final class ToolSession {
         for item in items {
             item.status = .pending
             item.outputSize = 0
+            item.outputThumbnail = nil
+            item.outputDuration = nil
         }
     }
 

@@ -20,7 +20,7 @@ struct OptionsPanel: View {
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .frame(height: 36)
                 Divider()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {

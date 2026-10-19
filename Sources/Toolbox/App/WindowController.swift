@@ -83,7 +83,7 @@ final class WindowController: NSObject, NSWindowDelegate {
     // MARK: Palette
 
     func togglePalette() {
-        if let palette, palette.isVisible {
+        if let palette, palette.isPresented {
             hidePalette()
         } else {
             showPalette()

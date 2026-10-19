@@ -118,7 +118,7 @@ struct RewriteView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 12)
 
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 16) {
                 draftPane
                 resultPane
             }

@@ -7,6 +7,7 @@ struct TextToolView: View {
     let session: ToolSession
 
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var output = ""
     @State private var error: String?
     @State private var computing = false
@@ -62,7 +63,7 @@ struct TextToolView: View {
                     .padding(.bottom, 12)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 if !isGenerator {
                     inputPane
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -144,7 +145,7 @@ struct TextToolView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
-                .animation(.snappy(duration: 0.18), value: error)
+                .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: error)
             }
         }
     }
@@ -156,6 +157,8 @@ struct TextToolView: View {
                 Text(stats ?? Self.stats(isGenerator ? output : session.text, generator: isGenerator))
                     .font(.callout.monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
+                    .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: stats)
                 Spacer()
                 CopyButton(text: error == nil ? output : "", title: "Copy Output", prominent: tool.tint,
                            showsReturn: true, minWidth: 130) { History.record(tool.id) }
@@ -285,9 +288,10 @@ struct PaneHeader<Actions: View>: View {
             Spacer()
             actions
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.accessoryBar)
         .font(.callout)
-        .padding(.horizontal, 14)
+        .padding(.leading, 14)
+        .padding(.trailing, 8)
         .frame(height: 36)
     }
 }

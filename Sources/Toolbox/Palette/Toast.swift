@@ -35,8 +35,16 @@ enum Toast {
             panel.setFrame(NSRect(x: frame.midX - size.width / 2, y: frame.minY + frame.height * 0.18,
                                   width: size.width, height: size.height), display: true)
         }
-        panel.alphaValue = 1
+        // Fade in when it wasn't already showing; a replacement toast swaps in place.
+        let wasVisible = panel.isVisible && panel.alphaValue > 0.5
+        panel.alphaValue = wasVisible ? 1 : 0
         panel.orderFrontRegardless()
+        if !wasVisible {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.15
+                panel.animator().alphaValue = 1
+            }
+        }
 
         hideTask?.cancel()
         hideTask = Task {

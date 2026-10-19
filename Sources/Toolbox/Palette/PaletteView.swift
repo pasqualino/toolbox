@@ -10,6 +10,8 @@ final class PaletteState {
     var text: String?
     var selection = 0
     var focusToken = 0
+    /// Drives the card's scale and fade; the panel orders out once it has faded.
+    var shown = false
 
     func reset(files: [URL]) {
         query = ""
@@ -35,12 +37,15 @@ struct PaletteView: View {
 
         VStack(spacing: 0) {
             card(results)
+                .scaleEffect(state.shown || reduceMotion ? 1 : 0.97, anchor: .top)
+                .opacity(state.shown ? 1 : 0)
             Spacer(minLength: 0)
         }
         .padding(PalettePanel.shadowInset)
         .onChange(of: state.focusToken, initial: true) { fieldFocused = true }
         .onChange(of: state.query) { state.selection = 0 }
         .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: state.files)
+        .animation(.easeOut(duration: PalettePanel.fade), value: state.shown)
     }
 
     private func card(_ results: [Tool]) -> some View {
@@ -166,6 +171,7 @@ struct PaletteView: View {
                 }
                 .scrollIndicators(.never)
                 .frame(height: min(CGFloat(results.count) * PaletteRow.height + 16, 440))
+                .animation(reduceMotion ? nil : .snappy(duration: 0.15), value: results.map(\.id))
                 .onChange(of: state.selection) { _, new in
                     if results.indices.contains(new) { proxy.scrollTo(results[new].id) }
                 }

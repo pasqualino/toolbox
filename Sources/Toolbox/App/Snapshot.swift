@@ -90,6 +90,10 @@ enum Snapshot {
                         try? await Task.sleep(for: .milliseconds(100))
                     }
                 }
+                // TOOLBOX_COMPARE=1 opens before and after for the first finished image.
+                if env["TOOLBOX_COMPARE"] == "1", let session = AppModel.shared.currentSession {
+                    session.comparing = session.items.first { $0.comparableOutput != nil }?.id
+                }
             }
             try? await Task.sleep(for: .seconds(1.5))
             // Simulate typing into the first editable text view, as the keyboard would.

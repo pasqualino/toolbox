@@ -52,6 +52,8 @@ struct ToolView: View {
             }
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: session.items.count)
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: session.phase)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: session.comparing)
+            .animation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.15), value: session.resultText.isEmpty)
             .navigationTitle(tool.name)
         }
     }
@@ -81,9 +83,13 @@ private struct InputArea: View {
     var body: some View {
         switch session.tool.inputKind {
         case .files:
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 if session.items.isEmpty {
                     DropZone(session: session)
+                } else if let id = session.comparing, let item = session.items.first(where: { $0.id == id }),
+                          let output = item.comparableOutput {
+                    CompareView(session: session, item: item, output: output)
+                        .transition(.opacity)
                 } else if session.tool.preview != nil {
                     PreviewArea(session: session)
                 } else if let editor = session.primaryEditor, let first = session.items.first {
@@ -99,7 +105,7 @@ private struct InputArea: View {
                 }
             }
         case .url:
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 LinkInput(session: session)
                 if !session.items.isEmpty || session.result != nil {
                     ResultFiles(session: session)
@@ -111,14 +117,14 @@ private struct InputArea: View {
         case .action:
             ActionArea(session: session)
         case .textOrFiles where session.tool.preview != nil:
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
                 TextEntry(session: session)
                     .frame(maxWidth: .infinity)
                 Panel { PreviewPane(session: session) }
                     .frame(maxWidth: .infinity)
             }
         case .textOrFiles:
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 TextEntry(session: session)
                 if !session.resultText.isEmpty || session.phase == .running {
                     TextResult(session: session)
