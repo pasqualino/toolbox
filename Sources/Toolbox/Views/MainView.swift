@@ -191,7 +191,7 @@ private struct ToolSidebar: View {
     private func left(_ proxy: ScrollViewProxy) {
         switch cursor {
         case .header(let key) where model.expandedSections.contains(key):
-            withAnimation(.snappy(duration: 0.25)) { model.expandedSections.remove(key) }
+            withAnimation(.snappy(duration: 0.25)) { _ = model.expandedSections.remove(key) }
         case .row(let section, _) where section != "search":
             cursor = .header(section)
             reveal(proxy)
