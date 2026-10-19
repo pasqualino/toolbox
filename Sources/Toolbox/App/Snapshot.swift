@@ -129,6 +129,26 @@ enum Snapshot {
                     await save(window, to: out.appendingPathComponent("frame\(i).png"))
                 }
             }
+            // TOOLBOX_KEYS=down,down,right,return…: focus the sidebar and send those key presses.
+            if let keys = env["TOOLBOX_KEYS"], let window = WindowController.shared.mainWindow {
+                AppModel.shared.sidebarFocusToken += 1
+                try? await Task.sleep(for: .milliseconds(400))
+                let codes: [String: (UInt16, String)] = ["down": (125, "\u{F701}"), "up": (126, "\u{F700}"),
+                                                         "left": (123, "\u{F702}"), "right": (124, "\u{F703}"),
+                                                         "return": (36, "\r")]
+                for key in keys.split(separator: ",").map(String.init) {
+                    guard let (code, chars) = codes[key] else { continue }
+                    for type in [NSEvent.EventType.keyDown, .keyUp] {
+                        if let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: 0,
+                                                        windowNumber: window.windowNumber, context: nil, characters: chars,
+                                                        charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
+                            window.sendEvent(event)
+                        }
+                    }
+                    try? await Task.sleep(for: .milliseconds(350))
+                }
+                print("route: \(AppModel.shared.route) expanded: \(AppModel.shared.expandedSections.sorted())")
+            }
             if let window = WindowController.shared.mainWindow {
                 await save(window, to: out.appendingPathComponent("main.png"))
             }

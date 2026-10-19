@@ -66,6 +66,11 @@ struct AppCommands: Commands {
                 .keyboardShortcut("o")
         }
         CommandGroup(after: .newItem) {
+            Button("Focus Sidebar") {
+                WindowController.shared.showMain()
+                AppModel.shared.sidebarFocusToken += 1
+            }
+            .keyboardShortcut("s", modifiers: [.command, .option])
             Button("Search Tools") {
                 WindowController.shared.showMain()
                 AppModel.shared.searchFocusToken += 1

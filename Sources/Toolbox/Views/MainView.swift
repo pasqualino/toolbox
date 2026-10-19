@@ -58,11 +58,35 @@ struct MainView: View {
     }
 }
 
+/// The sidebar's keyboard cursor: a section header, or a tool row inside a section. Rows carry their section
+/// because the same tool can show twice (Recent and its category).
+enum SidebarCursor: Hashable {
+    case header(String)
+    case row(section: String, entry: String)
+
+    /// Scroll id of the row or header this points at.
+    var scrollID: String {
+        switch self {
+        case .header(let key): "header/\(key)"
+        case .row(let section, let entry): "\(section)/\(entry)"
+        }
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var sidebarCursor: SidebarCursor? = nil
+    @Entry var sidebarFocused = false
+    /// Moves the cursor to a row or header the user clicked, and gives the sidebar keyboard focus.
+    @Entry var moveSidebarCursor: (SidebarCursor) -> Void = { _ in }
+}
+
 /// The sidebar. Each category is an accordion that remembers whether it's open; searching shows every match.
 /// Built on a ScrollView instead of List: List's outline animation draws newly shown rows over the rows above
 /// while they slide, and offers no way to change that. Here children reveal from under their header.
 private struct ToolSidebar: View {
     @Environment(AppModel.self) private var model
+    @State private var cursor: SidebarCursor?
+    @FocusState private var focused: Bool
 
     private var searching: Bool { !model.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -90,16 +114,117 @@ private struct ToolSidebar: View {
                 .padding(.vertical, 6)
             }
             .scrollEdgeEffectStyle(.hard, for: .top)
+            // Keyboard: up/down move, left collapses (or goes to the header), right expands (or goes in),
+            // Return opens a tool or toggles a header.
+            .focusable()
+            .focusEffectDisabled()
+            .focused($focused)
+            .onKeyPress(.downArrow) { move(1, proxy); return .handled }
+            .onKeyPress(.upArrow) { move(-1, proxy); return .handled }
+            .onKeyPress(.leftArrow) { left(proxy); return .handled }
+            .onKeyPress(.rightArrow) { right(proxy); return .handled }
+            .onKeyPress(.return) { activate(); return .handled }
+            .onChange(of: focused) { _, isFocused in
+                // Entering the sidebar starts at the open tool, or the first item.
+                if isFocused, cursor == nil || !visibleItems.contains(cursor!) {
+                    cursor = selectedCursor ?? visibleItems.first
+                }
+            }
+            .onChange(of: model.searchQuery) { cursor = nil }
+            .onChange(of: model.sidebarFocusToken) { focused = true }
+            .environment(\.sidebarCursor, cursor)
+            .environment(\.sidebarFocused, focused)
+            .environment(\.moveSidebarCursor) { target in
+                cursor = target
+                focused = true
+            }
             // Keep the opened tool in view (palette, search, cards all open tools from elsewhere).
             .onChange(of: model.route, initial: true) {
-                if let id = selectedID {
+                if let target = selectedCursor {
+                    cursor = target
                     Task { @MainActor in
                         try? await Task.sleep(for: .milliseconds(250))
-                        withAnimation(.snappy(duration: 0.2)) { proxy.scrollTo(id, anchor: .center) }
+                        withAnimation(.snappy(duration: 0.2)) { proxy.scrollTo(target.scrollID, anchor: .center) }
                     }
                 }
             }
         }
+    }
+
+    // MARK: Keyboard
+
+    /// Headers and rows in the order they appear, skipping rows of collapsed sections.
+    private var visibleItems: [SidebarCursor] {
+        if searching {
+            return model.searchSections.flatMap { $0.entries.map { .row(section: "search", entry: $0.id) } }
+        }
+        var items: [SidebarCursor] = []
+        func add(_ key: String, _ entries: [ToolEntry]) {
+            items.append(.header(key))
+            if model.expandedSections.contains(key) {
+                items += entries.map { .row(section: key, entry: $0.id) }
+            }
+        }
+        if let favorites = model.favoriteSections.first { add("favorites", favorites.entries) }
+        if let recent = model.recentSections.first { add("recent", Array(recent.entries.prefix(6))) }
+        for category in ToolCategory.allCases {
+            add(category.rawValue, ToolRegistry.sections(in: category).flatMap(\.entries))
+        }
+        return items
+    }
+
+    /// The open tool's row in its category (or in search results).
+    private var selectedCursor: SidebarCursor? {
+        guard let id = selectedID, case .tool(let toolID) = model.route, let tool = ToolRegistry.tool(id: toolID) else { return nil }
+        let candidate: SidebarCursor = .row(section: searching ? "search" : tool.category.rawValue, entry: id)
+        return visibleItems.contains(candidate) ? candidate : nil
+    }
+
+    private func move(_ delta: Int, _ proxy: ScrollViewProxy) {
+        let items = visibleItems
+        guard !items.isEmpty else { return }
+        let index = cursor.flatMap { items.firstIndex(of: $0) } ?? (delta > 0 ? -1 : items.count)
+        cursor = items[min(max(index + delta, 0), items.count - 1)]
+        reveal(proxy)
+    }
+
+    private func left(_ proxy: ScrollViewProxy) {
+        switch cursor {
+        case .header(let key) where model.expandedSections.contains(key):
+            withAnimation(.snappy(duration: 0.25)) { model.expandedSections.remove(key) }
+        case .row(let section, _) where section != "search":
+            cursor = .header(section)
+            reveal(proxy)
+        default:
+            break
+        }
+    }
+
+    private func right(_ proxy: ScrollViewProxy) {
+        guard case .header(let key) = cursor else { return }
+        if model.expandedSections.contains(key) {
+            move(1, proxy)
+        } else {
+            withAnimation(.snappy(duration: 0.25)) { _ = model.expandedSections.insert(key) }
+        }
+    }
+
+    private func activate() {
+        switch cursor {
+        case .header(let key):
+            withAnimation(.snappy(duration: 0.25)) { model.expansion(key).wrappedValue.toggle() }
+        case .row(_, let entryID):
+            guard let entry = ToolRegistry.entry(id: entryID),
+                  let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
+            model.open(tool)
+        case nil:
+            break
+        }
+    }
+
+    private func reveal(_ proxy: ScrollViewProxy) {
+        guard let cursor else { return }
+        proxy.scrollTo(cursor.scrollID)
     }
 
     @ViewBuilder
@@ -107,7 +232,7 @@ private struct ToolSidebar: View {
         if let favorites = model.favoriteSections.first {
             Accordion(key: "favorites", title: "Favorites", symbol: "star.fill", tint: .yellow, shortcut: "⌘9") {
                 ForEach(Array(favorites.entries.enumerated()), id: \.element.id) { index, entry in
-                    EntryRow(entry: entry, selected: entry.id == selectedID, favoriteIndex: index,
+                    EntryRow(entry: entry, section: "favorites", selected: entry.id == selectedID, favoriteIndex: index,
                              favoriteCount: favorites.entries.count)
                 }
             }
@@ -115,7 +240,7 @@ private struct ToolSidebar: View {
         if let recent = model.recentSections.first {
             Accordion(key: "recent", title: "Recent", symbol: "clock.fill", tint: .gray, shortcut: "⌘0") {
                 ForEach(recent.entries.prefix(6)) { entry in
-                    EntryRow(entry: entry, selected: entry.id == selectedID, showStar: true)
+                    EntryRow(entry: entry, section: "recent", selected: entry.id == selectedID, showStar: true)
                 }
             }
         }
@@ -133,7 +258,7 @@ private struct ToolSidebar: View {
         ForEach(sections) { section in
             if let title = section.title { SubHeading(title: title) }
             ForEach(section.entries) { entry in
-                EntryRow(entry: entry, selected: entry.id == selectedID, showGroup: true)
+                EntryRow(entry: entry, section: "search", selected: entry.id == selectedID, showGroup: true)
             }
         }
     }
@@ -151,7 +276,7 @@ private struct CategorySection: View {
             ForEach(sections) { section in
                 if let title = section.title, sections.count > 1 { SubHeading(title: title) }
                 ForEach(section.entries) { entry in
-                    EntryRow(entry: entry, selected: entry.id == selectedID, showStar: true)
+                    EntryRow(entry: entry, section: category.rawValue, selected: entry.id == selectedID, showStar: true)
                 }
             }
         }
@@ -184,6 +309,9 @@ private struct Accordion<Content: View>: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.sidebarCursor) private var cursor
+    @Environment(\.sidebarFocused) private var sidebarFocused
+    @Environment(\.moveSidebarCursor) private var moveCursor
     @State private var hovering = false
     @State private var contentHeight: CGFloat = 0
 
@@ -191,6 +319,7 @@ private struct Accordion<Content: View>: View {
         let open = model.expansion(key)
         VStack(alignment: .leading, spacing: 1) {
             Button {
+                moveCursor(.header(key))
                 withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) { open.wrappedValue.toggle() }
             } label: {
                 HStack(spacing: 8) {
@@ -211,9 +340,11 @@ private struct Accordion<Content: View>: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 5)
                 .background(hovering ? Color.primary.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay { CursorRing(active: sidebarFocused && cursor == .header(key)) }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .id(SidebarCursor.header(key).scrollID)
             .onHover { hovering = $0 }
             .help("\(title) (\(shortcut))")
 
@@ -235,6 +366,8 @@ private struct Accordion<Content: View>: View {
 /// A compact tool row: icon and name. The summary shows as a tooltip, so long categories stay scannable.
 private struct EntryRow: View {
     let entry: ToolEntry
+    /// Sidebar section this row sits in ("recent", a category), for the keyboard cursor.
+    let section: String
     let selected: Bool
     var showStar = false
     var showGroup = false
@@ -244,7 +377,12 @@ private struct EntryRow: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.controlActiveState) private var activeState
+    @Environment(\.sidebarCursor) private var cursor
+    @Environment(\.sidebarFocused) private var sidebarFocused
+    @Environment(\.moveSidebarCursor) private var moveCursor
     @State private var hovering = false
+
+    private var cursorHere: SidebarCursor { .row(section: section, entry: entry.id) }
 
     var body: some View {
         Button(action: open) {
@@ -269,11 +407,12 @@ private struct EntryRow: View {
             .padding(.trailing, 8)
             .padding(.vertical, 4)
             .background(background, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay { CursorRing(active: sidebarFocused && cursor == cursorHere && !selected) }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .id(entry.id)
+        .id(cursorHere.scrollID)
         .help(entry.summary)
         .contextMenu {
             EntryMenu(entry: entry)
@@ -291,6 +430,7 @@ private struct EntryRow: View {
     }
 
     private func open() {
+        moveCursor(cursorHere)
         guard let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
         model.open(tool)
     }
@@ -305,6 +445,19 @@ private struct EntryRow: View {
         case .tool(let tool): model.sessions[tool.id]?.phase == .running
         case .group(let group): group.members.contains { model.sessions[$0.toolID]?.phase == .running }
         }
+    }
+}
+
+/// Outline marking the keyboard cursor when it isn't on the open tool.
+private struct CursorRing: View {
+    let active: Bool
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 7, style: .continuous)
+            .strokeBorder(Color.accentColor, lineWidth: 2)
+            .background(Color.accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .opacity(active ? 1 : 0)
+            .allowsHitTesting(false)
     }
 }
 
