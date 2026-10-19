@@ -58,45 +58,45 @@ struct MainView: View {
     }
 }
 
-/// The source list. Each category is a section that remembers whether it's open; searching shows every match.
+/// The sidebar. Each category is an accordion that remembers whether it's open; searching shows every match.
+/// Built on a ScrollView instead of List: List's outline animation draws newly shown rows over the rows above
+/// while they slide, and offers no way to change that. Here children reveal from under their header.
 private struct ToolSidebar: View {
     @Environment(AppModel.self) private var model
 
     private var searching: Bool { !model.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    private var selection: Binding<String?> {
-        Binding(
-            get: {
-                guard case .tool(let id) = model.route else { return nil }
-                return ToolEntry(ToolRegistry.tool(id: id)!).id
-            },
-            set: { entryID in
-                guard let entryID, let entry = ToolRegistry.entry(id: entryID),
-                      let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
-                // Changing the route inside the table's selection callback re-enters NSTableView; defer it.
-                Task { @MainActor in model.open(tool) }
-            })
+    /// Entry id of the open tool, for the selection highlight.
+    private var selectedID: String? {
+        guard case .tool(let id) = model.route, let tool = ToolRegistry.tool(id: id) else { return nil }
+        return ToolEntry(tool).id
     }
 
     var body: some View {
         ScrollViewReader { proxy in
-            List(selection: selection) {
-                if searching {
-                    searchResults
-                } else {
-                    pinned
-                    ForEach(ToolCategory.allCases) { category in
-                        CategorySection(category: category)
+            ScrollView {
+                // A plain VStack (about 110 rows) so scrollTo always finds the row; a lazy stack may not have built it yet.
+                VStack(alignment: .leading, spacing: 1) {
+                    if searching {
+                        searchResults
+                    } else {
+                        pinned
+                        ForEach(ToolCategory.allCases) { category in
+                            CategorySection(category: category, selectedID: selectedID)
+                        }
                     }
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
             }
-            .listStyle(.sidebar)
-            // Rows scrolled under the search field overlapped it; a hard edge keeps it readable.
             .scrollEdgeEffectStyle(.hard, for: .top)
             // Keep the opened tool in view (palette, search, cards all open tools from elsewhere).
             .onChange(of: model.route, initial: true) {
-                if let id = selection.wrappedValue {
-                    Task { @MainActor in proxy.scrollTo(id, anchor: .center) }
+                if let id = selectedID {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(250))
+                        withAnimation(.snappy(duration: 0.2)) { proxy.scrollTo(id, anchor: .center) }
+                    }
                 }
             }
         }
@@ -104,18 +104,18 @@ private struct ToolSidebar: View {
 
     @ViewBuilder
     private var pinned: some View {
-        if !model.favoriteSections.isEmpty {
-            Disclosure(key: "favorites", title: "Favorites", symbol: "star.fill", tint: .yellow, shortcut: "⌘9") {
-                ForEach(model.favoriteSections[0].entries) { entry in
-                    EntryRow(entry: entry)
+        if let favorites = model.favoriteSections.first {
+            Accordion(key: "favorites", title: "Favorites", symbol: "star.fill", tint: .yellow, shortcut: "⌘9") {
+                ForEach(Array(favorites.entries.enumerated()), id: \.element.id) { index, entry in
+                    EntryRow(entry: entry, selected: entry.id == selectedID, favoriteIndex: index,
+                             favoriteCount: favorites.entries.count)
                 }
-                .onMove { model.moveFavorites(from: $0, to: $1) }
             }
         }
-        if !model.recentSections.isEmpty {
-            Disclosure(key: "recent", title: "Recent", symbol: "clock.fill", tint: .gray, shortcut: "⌘0") {
-                ForEach(model.recentSections[0].entries.prefix(6)) { entry in
-                    EntryRow(entry: entry, showStar: true)
+        if let recent = model.recentSections.first {
+            Accordion(key: "recent", title: "Recent", symbol: "clock.fill", tint: .gray, shortcut: "⌘0") {
+                ForEach(recent.entries.prefix(6)) { entry in
+                    EntryRow(entry: entry, selected: entry.id == selectedID, showStar: true)
                 }
             }
         }
@@ -128,44 +128,52 @@ private struct ToolSidebar: View {
             Text("No tool matches “\(model.searchQuery)”.")
                 .foregroundStyle(.secondary)
                 .font(.callout)
+                .padding(8)
         }
         ForEach(sections) { section in
-            Section(section.title ?? "") {
-                ForEach(section.entries) { entry in
-                    EntryRow(entry: entry, showGroup: true)
-                }
+            if let title = section.title { SubHeading(title: title) }
+            ForEach(section.entries) { entry in
+                EntryRow(entry: entry, selected: entry.id == selectedID, showGroup: true)
             }
         }
     }
 }
 
-/// One category as a disclosure row with its tools; Developer keeps small sub-headings.
+/// One category as an accordion with its tools; Developer keeps small sub-headings.
 private struct CategorySection: View {
     let category: ToolCategory
+    let selectedID: String?
 
     var body: some View {
         let sections = ToolRegistry.sections(in: category)
-        Disclosure(key: category.rawValue, title: category.title, symbol: category.symbol, tint: category.tint,
-                   shortcut: "⌘\(category.shortcutIndex)", count: ToolRegistry.entryCount(in: category)) {
+        Accordion(key: category.rawValue, title: category.title, symbol: category.symbol, tint: category.tint,
+                  shortcut: "⌘\(category.shortcutIndex)", count: ToolRegistry.entryCount(in: category)) {
             ForEach(sections) { section in
-                if let title = section.title, sections.count > 1 {
-                    Text(title)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                        .padding(.top, 2)
-                        .selectionDisabled()
-                }
+                if let title = section.title, sections.count > 1 { SubHeading(title: title) }
                 ForEach(section.entries) { entry in
-                    EntryRow(entry: entry, showStar: true)
+                    EntryRow(entry: entry, selected: entry.id == selectedID, showStar: true)
                 }
             }
         }
     }
 }
 
-/// A full-size, collapsible sidebar row. A DisclosureGroup, not a Section header: section headers use the
-/// small grey header font and animate poorly when toggled. Clicking the label toggles it too.
-private struct Disclosure<Content: View>: View {
+private struct SubHeading: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.tertiary)
+            .padding(.leading, 34)
+            .padding(.top, 6)
+            .padding(.bottom, 2)
+    }
+}
+
+/// A full-size collapsible header with its rows. The rows sit in a clipped container whose height animates,
+/// so they slide out from under the header and push the rows below down, never drawing over anything.
+private struct Accordion<Content: View>: View {
     let key: String
     let title: String
     let symbol: String
@@ -176,61 +184,115 @@ private struct Disclosure<Content: View>: View {
 
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovering = false
+    @State private var contentHeight: CGFloat = 0
 
     var body: some View {
         let open = model.expansion(key)
-        DisclosureGroup(isExpanded: open) {
-            content
-        } label: {
-            HStack(spacing: 9) {
-                ToolIcon(symbol: symbol, tint: tint, size: 22)
-                Text(title).font(.body.weight(.medium))
-                Spacer(minLength: 0)
-                if let count {
-                    Text("\(count)")
-                        .font(.callout.monospacedDigit())
+        VStack(alignment: .leading, spacing: 1) {
+            Button {
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) { open.wrappedValue.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(open.wrappedValue ? 90 : 0))
+                        .frame(width: 10)
+                    ToolIcon(symbol: symbol, tint: tint, size: 22)
+                    Text(title).font(.body.weight(.medium))
+                    Spacer(minLength: 0)
+                    if let count {
+                        Text("\(count)")
+                            .font(.callout.monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                    }
                 }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .background(hovering ? Color.primary.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .contentShape(Rectangle())
             }
-            .padding(.vertical, 2)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) { open.wrappedValue.toggle() }
-            }
+            .buttonStyle(.plain)
+            .onHover { hovering = $0 }
             .help("\(title) (\(shortcut))")
+
+            // The rows stay in place; only the visible height of their clipped container animates,
+            // so they're uncovered from under the header and push what's below down.
+            VStack(alignment: .leading, spacing: 1) { content }
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                .frame(height: open.wrappedValue ? contentHeight : 0, alignment: .top)
+                .clipped()
+                .opacity(open.wrappedValue ? 1 : 0)
+                .allowsHitTesting(open.wrappedValue)
+                .accessibilityHidden(!open.wrappedValue)
         }
-        .selectionDisabled()
+        .padding(.top, 2)
     }
 }
 
 /// A compact tool row: icon and name. The summary shows as a tooltip, so long categories stay scannable.
 private struct EntryRow: View {
     let entry: ToolEntry
+    let selected: Bool
     var showStar = false
     var showGroup = false
+    /// Position in Favorites, to offer Move Up / Move Down.
+    var favoriteIndex: Int?
+    var favoriteCount = 0
+
     @Environment(AppModel.self) private var model
+    @Environment(\.controlActiveState) private var activeState
+    @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            ToolIcon(symbol: entry.symbol, tint: entry.tint, size: 20)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(entry.name).lineLimit(1)
-                if showGroup, let group = groupName {
-                    Text(group).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        Button(action: open) {
+            HStack(spacing: 8) {
+                ToolIcon(symbol: entry.symbol, tint: entry.tint, size: 20)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(entry.name).lineLimit(1)
+                        .foregroundStyle(selected && activeState == .key ? Color.white : Color.primary)
+                    if showGroup, let group = groupName {
+                        Text(group).font(.caption).lineLimit(1)
+                            .foregroundStyle(selected && activeState == .key ? Color.white.opacity(0.8) : Color.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+                if isRunning {
+                    ProgressView().controlSize(.mini)
+                } else if showStar, model.isFavorite(entry) {
+                    Image(systemName: "star.fill").font(.system(size: 8)).foregroundStyle(.yellow)
                 }
             }
-            Spacer(minLength: 0)
-            if isRunning {
-                ProgressView().controlSize(.mini)
-            } else if showStar, model.isFavorite(entry) {
-                Image(systemName: "star.fill").font(.system(size: 8)).foregroundStyle(.yellow)
-            }
+            .padding(.leading, 24)
+            .padding(.trailing, 8)
+            .padding(.vertical, 4)
+            .background(background, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 1)
-        .tag(entry.id)
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
         .id(entry.id)
         .help(entry.summary)
-        .contextMenu { EntryMenu(entry: entry) }
+        .contextMenu {
+            EntryMenu(entry: entry)
+            if let i = favoriteIndex {
+                Divider()
+                Button("Move Up") { model.moveFavorites(from: [i], to: i - 1) }.disabled(i == 0)
+                Button("Move Down") { model.moveFavorites(from: [i], to: i + 2) }.disabled(i == favoriteCount - 1)
+            }
+        }
+    }
+
+    private var background: Color {
+        if selected { return activeState == .key ? .accentColor : Color.primary.opacity(0.12) }
+        return hovering ? Color.primary.opacity(0.05) : .clear
+    }
+
+    private func open() {
+        guard let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
+        model.open(tool)
     }
 
     private var groupName: String? {

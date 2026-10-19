@@ -108,9 +108,24 @@ enum Snapshot {
             if let key = env["TOOLBOX_TOGGLE"], let window = WindowController.shared.mainWindow {
                 try? await Task.sleep(for: .seconds(1))
                 await save(window, to: out.appendingPathComponent("frame0.png"))
-                withAnimation(.snappy(duration: 0.22)) { AppModel.shared.expansion(key).wrappedValue.toggle() }
-                for i in 1...4 {
-                    try? await Task.sleep(for: .milliseconds(45))
+                if env["TOOLBOX_TOGGLE_ARROW"] == "1" {
+                    // Click the row's disclosure arrow, the way a user does.
+                    let title = ToolCategory(rawValue: key)?.title ?? key.capitalized
+                    let outline = Self.allSubviews(window.contentView!).compactMap { $0 as? NSOutlineView }.first
+                    let row = outline.flatMap { o in (0..<o.numberOfRows).first { r in
+                        o.view(atColumn: 0, row: r, makeIfNecessary: false).map { Self.containsText($0, title) } ?? false } }
+                    if let outline, let row {
+                        // What the disclosure arrow does: the outline view's own animated expand.
+                        outline.expandItem(outline.item(atRow: row))
+                    } else {
+                        print("row not found for \(title); outline=\(outline != nil)")
+                    }
+                } else {
+                    // Same as clicking the sidebar header.
+                    withAnimation(.snappy(duration: 0.25)) { AppModel.shared.expansion(key).wrappedValue.toggle() }
+                }
+                for i in 1...8 {
+                    try? await Task.sleep(for: .milliseconds(35))
                     await save(window, to: out.appendingPathComponent("frame\(i).png"))
                 }
             }
@@ -126,6 +141,24 @@ enum Snapshot {
             NSApp.terminate(nil)
         }
         return true
+    }
+
+    /// The outline disclosure button in the sidebar row whose text contains `title`.
+    static func disclosureButton(in view: NSView?, rowTitled title: String) -> NSButton? {
+        guard let view else { return nil }
+        if let row = view as? NSTableRowView, row.accessibilityChildren()?.description.contains(title) == true
+            || Self.containsText(row, title) {
+            return Self.allSubviews(row).compactMap { $0 as? NSButton }
+                .first { $0.identifier == NSOutlineView.disclosureButtonIdentifier || $0.bezelStyle == .disclosure }
+        }
+        for sub in view.subviews { if let b = disclosureButton(in: sub, rowTitled: title) { return b } }
+        return nil
+    }
+
+    static func allSubviews(_ v: NSView) -> [NSView] { v.subviews + v.subviews.flatMap(allSubviews) }
+
+    static func containsText(_ v: NSView, _ text: String) -> Bool {
+        allSubviews(v).contains { ($0 as? NSTextField)?.stringValue == text || ($0.accessibilityLabel() ?? "") == text }
     }
 
     static func textViews(in view: NSView?) -> [NSTextView] {
