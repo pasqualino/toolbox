@@ -210,7 +210,7 @@ final class ToolSession {
         (WiFiQRForm.applies(to: self) ? WiFiQRForm.fields : []).union(modeOption.map { [$0.id] } ?? [])
     }
 
-    /// A choice that changes what the input area asks for (Make QR Code's Content), shown as pills under the header.
+    /// A choice that changes what the input area asks for (Make QR Code's Content), shown above the input.
     var modeOption: OptionSpec? {
         tool.id == "make-qr" ? tool.options.first { $0.id == "type" } : nil
     }

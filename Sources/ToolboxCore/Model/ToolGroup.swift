@@ -175,7 +175,10 @@ extension ToolRegistry {
         (.screen, [
             ("Capture", ["capture-text", "extract-text"]),
             ("Screenshots", ["beautify-screenshot", "redact-image"]),
-            ("QR Codes", ["make-qr", "read-qr"]),
+            ("QR Codes", [
+                ToolGroup("qr", "QR Code", "Make one, or read the one in an image", symbol: "qrcode",
+                          [("make-qr", "Make"), ("read-qr", "Read")]),
+            ]),
         ]),
         (.images, [
             (nil, ["convert-images", "compress-images", "resize-images", "rotate-images",
@@ -183,8 +186,12 @@ extension ToolRegistry {
         ]),
         (.pdf, [
             ("Combine & Split", ["merge-pdf", "split-pdf", "organize-pdf", "delete-pdf-pages", "extract-pdf-pages"]),
-            ("Protect", ["protect-pdf", "unlock-pdf"]),
-            ("Convert", ["images-to-pdf", "pdf-to-images"]),
+            ("Protect & Convert", [
+                ToolGroup("pdf-password", "PDF Password", "Add or remove a password", symbol: "lock.doc",
+                          [("protect-pdf", "Add"), ("unlock-pdf", "Remove")]),
+                ToolGroup("pdf-images", "PDF ⇄ Images", "Convert either way", symbol: "photo.on.rectangle",
+                          [("images-to-pdf", "Images to PDF"), ("pdf-to-images", "PDF to Images")]),
+            ]),
         ]),
         (.media, [
             ("Edit Video", ["trim-video", "crop-rotate-video", "change-video-speed", "merge-videos",

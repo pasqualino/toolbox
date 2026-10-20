@@ -118,9 +118,17 @@ final class AppModel {
     }
 
     /// Switches to another member of a group, carrying the text across so the user can compare modes.
+    /// Dropped files come along too when the other member takes all of them (Add → Remove Password),
+    /// replacing its own; otherwise it keeps what it had (Images to PDF → PDF to Images).
     func switchMember(from session: ToolSession, to toolID: String) {
         guard let tool = ToolRegistry.tool(id: toolID), tool.id != session.tool.id else { return }
         let next = self.session(for: tool)
+        let files = session.items.map(\.url)
+        if !files.isEmpty, next.acceptsFiles, next.phase != .running, files.allSatisfy({ tool.accepts($0) }),
+           next.items.map(\.url) != files {
+            next.clear()
+            Task { await next.add(files) }
+        }
         next.text = session.text
         next.secondary = session.secondary
         open(tool)

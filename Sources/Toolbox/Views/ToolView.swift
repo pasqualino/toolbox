@@ -29,12 +29,15 @@ struct ToolView: View {
             TextToolView(session: session)
         } else {
             VStack(spacing: 0) {
-                ToolHeader(tool: tool)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 18)
-                    .padding(.bottom, 14)
-                if let mode = session.modeOption {
-                    ModeChips(session: session, spec: mode)
+                let group = ToolRegistry.group(containing: tool.id)
+                Group {
+                    if let group { GroupHeader(group: group, tool: tool) } else { ToolHeader(tool: tool) }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 14)
+                if let group {
+                    MemberChips(group: group, session: session)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 14)
                 }
@@ -84,37 +87,20 @@ struct ToolHeader: View {
     }
 }
 
-/// Capsule chips for a tool's mode option, like a group's member switcher. ⌃Tab and ⌃⇧Tab step through them.
-private struct ModeChips: View {
+/// What the input asks for (Make QR Code: Link or text, or Wi-Fi), above the input it changes.
+private struct ModePicker: View {
     let session: ToolSession
     let spec: OptionSpec
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var choices: [Choice] {
-        if case .choice(let choices, _) = spec.kind { return choices }
-        return []
-    }
 
     var body: some View {
-        let selected = session.options[spec.id]
-        HStack(spacing: 6) {
-            ForEach(choices, id: \.value) { choice in
-                Button(choice.label) { session.options[spec.id] = choice.value }
-                    .buttonStyle(ChipStyle(selected: choice.value == selected, size: .large, tint: session.tool.tint))
+        if case .choice(let choices, _) = spec.kind {
+            Picker(spec.label, selection: session.binding(for: spec.id)) {
+                ForEach(choices, id: \.value) { Text($0.label).tag($0.value) }
             }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .fixedSize()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.15), value: selected)
-        .background {
-            Button("") { step(1) }.keyboardShortcut(.tab, modifiers: .control).hidden()
-            Button("") { step(-1) }.keyboardShortcut(.tab, modifiers: [.control, .shift]).hidden()
-        }
-    }
-
-    private func step(_ delta: Int) {
-        let values = choices.map(\.value)
-        guard let i = values.firstIndex(of: session.options[spec.id]) else { return }
-        session.options[spec.id] = values[(i + delta + values.count) % values.count]
     }
 }
 
@@ -159,15 +145,18 @@ private struct InputArea: View {
         case .action:
             ActionArea(session: session)
         case .textOrFiles where session.tool.preview != nil:
-            HStack(spacing: 16) {
-                if WiFiQRForm.applies(to: session) {
-                    // A form needs less room than free text; give the rest to the code preview.
-                    WiFiQRForm(session: session)
-                        .frame(width: 360)
-                } else {
-                    TextEntry(session: session)
-                        .frame(maxWidth: .infinity)
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let mode = session.modeOption { ModePicker(session: session, spec: mode) }
+                    if WiFiQRForm.applies(to: session) {
+                        WiFiQRForm(session: session)
+                    } else {
+                        TextEntry(session: session)
+                    }
                 }
+                // A form needs less room than free text; give the rest to the code preview.
+                .frame(width: WiFiQRForm.applies(to: session) ? 360 : nil)
+                .frame(maxWidth: WiFiQRForm.applies(to: session) ? nil : .infinity, maxHeight: .infinity)
                 Panel { PreviewPane(session: session) }
                     .frame(maxWidth: .infinity)
             }

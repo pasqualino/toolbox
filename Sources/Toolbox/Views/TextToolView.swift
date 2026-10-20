@@ -222,7 +222,7 @@ struct TextToolView: View {
 }
 
 /// Group name and the current member's summary, in place of the single-tool header.
-private struct GroupHeader: View {
+struct GroupHeader: View {
     let group: ToolGroup
     let tool: Tool
 
@@ -241,8 +241,8 @@ private struct GroupHeader: View {
     }
 }
 
-/// Capsule chips that switch between a group's members. Text carries over.
-private struct MemberChips: View {
+/// Capsule chips that switch between a group's members. Text and accepted files carry over.
+struct MemberChips: View {
     let group: ToolGroup
     let session: ToolSession
     @Environment(AppModel.self) private var model
