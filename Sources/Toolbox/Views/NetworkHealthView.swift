@@ -194,6 +194,9 @@ private struct VerdictCard: View {
                     Text(report.verdict)
                         .font(.title3.weight(.medium))
                         .fixedSize(horizontal: false, vertical: true)
+                    if let network = report.network {
+                        NetworkLine(network: network)
+                    }
                     if running {
                         Text("Checking again…").font(.callout).foregroundStyle(.secondary)
                     }
@@ -277,5 +280,32 @@ private struct CheckGroup: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+/// "Wi-Fi  Home  Rename…" under the verdict. Names are shared with Speed Test.
+private struct NetworkLine: View {
+    let network: NetworkIdentity
+    private var names: NetworkNames { .shared }
+    private var location: LocationAccess { .shared }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: network.kind == "Wi-Fi" ? "wifi" : "network")
+                .foregroundStyle(.secondary)
+            Text(names.name(for: network))
+                .fontWeight(.semibold)
+            Button("Rename…") { names.promptRename(network.id, shown: names.name(for: network)) }
+                .buttonStyle(.borderless)
+            // Without Location access macOS hides the Wi-Fi name; offer to fix that unless a custom name covers it.
+            if network.kind == "Wi-Fi", network.name == nil, names.custom[network.id] == nil, !location.granted {
+                Button(location.undecided ? "Show Wi-Fi name" : "Show Wi-Fi name in Settings") {
+                    location.undecided ? location.requestIfNeeded() : location.openSettings()
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .font(.callout)
+        .padding(.top, 2)
     }
 }

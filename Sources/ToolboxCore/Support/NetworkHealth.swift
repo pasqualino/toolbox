@@ -39,6 +39,8 @@ public struct NetworkHealthReport: Codable, Sendable {
     public var checks: [Check]
     /// Aligned text version, for Copy and the CLI.
     public var report: String
+    /// The network that was checked, so it can be named like Speed Test results. Nil for reports saved earlier.
+    public var network: NetworkIdentity?
 }
 
 public enum NetworkHealth {
@@ -50,17 +52,19 @@ public enum NetworkHealth {
 
     /// Runs every check in parallel (about 5 seconds). Cancelling the task stops the pings.
     public static func run(progress: (@Sendable (Double) -> Void)? = nil) async throws -> NetworkHealthReport {
+        async let identity = NetworkIdentity.current()
         let probes = try await NetworkProbes.gather(progress: progress)
         try Task.checkCancellation()
-        return report(for: checks(from: probes))
+        return report(for: checks(from: probes), network: await identity)
     }
 
     /// Builds the verdict, score and text for a set of checks. `simulate` feeds this directly.
-    static func report(for checks: [Check], date: Date = Date()) -> NetworkHealthReport {
+    static func report(for checks: [Check], date: Date = Date(), network: NetworkIdentity? = nil) -> NetworkHealthReport {
         let (verdict, level) = verdict(for: checks)
         let score = score(for: checks)
-        return NetworkHealthReport(date: date, score: score, verdict: verdict, verdictLevel: level,
-                                   checks: checks, report: text(verdict: verdict, score: score, checks: checks))
+        return NetworkHealthReport(date: date, score: score, verdict: verdict, verdictLevel: level, checks: checks,
+                                   report: text(verdict: verdict, score: score, checks: checks, network: network),
+                                   network: network)
     }
 
     // MARK: - Verdict
@@ -153,9 +157,11 @@ public enum NetworkHealth {
 
     // MARK: - Text
 
-    static func text(verdict: String, score: Int, checks: [Check]) -> String {
+    static func text(verdict: String, score: Int, checks: [Check], network: NetworkIdentity? = nil) -> String {
         let labelWidth = max(checks.map(\.title.count).max() ?? 0, "Verdict".count)
-        var parts = [DevTextReport.table([("Verdict", verdict), ("Score", "\(score)/100")], labelWidth: labelWidth + 2)]
+        var head = [("Verdict", verdict), ("Score", "\(score)/100")]
+        if let network { head.insert(("Network", network.defaultName), at: 0) }
+        var parts = [DevTextReport.table(head, labelWidth: labelWidth + 2)]
         let order = groups + checks.map(\.group).filter { !groups.contains($0) }
         var seen = Set<String>()
         for group in order where seen.insert(group).inserted {

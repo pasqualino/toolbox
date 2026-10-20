@@ -56,10 +56,6 @@ final class SpeedTestModel {
     private(set) var current: NetworkIdentity?
     /// Which network's results to show: nil follows the current network, "all" shows every network.
     var showing: String?
-    /// Names the user gave networks, by network id.
-    private(set) var customNames: [String: String] =
-        UserDefaults.standard.dictionary(forKey: "speedNetworkNames") as? [String: String] ?? [:]
-
     func refreshNetwork() {
         Task { self.current = await NetworkIdentity.current() }
     }
@@ -86,18 +82,12 @@ final class SpeedTestModel {
 
     /// A custom name, else the Wi-Fi name from the latest result that has one, else "Wi-Fi · 192.168.0.1".
     func name(for id: String) -> String {
-        if let custom = customNames[id] { return custom }
+        if let custom = NetworkNames.shared.custom[id] { return custom }
         if id == Self.unrecorded { return "Network not recorded" }
         let identities = history.compactMap(\.network).filter { $0.id == id }
         if current?.id == id, let current, current.name != nil { return current.defaultName }
         return (identities.first { $0.name != nil } ?? identities.first ?? current.flatMap { $0.id == id ? $0 : nil })?
             .defaultName ?? "Unknown network"
-    }
-
-    func rename(_ id: String, to name: String) {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        if trimmed.isEmpty { customNames[id] = nil } else { customNames[id] = trimmed }
-        UserDefaults.standard.set(customNames, forKey: "speedNetworkNames")
     }
 
     func run(sequential: Bool) {
@@ -559,16 +549,7 @@ private struct NetworkBar: View {
     }
 
     private func rename(_ id: String) {
-        let alert = NSAlert()
-        alert.messageText = "Name this network"
-        alert.informativeText = "Shown on its speed test results. Leave empty to use the Wi-Fi name."
-        let field = NSTextField(string: model.customNames[id] ?? model.name(for: id))
-        field.frame = NSRect(x: 0, y: 0, width: 260, height: 24)
-        alert.accessoryView = field
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Cancel")
-        alert.window.initialFirstResponder = field
-        if alert.runModal() == .alertFirstButtonReturn { model.rename(id, to: field.stringValue) }
+        NetworkNames.shared.promptRename(id, shown: model.name(for: id))
     }
 }
 
