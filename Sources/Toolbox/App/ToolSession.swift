@@ -205,6 +205,11 @@ final class ToolSession {
 
     var trimmedText: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
 
+    /// Options drawn in the main area instead of the Options panel (Make QR Code's Wi-Fi fields).
+    var optionsShownElsewhere: Set<String> {
+        WiFiQRForm.applies(to: self) ? WiFiQRForm.fields : []
+    }
+
     /// The option that needs a visual editor (pages, trim range), shown in the main area.
     var primaryEditor: OptionSpec? {
         guard tool.minimumInputs <= 1 else { return nil }
@@ -231,7 +236,10 @@ final class ToolSession {
         switch tool.inputKind {
         case .files: return items.count >= tool.minimumInputs
         case .url: return !trimmedText.isEmpty
-        case .textOrFiles: return !trimmedText.isEmpty || !items.isEmpty
+        case .textOrFiles:
+            // Make QR Code's Wi-Fi mode has no text; the network name is its input.
+            if WiFiQRForm.applies(to: self) { return !options["ssid"].trimmingCharacters(in: .whitespaces).isEmpty }
+            return !trimmedText.isEmpty || !items.isEmpty
         case .text: return false
         case .action: return true
         }

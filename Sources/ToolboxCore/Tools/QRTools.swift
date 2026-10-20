@@ -18,7 +18,8 @@ enum QRTools {
         options: [
             OptionSpec("type", "Content", .choice([Choice("text", "Link or text"), Choice("wifi", "Wi-Fi")], default: "text")),
             OptionSpec("ssid", "Network", .text(default: "", placeholder: "Network name"), visibleWhen: ("type", ["wifi"])),
-            OptionSpec("password", "Password", .text(default: "", placeholder: "Wi-Fi password"),
+            // Secret: never saved with the other options between launches.
+            OptionSpec("password", "Password", .secureText(placeholder: "Wi-Fi password"),
                        visibleWhen: ("type", ["wifi"])),
             OptionSpec("security", "Security", .choice([
                 Choice("WPA", "WPA/WPA2/WPA3"), Choice("WEP", "WEP"), Choice("none", "None"),

@@ -25,7 +25,8 @@ struct OptionsPanel: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         ForEach(session.tool.options) { spec in
-                            if session.options.isVisible(spec, among: session.tool.options), spec.id != session.primaryEditor?.id {
+                            if session.options.isVisible(spec, among: session.tool.options), spec.id != session.primaryEditor?.id,
+                               !session.optionsShownElsewhere.contains(spec.id) {
                                 OptionRow(spec: spec, session: session)
                                     .transition(.opacity)
                             }

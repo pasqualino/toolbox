@@ -10,7 +10,10 @@ struct ToolView: View {
     private var tool: Tool { session.tool }
 
     private var hasOptions: Bool {
-        tool.options.contains { session.options.isVisible($0, among: session.tool.options) && $0.id != session.primaryEditor?.id }
+        tool.options.contains {
+            session.options.isVisible($0, among: session.tool.options) && $0.id != session.primaryEditor?.id
+                && !session.optionsShownElsewhere.contains($0.id)
+        }
     }
 
     var body: some View {
@@ -118,8 +121,14 @@ private struct InputArea: View {
             ActionArea(session: session)
         case .textOrFiles where session.tool.preview != nil:
             HStack(spacing: 16) {
-                TextEntry(session: session)
-                    .frame(maxWidth: .infinity)
+                if WiFiQRForm.applies(to: session) {
+                    // A form needs less room than free text; give the rest to the code preview.
+                    WiFiQRForm(session: session)
+                        .frame(width: 360)
+                } else {
+                    TextEntry(session: session)
+                        .frame(maxWidth: .infinity)
+                }
                 Panel { PreviewPane(session: session) }
                     .frame(maxWidth: .infinity)
             }
