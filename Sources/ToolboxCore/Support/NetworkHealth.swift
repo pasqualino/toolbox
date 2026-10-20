@@ -423,6 +423,6 @@ extension MacTools {
             ctx.showText(report.report)
             return []
         },
-        runningHint: "Checks Wi-Fi, your router, the internet and DNS. Takes about 10 seconds."
+        runningHint: "Checks Wi-Fi, your router, the internet and DNS. Takes about 2 seconds, a little longer on a slow network."
     )
 }
