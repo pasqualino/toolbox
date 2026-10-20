@@ -12,9 +12,11 @@ public struct SpeedTestResult: Codable, Sendable, Equatable {
     /// "Wi-Fi", "Ethernet", "Cellular", or empty when unknown.
     public var interfaceType: String
     public var date: Date
+    /// The network the test ran on. Nil for results saved before networks were recorded.
+    public var network: NetworkIdentity?
 
     public init(downloadMbps: Double, uploadMbps: Double, responsivenessRPM: Double?, idleLatencyMs: Double?,
-                interface: String, interfaceType: String, date: Date) {
+                interface: String, interfaceType: String, date: Date, network: NetworkIdentity? = nil) {
         self.downloadMbps = downloadMbps
         self.uploadMbps = uploadMbps
         self.responsivenessRPM = responsivenessRPM
@@ -22,6 +24,7 @@ public struct SpeedTestResult: Codable, Sendable, Equatable {
         self.interface = interface
         self.interfaceType = interfaceType
         self.date = date
+        self.network = network
     }
 
     /// Bands used: under 200 RPM Low, under 1,000 Medium, 1,000 and up High.
@@ -45,6 +48,7 @@ public struct SpeedTestResult: Codable, Sendable, Equatable {
         if !interface.isEmpty {
             rows.append(("Interface", interfaceType.isEmpty ? interface : "\(interfaceType) (\(interface))"))
         }
+        if let network { rows.append(("Network", network.defaultName)) }
         rows.append(("Date", date.formatted(date: .abbreviated, time: .shortened)))
         let width = rows.map(\.0.count).max() ?? 0
         return rows.map { $0.0.padding(toLength: width + 2, withPad: " ", startingAt: 0) + $0.1 }
@@ -60,9 +64,13 @@ public enum SpeedTest {
         guard FileManager.default.isExecutableFile(atPath: tool) else {
             throw ToolError.message("This Mac doesn't have networkQuality.")
         }
+        // Note the network first: it's the one the test starts on.
+        let network = await NetworkIdentity.current()
         let output = try await ProcessRunner.capture(URL(fileURLWithPath: tool), sequential ? ["-c", "-s"] : ["-c"])
         try Task.checkCancellation()
-        return try parse(Data(output.stdout.utf8), stderr: output.stderr)
+        var result = try parse(Data(output.stdout.utf8), stderr: output.stderr)
+        result.network = network
+        return result
     }
 
     static func parse(_ data: Data, stderr: String = "") throws -> SpeedTestResult {

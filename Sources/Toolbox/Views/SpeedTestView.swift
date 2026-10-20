@@ -47,8 +47,62 @@ final class SpeedTestModel {
 
     var latest: SpeedTestResult? { history.first }
 
+    // MARK: Networks
+
+    /// Results without a recorded network (from before networks were tracked).
+    static let unrecorded = "unrecorded"
+
+    /// The network the Mac is on now. Refreshed when the view appears and after each run.
+    private(set) var current: NetworkIdentity?
+    /// Which network's results to show: nil follows the current network, "all" shows every network.
+    var showing: String?
+    /// Names the user gave networks, by network id.
+    private(set) var customNames: [String: String] =
+        UserDefaults.standard.dictionary(forKey: "speedNetworkNames") as? [String: String] ?? [:]
+
+    func refreshNetwork() {
+        Task { self.current = await NetworkIdentity.current() }
+    }
+
+    static func networkID(_ r: SpeedTestResult) -> String { r.network?.id ?? unrecorded }
+
+    /// The id the history is filtered to, or nil for every network.
+    var shownID: String? {
+        if showing == "all" { return nil }
+        return showing ?? current?.id ?? history.first.map(Self.networkID)
+    }
+
+    var shownHistory: [SpeedTestResult] {
+        guard let id = shownID else { return history }
+        return history.filter { Self.networkID($0) == id }
+    }
+
+    /// Networks with results, most recently used first.
+    var networks: [(id: String, name: String, count: Int)] {
+        var seen: [String] = []
+        for r in history where !seen.contains(Self.networkID(r)) { seen.append(Self.networkID(r)) }
+        return seen.map { id in (id, name(for: id), history.filter { Self.networkID($0) == id }.count) }
+    }
+
+    /// A custom name, else the Wi-Fi name from the latest result that has one, else "Wi-Fi · 192.168.0.1".
+    func name(for id: String) -> String {
+        if let custom = customNames[id] { return custom }
+        if id == Self.unrecorded { return "Network not recorded" }
+        let identities = history.compactMap(\.network).filter { $0.id == id }
+        if current?.id == id, let current, current.name != nil { return current.defaultName }
+        return (identities.first { $0.name != nil } ?? identities.first ?? current.flatMap { $0.id == id ? $0 : nil })?
+            .defaultName ?? "Unknown network"
+    }
+
+    func rename(_ id: String, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { customNames[id] = nil } else { customNames[id] = trimmed }
+        UserDefaults.standard.set(customNames, forKey: "speedNetworkNames")
+    }
+
     func run(sequential: Bool) {
         guard !running else { return }
+        LocationAccess.shared.requestIfNeeded()
         running = true
         startedAt = Date()
         error = nil
@@ -56,6 +110,9 @@ final class SpeedTestModel {
             do {
                 let result = try await SpeedTest.run(sequential: sequential)
                 self?.add(result)
+                // Back to following the current network, so the new result is in view.
+                self?.showing = nil
+                self?.current = result.network ?? self?.current
                 History.record("speed-test")
             } catch is CancellationError {
             } catch {
@@ -111,16 +168,29 @@ struct SpeedTestView: View {
                     if model.running {
                         RunningCard(startedAt: model.startedAt ?? Date(), tint: session.tool.tint)
                     } else if let latest = model.latest {
-                        LatestResult(result: latest, tint: session.tool.tint)
+                        LatestResult(result: latest, tint: session.tool.tint,
+                                     networkName: model.name(for: SpeedTestModel.networkID(latest)))
                     } else {
                         EmptyCard(tint: session.tool.tint)
                     }
                     if let error = model.error {
                         Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
                     }
-                    if model.history.count > 1 {
-                        HistoryChart(history: model.history)
-                        HistoryTable(history: model.history) { model.clearHistory() }
+                    if !model.history.isEmpty {
+                        NetworkBar(model: model)
+                        let shown = model.shownHistory
+                        if shown.count > 1 || (model.shownID == nil && model.networks.count > 1) {
+                            HistoryChart(history: shown, byNetwork: model.shownID == nil, name: model.name(for:))
+                        }
+                        if !shown.isEmpty {
+                            HistoryTable(history: shown, showNetwork: model.shownID == nil, name: model.name(for:)) {
+                                model.clearHistory()
+                            }
+                        } else {
+                            Text("No tests on this network yet. Run one to start its history.")
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
                 }
                 .padding(.horizontal, 24)
@@ -130,6 +200,7 @@ struct SpeedTestView: View {
             bottomBar
         }
         .navigationTitle(session.tool.name)
+        .onAppear { model.refreshNetwork() }
     }
 
     private var bottomBar: some View {
@@ -175,6 +246,7 @@ struct SpeedTestView: View {
 private struct LatestResult: View {
     let result: SpeedTestResult
     let tint: Color
+    let networkName: String
 
     var body: some View {
         VStack(spacing: 12) {
@@ -192,7 +264,8 @@ private struct LatestResult: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Detail(label: "Idle latency", value: result.idleLatencyMs.map { "\(Int($0.rounded())) ms" } ?? "n/a",
                                symbol: "timer")
-                        Detail(label: "Connection", value: connection, symbol: connectionSymbol)
+                        Detail(label: "Network", value: networkName, symbol: connectionSymbol)
+                        Detail(label: "Connection", value: connection, symbol: "network")
                         Detail(label: "Tested", value: result.date.formatted(date: .abbreviated, time: .shortened),
                                symbol: "calendar")
                     }
@@ -380,6 +453,9 @@ private struct EmptyCard: View {
 
 private struct HistoryChart: View {
     let history: [SpeedTestResult]
+    /// Showing every network: one download line per network instead of download and upload.
+    let byNetwork: Bool
+    let name: (String) -> String
 
     private struct Point: Identifiable {
         let id = UUID()
@@ -389,42 +465,124 @@ private struct HistoryChart: View {
     }
 
     private var points: [Point] {
-        history.reversed().flatMap { r in
-            [Point(date: r.date, mbps: r.downloadMbps, series: "Download"),
-             Point(date: r.date, mbps: r.uploadMbps, series: "Upload")]
+        history.reversed().flatMap { r -> [Point] in
+            if byNetwork {
+                return [Point(date: r.date, mbps: r.downloadMbps, series: name(SpeedTestModel.networkID(r)))]
+            }
+            return [Point(date: r.date, mbps: r.downloadMbps, series: "Download"),
+                    Point(date: r.date, mbps: r.uploadMbps, series: "Upload")]
         }
     }
 
     var body: some View {
         Panel(padding: 16) {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Over time", systemImage: "chart.xyaxis.line")
+                Label(byNetwork ? "Download by network" : "Over time", systemImage: "chart.xyaxis.line")
                     .font(.headline)
-                Chart(points) { point in
+                let chart = Chart(points) { point in
                     LineMark(x: .value("Date", point.date), y: .value("Mbps", point.mbps))
-                        .foregroundStyle(by: .value("Direction", point.series))
+                        .foregroundStyle(by: .value("Series", point.series))
                         .interpolationMethod(.monotone)
                     PointMark(x: .value("Date", point.date), y: .value("Mbps", point.mbps))
-                        .foregroundStyle(by: .value("Direction", point.series))
+                        .foregroundStyle(by: .value("Series", point.series))
                         .symbolSize(30)
                 }
-                .chartForegroundStyleScale(["Download": Color.blue, "Upload": Color.purple])
                 .chartYAxisLabel("Mbps")
                 .frame(height: 180)
+                if byNetwork {
+                    chart
+                } else {
+                    chart.chartForegroundStyleScale(["Download": Color.blue, "Upload": Color.purple])
+                }
             }
         }
     }
 }
 
+/// Which network's history is shown, with rename and the Wi-Fi name permission.
+private struct NetworkBar: View {
+    let model: SpeedTestModel
+    private var location: LocationAccess { .shared }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "wifi").foregroundStyle(.secondary)
+            Menu {
+                if let current = model.current {
+                    Button {
+                        model.showing = nil
+                    } label: {
+                        menuLabel("This network: \(model.name(for: current.id))", selected: model.showing == nil)
+                    }
+                    Divider()
+                }
+                ForEach(model.networks, id: \.id) { network in
+                    Button {
+                        model.showing = network.id
+                    } label: {
+                        menuLabel("\(network.name) (\(network.count))", selected: model.showing == network.id)
+                    }
+                }
+                Divider()
+                Button {
+                    model.showing = "all"
+                } label: {
+                    menuLabel("All networks", selected: model.showing == "all")
+                }
+            } label: {
+                Text(model.shownID.map { model.name(for: $0) } ?? "All networks").fontWeight(.medium)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            if let id = model.shownID, id != SpeedTestModel.unrecorded {
+                Button("Rename…") { rename(id) }
+                    .buttonStyle(.borderless)
+                    .font(.callout)
+            }
+            Spacer()
+            if !location.granted {
+                Button(location.undecided ? "Show Wi-Fi names" : "Show Wi-Fi names in Settings") {
+                    location.undecided ? location.requestIfNeeded() : location.openSettings()
+                }
+                .buttonStyle(.borderless)
+                .font(.callout)
+                .help("macOS only shares the Wi-Fi network's name with apps that have Location access.")
+            }
+        }
+        .padding(.horizontal, 4)
+        .onChange(of: location.status) { model.refreshNetwork() }
+    }
+
+    @ViewBuilder
+    private func menuLabel(_ title: String, selected: Bool) -> some View {
+        if selected { Label(title, systemImage: "checkmark") } else { Text(title) }
+    }
+
+    private func rename(_ id: String) {
+        let alert = NSAlert()
+        alert.messageText = "Name this network"
+        alert.informativeText = "Shown on its speed test results. Leave empty to use the Wi-Fi name."
+        let field = NSTextField(string: model.customNames[id] ?? model.name(for: id))
+        field.frame = NSRect(x: 0, y: 0, width: 260, height: 24)
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.window.initialFirstResponder = field
+        if alert.runModal() == .alertFirstButtonReturn { model.rename(id, to: field.stringValue) }
+    }
+}
+
 private struct HistoryTable: View {
     let history: [SpeedTestResult]
+    let showNetwork: Bool
+    let name: (String) -> String
     let clear: () -> Void
 
     var body: some View {
         Panel(padding: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("All runs", systemImage: "clock.arrow.circlepath").font(.headline)
+                    Label(showNetwork ? "All runs" : "Runs on this network", systemImage: "clock.arrow.circlepath").font(.headline)
                     Spacer()
                     Button("Clear History", role: .destructive, action: clear)
                         .buttonStyle(.borderless)
@@ -432,7 +590,7 @@ private struct HistoryTable: View {
                 }
                 Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
                     GridRow {
-                        ForEach(["When", "Download", "Upload", "Responsiveness", "Latency", "Connection"], id: \.self) {
+                        ForEach(["When", "Download", "Upload", "Responsiveness", "Latency", showNetwork ? "Network" : "Connection"], id: \.self) {
                             Text($0).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         }
                     }
@@ -444,7 +602,9 @@ private struct HistoryTable: View {
                             Text("\(Int(r.uploadMbps.rounded())) Mbps").gridColumnAlignment(.trailing)
                             Text(r.responsivenessRPM.map { "\(Int($0.rounded())) RPM" } ?? "n/a").gridColumnAlignment(.trailing)
                             Text(r.idleLatencyMs.map { "\(Int($0.rounded())) ms" } ?? "n/a").gridColumnAlignment(.trailing)
-                            Text(r.interfaceType.isEmpty ? r.interface : r.interfaceType).foregroundStyle(.secondary)
+                            Text(showNetwork ? name(SpeedTestModel.networkID(r)) : (r.interfaceType.isEmpty ? r.interface : r.interfaceType))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                         .font(.callout.monospacedDigit())
                     }

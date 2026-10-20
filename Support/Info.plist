@@ -30,6 +30,10 @@
 	<string>Toolbox transcribes audio and video on this Mac. Nothing is uploaded.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Toolbox reads the files you've selected in Finder so it can suggest tools for them.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Toolbox uses this only to read your Wi-Fi network's name, to label speed tests and network checks. It never reads where you are.</string>
+	<key>NSLocationUsageDescription</key>
+	<string>Toolbox uses this only to read your Wi-Fi network's name, to label speed tests and network checks. It never reads where you are.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Toolbox records audio for voice notes and dictation.</string>
 	<key>NSServices</key>

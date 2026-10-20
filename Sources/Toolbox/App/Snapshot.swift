@@ -21,9 +21,10 @@ enum Snapshot {
         Task { @MainActor in
             WindowController.shared.showMain()
             if let w = env["TOOLBOX_WIDTH"].flatMap(Double.init), let window = WindowController.shared.mainWindow {
-                window.setContentSize(NSSize(width: w, height: 640))
+                window.setContentSize(NSSize(width: w, height: env["TOOLBOX_HEIGHT"].flatMap(Double.init) ?? 640))
             }
             if let q = env["TOOLBOX_SEARCH"] { AppModel.shared.searchQuery = q }
+            if let show = env["TOOLBOX_SPEED_SHOW"] { SpeedTestModel.shared.showing = show }
             if let favs = env["TOOLBOX_FAVORITES"] {
                 AppModel.shared.favoriteIDs = favs.split(separator: ",").map(String.init)
                 AppModel.shared.select(.favorites)

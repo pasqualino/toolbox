@@ -5,12 +5,13 @@ import ToolboxCore
 @MainActor
 enum PermissionPrimer {
     enum Kind: String {
-        case screenRecording, finderAutomation
+        case screenRecording, finderAutomation, location
 
         var title: String {
             switch self {
             case .screenRecording: "Capture Text needs to see your screen"
             case .finderAutomation: "Use the files selected in Finder?"
+            case .location: "Show Wi-Fi network names?"
             }
         }
 
@@ -20,6 +21,8 @@ enum PermissionPrimer {
                 "You pick an area with the crosshair, and Toolbox reads the text in it on this Mac. macOS will ask you to allow Screen Recording for Toolbox; after allowing it you may need to try again once."
             case .finderAutomation:
                 "When Finder is in front, Toolbox can open straight to the tools for the files you've selected. macOS will ask once to let Toolbox talk to Finder. Nothing else is read."
+            case .location:
+                "macOS only tells apps the name of your Wi-Fi network if they have Location access. Toolbox uses it to label speed test results and network checks (\"Home\", \"Office\"). It never reads where you are."
             }
         }
     }

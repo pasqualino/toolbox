@@ -5,7 +5,7 @@ public struct NetworkHealthReport: Codable, Sendable {
     public enum Level: String, Codable, Sendable { case good, warning, bad, info }
 
     public struct Check: Codable, Sendable, Identifiable {
-        /// Stable ids: connection.interface/ipv4/ipv6/vpn, wifi.signal/snr/band/standard/rate/security,
+        /// Stable ids: connection.interface/ipv4/ipv6/vpn, wifi.network/signal/snr/band/standard/rate/security,
         /// router.reach/latency/jitter/loss, internet.reach/latency/jitter/loss/captive, dns.lookup/uncached/servers.
         public var id: String
         /// "Connection", "Wi-Fi", "Router", "Internet", "DNS".
@@ -305,6 +305,9 @@ public enum NetworkHealth {
 
     private static func wifiChecks(_ w: NetworkProbes.WiFi) -> [Check] {
         var out: [Check] = []
+        if let ssid = w.ssid, !ssid.isEmpty {
+            out.append(Check(id: "wifi.network", group: "Wi-Fi", title: "Network", value: ssid, level: .info))
+        }
         let signal: Level = w.rssi >= -60 ? .good : w.rssi >= -70 ? .warning : .bad
         out.append(Check(id: "wifi.signal", group: "Wi-Fi", title: "Signal", value: graded("\(w.rssi) dBm", signal), level: signal,
                          detail: "-60 dBm or stronger is good; below -70 dBm is poor.",

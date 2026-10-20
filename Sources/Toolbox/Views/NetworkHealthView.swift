@@ -22,6 +22,7 @@ final class NetworkHealthModel {
 
     func run() {
         guard !running else { return }
+        LocationAccess.shared.requestIfNeeded()
         running = true
         progress = 0
         error = nil

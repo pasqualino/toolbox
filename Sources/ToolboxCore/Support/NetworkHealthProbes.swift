@@ -30,6 +30,8 @@ enum NetworkProbes {
     }
 
     struct WiFi: Sendable {
+        /// Network name. macOS only reveals it to apps with Location access; nil otherwise.
+        var ssid: String?
         var rssi: Int
         var noise: Int
         var rate: Double
@@ -160,11 +162,17 @@ enum NetworkProbes {
     }
 
     /// Never reads the network name: that needs Location permission.
+    /// Name of the Wi-Fi network on an interface, when the app has Location access.
+    static func wifiName(_ interface: String?) -> String? {
+        guard let interface else { return nil }
+        return CWWiFiClient.shared().interface(withName: interface)?.ssid()
+    }
+
     static func wifiInfo(_ name: String) -> WiFi? {
         guard let wlan = CWWiFiClient.shared().interface(withName: name), wlan.powerOn() else { return nil }
         let rssi = wlan.rssiValue()
         guard rssi != 0 else { return nil }
-        var info = WiFi(rssi: rssi, noise: wlan.noiseMeasurement(), rate: wlan.transmitRate())
+        var info = WiFi(ssid: wlan.ssid(), rssi: rssi, noise: wlan.noiseMeasurement(), rate: wlan.transmitRate())
         if let channel = wlan.wlanChannel() {
             info.channel = channel.channelNumber
             info.band = switch channel.channelBand.rawValue {

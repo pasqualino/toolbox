@@ -31,7 +31,8 @@ missing=(); for g in $groups; do grep -qx "$g" <<< "$t" || missing+=($g); done
 check net-groups "$( [[ ${#missing} == 0 ]] && echo ok)" "${missing[*]:-}"
 check net-latency "$(grep -qE '^  Latency +[0-9.]+ ms \((good|fair|poor)\)' <<< "$t" && echo ok)" "$(grep -m1 '^  Latency' <<< "$t")"
 check net-dns "$(grep -qE '^  Lookups +([0-9.]+ ms|All)' <<< "$t" && grep -q '^  Servers' <<< "$t" && echo ok)"
-check net-no-ssid "$( ! grep -qiE 'ssid|network name' <<< "$t" && echo ok)"
+# The Wi-Fi name needs Location access, which the CLI (Terminal) normally doesn't have; the app asks for it.
+check net-no-ssid-label "$( ! grep -qiE 'ssid' <<< "$t" && echo ok)"
 check net-no-files "$( [[ $(ls "$OUT" | wc -l | tr -d ' ') == 0 ]] && echo ok)"
 
 # Cancel mid-run: pings stop with it
