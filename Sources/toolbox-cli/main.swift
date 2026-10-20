@@ -21,6 +21,7 @@ if first == "list" {
 }
 
 if first == "layout" {
+    if !ToolRegistry.unplaced.isEmpty { print("UNPLACED (not in ToolRegistry.layout): \(ToolRegistry.unplaced)") }
     // Prints each category's sections and flags group members that don't exist.
     for cat in ToolCategory.allCases {
         print("\(cat.title) (\(ToolRegistry.entryCount(in: cat)) rows)")

@@ -29,7 +29,7 @@ Give any of them a shortcut in System Settings → Keyboard → Keyboard Shortcu
 
 ## Navigation
 
-Favorites (right-click a tool, or ⌘D), Recent, 8 categories, toolbar search (⌘F), the Jobs button for runs in progress, and Open in New Window (⌘⇧N) to keep a tool beside the main window.
+Favorites (right-click a tool, or ⌘D), Recent, 8 task-based categories (Writing, Developer, Screen & Scan, Images, PDF, Audio & Video, Network, Mac; arranged in `ToolRegistry.layout`), toolbar search (⌘F), the Jobs button for runs in progress, and Open in New Window (⌘⇧N) to keep a tool beside the main window.
 
 ## Build and run
 
@@ -57,7 +57,7 @@ zsh Fixtures/media/check-media.sh && zsh Fixtures/check-other.sh
 for s in Fixtures/dev/check-*.sh; do TZ=Europe/Berlin zsh $s </dev/null; done
 ```
 
-356 checks: 48 media (ffprobe), 24 image/PDF/AI/download, 284 developer tools. Always test release builds: one engine bug only showed up with optimizations on.
+526 checks: 284 developer tools, 48 media (ffprobe), 27 image/PDF/AI/download, and 167 more in `Fixtures/batch1` (`for s in Fixtures/batch1/check-*.sh; do zsh $s </dev/null; done`; the Mac and network ones need a connection). Always test release builds: one engine bug only showed up with optimizations on.
 
 `./make-app.sh --debug-hooks` builds an app with the `TOOLBOX_SNAPSHOT` screenshot and `TOOLBOX_DEBUG` logging hooks (`Sources/Toolbox/App/Snapshot.swift`); normal builds leave them out.
 

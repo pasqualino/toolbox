@@ -371,6 +371,28 @@ private struct Accordion<Content: View>: View {
                 .accessibilityHidden(!open.wrappedValue)
         }
         .padding(.top, 2)
+        // Each category starts after a hairline, so its tools never read as part of the section above.
+        .overlay(alignment: .top) {
+            if open.wrappedValue || previousOpen {
+                Divider().padding(.horizontal, 6).offset(y: -3)
+            }
+        }
+        .padding(.top, open.wrappedValue || previousOpen ? 6 : 0)
+    }
+
+    /// True when the section above this one is expanded.
+    private var previousOpen: Bool {
+        let order = ["favorites", "recent"] + ToolCategory.allCases.map(\.rawValue)
+        guard let i = order.firstIndex(of: key), i > 0 else { return false }
+        return order[..<i].reversed().first { previousExists($0) }.map { model.expandedSections.contains($0) } ?? false
+    }
+
+    private func previousExists(_ key: String) -> Bool {
+        switch key {
+        case "favorites": !model.favoriteIDs.isEmpty
+        case "recent": !model.recentSections.isEmpty
+        default: true
+        }
     }
 }
 
@@ -400,8 +422,11 @@ private struct EntryRow: View {
             HStack(spacing: 8) {
                 ToolIcon(symbol: entry.symbol, tint: entry.tint, size: 20)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(entry.name).lineLimit(1)
-                        .foregroundStyle(selected && activeState == .key ? Color.white : Color.primary)
+                    HStack(spacing: 4) {
+                        Text(entry.name).lineLimit(1)
+                            .foregroundStyle(selected && activeState == .key ? Color.white : Color.primary)
+                        if entry.usesOnDeviceAI { AIMark() }
+                    }
                     if showGroup, let group = groupName {
                         Text(group).font(.caption).lineLimit(1)
                             .foregroundStyle(selected && activeState == .key ? Color.white.opacity(0.8) : Color.secondary)

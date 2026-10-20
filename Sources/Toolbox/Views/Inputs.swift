@@ -99,28 +99,25 @@ struct DropZone: View {
         CGFloat(date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 0.6) / 0.6) * -12
     }
 
-    /// The category's own symbol, so an empty tool still says what it works on.
-    private var symbol: String {
-        switch session.tool.category {
-        case .video: "film.stack"
-        case .audio: "waveform.circle"
-        case .images: "photo.stack"
-        case .pdf: session.tool.accepts.contains(.pdf) ? "doc.richtext" : "photo.stack"
-        case .mac: "app.dashed"
-        case .ai, .files, .developer: "doc.on.doc"
+    /// What the tool takes, from the file types it accepts (categories mix types, like Audio & Video).
+    private var kind: (noun: String, symbol: String) {
+        let accepts = session.tool.accepts
+        func only(_ type: UTType) -> Bool { !accepts.isEmpty && accepts.allSatisfy { $0.conforms(to: type) } }
+        if only(.applicationBundle) { return ("apps", "app.dashed") }
+        if only(.pdf) { return ("PDFs", "doc.richtext") }
+        if only(.image) { return ("images", "photo.stack") }
+        if only(.audio) { return ("audio files", "waveform.circle") }
+        if accepts.contains(where: { $0.conforms(to: .movie) || $0.conforms(to: .audiovisualContent) }) {
+            return accepts.contains(where: { $0.conforms(to: .audio) && !$0.conforms(to: .movie) })
+                ? ("audio or video files", "film.stack") : ("videos", "film.stack")
         }
+        return ("files", "doc.on.doc")
     }
 
+    private var symbol: String { kind.symbol }
+
     private var prompt: String {
-        let noun: String = switch session.tool.category {
-        case .video: "videos"
-        case .audio: "audio files"
-        case .images: "images"
-        case .pdf: session.tool.accepts.contains(.pdf) ? "PDFs" : "images"
-        case .ai: "files"
-        case .files, .developer: "files"
-        case .mac: "apps"
-        }
+        let noun = kind.noun
         return targeted ? "Release to add" : "Drop or paste \(noun) here"
     }
 

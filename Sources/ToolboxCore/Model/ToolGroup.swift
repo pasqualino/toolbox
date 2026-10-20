@@ -97,8 +97,31 @@ public struct ToolSection: Identifiable, Sendable {
 }
 
 extension ToolRegistry {
-    /// Developer tools, sectioned and grouped. Ids not listed here still appear, in an "Other" section.
-    static let developerLayout: [(String, [Any])] = [
+    /// The whole organization: categories in order, their sections, and the tools or groups in each.
+    /// A tool's category comes from here. Tools not listed land in an "Other" section of their declared
+    /// category, and `toolbox-cli layout` flags them.
+    static let layout: [(ToolCategory, [(String?, [Any])])] = [
+        (.writing, [
+            ("On-device AI", ["rewrite", "summarize", "translate"]),
+            ("Text", [
+            ToolGroup("case", "Change Case", "camelCase, snake_case, kebab-case…", symbol: "textformat",
+                      [("camel-case", "camelCase"), ("pascal-case", "PascalCase"), ("snake-case", "snake_case"),
+                       ("kebab-case", "kebab-case"), ("constant-case", "CONSTANT_CASE"), ("title-case", "Title Case"),
+                       ("upper-case", "UPPER"), ("lower-case", "lower"), ("sponge-case", "sPoNgE")]),
+            ToolGroup("lines", "Lines", "Sort, dedupe, trim, shuffle…", symbol: "list.bullet",
+                      [("sort-lines", "Sort"), ("dedupe-lines", "Remove Duplicates"), ("trim-lines", "Trim"),
+                       ("reverse-lines", "Reverse"), ("shuffle-lines", "Shuffle"), ("collapse-lines", "Join"),
+                       ("number-lines", "Number"), ("markdown-quote", "Quote")]),
+            ToolGroup("cleanup", "Clean Up Text", "Straight quotes, no accents, reversed", symbol: "wand.and.stars",
+                      [("straight-quotes", "Straight Quotes"), ("remove-diacritics", "Remove Accents"),
+                       ("reverse-text", "Reverse")]),
+            ToolGroup("count", "Count & Sum", "Characters, words, lines, totals", symbol: "sum",
+                      [("count-text", "Count"), ("sum-all", "Sum Numbers")]),
+                "text-diff",
+                "lorem-ipsum",
+            ]),
+        ]),
+        (.developer, [
         ("Encode & Decode", [
             ToolGroup("base64", "Base64", "Encode or decode, base64url too", symbol: "number.square",
                       [("base64-encode", "Encode"), ("base64-decode", "Decode")]),
@@ -140,34 +163,63 @@ extension ToolRegistry {
             "number-base",
             "color-convert",
         ]),
-        ("Text", [
-            ToolGroup("case", "Change Case", "camelCase, snake_case, kebab-case…", symbol: "textformat",
-                      [("camel-case", "camelCase"), ("pascal-case", "PascalCase"), ("snake-case", "snake_case"),
-                       ("kebab-case", "kebab-case"), ("constant-case", "CONSTANT_CASE"), ("title-case", "Title Case"),
-                       ("upper-case", "UPPER"), ("lower-case", "lower"), ("sponge-case", "sPoNgE")]),
-            ToolGroup("lines", "Lines", "Sort, dedupe, trim, shuffle…", symbol: "list.bullet",
-                      [("sort-lines", "Sort"), ("dedupe-lines", "Remove Duplicates"), ("trim-lines", "Trim"),
-                       ("reverse-lines", "Reverse"), ("shuffle-lines", "Shuffle"), ("collapse-lines", "Join"),
-                       ("number-lines", "Number"), ("markdown-quote", "Quote")]),
-            ToolGroup("cleanup", "Clean Up Text", "Straight quotes, no accents, reversed", symbol: "wand.and.stars",
-                      [("straight-quotes", "Straight Quotes"), ("remove-diacritics", "Remove Accents"),
-                       ("reverse-text", "Reverse")]),
-            ToolGroup("count", "Count & Sum", "Characters, words, lines, totals", symbol: "sum",
-                      [("count-text", "Count"), ("sum-all", "Sum Numbers")]),
-        ]),
         ("Inspect & Debug", [
-            "decode-jwt", "epoch-converter", "explain-cron", "parse-url", "unwrap-log-json", "text-diff", "evaluate-js",
+            "decode-jwt", "epoch-converter", "explain-cron", "parse-url", "unwrap-log-json", "evaluate-js",
         ]),
         ("Generate", [
             ToolGroup("ids", "IDs", "Generate or decode cuid, UUID, ULID", symbol: "barcode",
                       [("generate-id", "Generate"), ("inspect-id", "Inspect")]),
-            "lorem-ipsum",
             "branch-name",
+        ]),
+        ]),
+        (.screen, [
+            ("Capture", ["capture-text", "extract-text"]),
+            ("Screenshots", ["beautify-screenshot", "redact-image"]),
+            ("QR Codes", ["make-qr", "read-qr"]),
+        ]),
+        (.images, [
+            (nil, ["convert-images", "compress-images", "resize-images", "rotate-images",
+                   "remove-background", "remove-metadata"]),
+        ]),
+        (.pdf, [
+            ("Combine & Split", ["merge-pdf", "split-pdf", "organize-pdf", "delete-pdf-pages", "extract-pdf-pages"]),
+            ("Protect", ["protect-pdf", "unlock-pdf"]),
+            ("Convert", ["images-to-pdf", "pdf-to-images"]),
+        ]),
+        (.media, [
+            ("Edit Video", ["trim-video", "crop-rotate-video", "change-video-speed", "merge-videos",
+                            "mute-video", "replace-audio"]),
+            ("Convert & Compress", ["compress-video", "convert-video", "resize-video", "video-to-gif"]),
+            ("Audio", ["trim-audio", "extract-audio", "convert-audio"]),
+            ("Get & Inspect", ["download-video", "transcribe", "media-info", "extract-frames"]),
+        ]),
+        (.network, [
+            (nil, ["speed-test", "network-health"]),
+        ]),
+        (.mac, [
+            (nil, ["keep-awake", "fix-app", "batch-rename"]),
         ]),
     ]
 
+    /// Tools that run on Apple's on-device models, marked with a sparkle wherever they're listed.
+    static let onDeviceAI: Set<String> = ["rewrite", "summarize", "translate", "transcribe", "extract-text", "capture-text"]
+
     /// Every group, for lookups.
-    public static let groups: [ToolGroup] = developerLayout.flatMap { $0.1.compactMap { $0 as? ToolGroup } }
+    public static let groups: [ToolGroup] = layout.flatMap { $0.1.flatMap { $0.1.compactMap { $0 as? ToolGroup } } }
+
+    /// Tool id → category and section title, from the layout.
+    static let placement: [String: (category: ToolCategory, section: String?)] = {
+        var map: [String: (ToolCategory, String?)] = [:]
+        for (category, sections) in layout {
+            for (title, items) in sections {
+                for item in items {
+                    if let g = item as? ToolGroup { g.members.forEach { map[$0.toolID] = (category, title) } }
+                    if let id = item as? String { map[id] = (category, title) }
+                }
+            }
+        }
+        return map
+    }()
 
     private static let groupByTool: [String: ToolGroup] = {
         var map: [String: ToolGroup] = [:]
@@ -175,20 +227,14 @@ extension ToolRegistry {
         return map
     }()
 
-    private static let sectionByTool: [String: String] = {
-        var map: [String: String] = [:]
-        for (title, items) in developerLayout {
-            for item in items {
-                if let g = item as? ToolGroup { g.members.forEach { map[$0.toolID] = title } }
-                if let id = item as? String { map[id] = title }
-            }
-        }
-        return map
-    }()
+    /// Section title for a tool ("Format", "Edit Video"), nil when its category has one section.
+    public static func section(of toolID: String) -> String? {
+        placement[toolID]?.section
+    }
 
-    /// Developer section title for a tool ("Format"), nil for other categories.
-    public static func developerSection(of toolID: String) -> String? {
-        sectionByTool[toolID]
+    /// Ids of tools the layout doesn't place, for `toolbox-cli layout`.
+    public static var unplaced: [String] {
+        all.map(\.id).filter { placement[$0] == nil }
     }
 
     public static func group(containing toolID: String) -> ToolGroup? {
@@ -212,27 +258,17 @@ extension ToolRegistry {
         sectionsByCategory.mapValues { $0.reduce(0) { $0 + $1.entries.count } }
 
     private static func buildSections(in category: ToolCategory) -> [ToolSection] {
-        let tools = all.filter { $0.category == category }
-        var sections: [ToolSection]
-        if category == .developer {
-            var placed = Set<String>()
-            sections = developerLayout.map { title, items in
-                let entries: [ToolEntry] = items.compactMap { item in
-                    if let g = item as? ToolGroup {
-                        g.members.forEach { placed.insert($0.toolID) }
-                        return .group(g)
-                    }
-                    guard let id = item as? String, let t = tool(id: id) else { return nil }
-                    placed.insert(id)
-                    return .tool(t)
-                }
-                return ToolSection(title: title, entries: entries)
+        let declared = layout.first { $0.0 == category }?.1 ?? []
+        var sections: [ToolSection] = declared.map { title, items in
+            let entries: [ToolEntry] = items.compactMap { item in
+                if let g = item as? ToolGroup { return .group(g) }
+                guard let id = item as? String, let t = tool(id: id) else { return nil }
+                return .tool(t)
             }
-            let rest = tools.filter { !placed.contains($0.id) }.map(ToolEntry.tool)
-            if !rest.isEmpty { sections.append(ToolSection(title: "Other", entries: rest)) }
-        } else {
-            sections = [ToolSection(title: nil, entries: tools.map(ToolEntry.tool))]
+            return ToolSection(title: title, entries: entries)
         }
+        let rest = all.filter { $0.category == category && placement[$0.id] == nil }.map(ToolEntry.tool)
+        if !rest.isEmpty { sections.append(ToolSection(title: "Other", entries: rest)) }
         return sections.filter { !$0.entries.isEmpty }
     }
 }

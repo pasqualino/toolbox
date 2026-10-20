@@ -202,6 +202,7 @@ struct ToolCard: View {
                         Text(entry.name)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
+                        if entry.usesOnDeviceAI { AIMark(size: 10) }
                         if case .group(let g) = entry { Badge(text: "\(g.members.count)") }
                     }
                     Text(entry.summary)

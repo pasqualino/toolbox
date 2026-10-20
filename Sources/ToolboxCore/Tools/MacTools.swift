@@ -14,7 +14,7 @@ enum MacTools {
         id: "capture-text",
         name: "Capture Text",
         summary: "Select part of the screen and copy its text",
-        category: .ai,
+        category: .writing,
         symbol: "camera.viewfinder",
         keywords: ["ocr", "screen", "screenshot", "capture", "grab", "region", "window", "copy text",
                    "live text", "recognize", "snip", "textsniper", "read screen"],

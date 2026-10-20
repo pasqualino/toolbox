@@ -262,6 +262,7 @@ private struct PaletteRow: View {
                     Text(tool.name)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.primary)
+                    if tool.usesOnDeviceAI { AIMark(size: 10) }
                 }
                 Text(tool.summary)
                     .font(.system(size: 12))

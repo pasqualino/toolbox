@@ -8,7 +8,7 @@ enum FileTools {
         id: "batch-rename",
         name: "Batch Rename",
         summary: "Rename many files with a pattern",
-        category: .files,
+        category: .mac,
         symbol: "character.cursor.ibeam",
         keywords: ["rename", "names", "number", "sequence", "replace", "lowercase", "uppercase", "bulk", "files"],
         accepts: [],

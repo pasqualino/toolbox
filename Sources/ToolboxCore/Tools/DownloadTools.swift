@@ -8,7 +8,7 @@ enum DownloadTools {
         id: "download-video",
         name: "Download Video",
         summary: "Save videos from YouTube and 1,000+ sites",
-        category: .video,
+        category: .media,
         symbol: "arrow.down.circle",
         keywords: ["youtube", "yt-dlp", "save", "link", "url", "vimeo", "twitter", "x", "instagram", "tiktok",
                    "reddit", "mp4", "m4a", "audio", "music", "playlist", "grab"],

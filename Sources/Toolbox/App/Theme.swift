@@ -5,13 +5,13 @@ import UniformTypeIdentifiers
 extension ToolCategory {
     var tint: Color {
         switch self {
-        case .video: Color(red: 0.55, green: 0.36, blue: 0.96)
-        case .audio: Color(red: 0.93, green: 0.30, blue: 0.53)
+        case .writing: Color(red: 0.20, green: 0.62, blue: 0.95)
+        case .developer: Color(red: 0.36, green: 0.42, blue: 0.52)
+        case .screen: Color(red: 0.16, green: 0.66, blue: 0.62)
         case .images: Color(red: 0.98, green: 0.55, blue: 0.20)
         case .pdf: Color(red: 0.92, green: 0.27, blue: 0.27)
-        case .ai: Color(red: 0.20, green: 0.62, blue: 0.95)
-        case .files: Color(red: 0.25, green: 0.70, blue: 0.48)
-        case .developer: Color(red: 0.36, green: 0.42, blue: 0.52)
+        case .media: Color(red: 0.55, green: 0.36, blue: 0.96)
+        case .network: Color(red: 0.25, green: 0.70, blue: 0.48)
         case .mac: Color(red: 0.45, green: 0.47, blue: 0.53)
         }
     }
@@ -23,13 +23,12 @@ extension ToolCategory {
 extension Tool {
     /// Category color, or a per-section color for developer tools so their long list is easier to scan.
     var tint: Color {
-        guard category == .developer, let section = ToolRegistry.developerSection(of: id) else { return category.tint }
+        guard category == .developer, let section = ToolRegistry.section(of: id) else { return category.tint }
         return switch section {
         case "Encode & Decode": Color(red: 0.16, green: 0.62, blue: 0.62)
         case "Hash & Sign": Color(red: 0.40, green: 0.38, blue: 0.85)
         case "Format": Color(red: 0.22, green: 0.52, blue: 0.92)
         case "Convert": Color(red: 0.90, green: 0.50, blue: 0.18)
-        case "Text": Color(red: 0.28, green: 0.66, blue: 0.40)
         case "Inspect & Debug": Color(red: 0.66, green: 0.36, blue: 0.80)
         case "Generate": Color(red: 0.88, green: 0.34, blue: 0.52)
         default: category.tint
@@ -39,6 +38,25 @@ extension Tool {
 
 extension ToolEntry {
     var tint: Color { ToolRegistry.tool(id: primaryToolID)?.tint ?? .gray }
+
+    /// A single tool that runs on Apple's on-device models (groups never do).
+    var usesOnDeviceAI: Bool {
+        if case .tool(let tool) = self { return tool.usesOnDeviceAI }
+        return false
+    }
+}
+
+/// Small sparkle beside a tool's name when it runs on Apple's on-device models.
+struct AIMark: View {
+    var size: CGFloat = 9
+
+    var body: some View {
+        Image(systemName: "sparkle")
+            .font(.system(size: size, weight: .semibold))
+            .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .help("Runs on this Mac with Apple's on-device AI")
+            .accessibilityLabel("On-device AI")
+    }
 }
 
 extension ToolRegistry {

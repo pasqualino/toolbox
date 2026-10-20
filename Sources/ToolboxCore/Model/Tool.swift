@@ -2,34 +2,36 @@ import CoreGraphics
 import Foundation
 import UniformTypeIdentifiers
 
+/// Task-based categories: what you're doing, not the file type or technology.
+/// Which tools go where is decided in one place, `ToolRegistry.layout`.
 public enum ToolCategory: String, CaseIterable, Identifiable, Sendable {
     // Display order: sidebar, ⌘1…⌘8, grids and the CLI list all follow it.
-    case developer, ai, pdf, images, video, audio, files, mac
+    case writing, developer, screen, images, pdf, media, network, mac
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .video: "Video"
-        case .audio: "Audio"
+        case .writing: "Writing"
+        case .developer: "Developer"
+        case .screen: "Screen & Scan"
         case .images: "Images"
         case .pdf: "PDF"
-        case .ai: "On-device AI"
-        case .files: "Files"
-        case .developer: "Developer"
+        case .media: "Audio & Video"
+        case .network: "Network"
         case .mac: "Mac"
         }
     }
 
     public var symbol: String {
         switch self {
-        case .video: "film"
-        case .audio: "waveform"
+        case .writing: "text.quote"
+        case .developer: "chevron.left.forwardslash.chevron.right"
+        case .screen: "viewfinder"
         case .images: "photo"
         case .pdf: "doc.richtext"
-        case .ai: "sparkles"
-        case .files: "folder"
-        case .developer: "chevron.left.forwardslash.chevron.right"
+        case .media: "film"
+        case .network: "network"
         case .mac: "laptopcomputer"
         }
     }
@@ -135,7 +137,8 @@ public struct Tool: Identifiable, Sendable {
     public let name: String
     /// One short line shown under the name.
     public let summary: String
-    public let category: ToolCategory
+    /// Set from `ToolRegistry.layout` when the registry is built; the declared value is only a fallback.
+    public internal(set) var category: ToolCategory
     /// SF Symbol name.
     public let symbol: String
     /// Extra search terms ("heic", "shrink", "jpg").
@@ -222,6 +225,9 @@ public struct Tool: Identifiable, Sendable {
              actionTitle: "Copy", runner: .transform(transform), traits: traits,
              inputSyntax: inputSyntax, outputSyntax: outputSyntax)
     }
+
+    /// Runs on Apple's on-device models; shown with a sparkle.
+    public var usesOnDeviceAI: Bool { ToolRegistry.onDeviceAI.contains(id) }
 
     public var isTransform: Bool {
         if case .transform = runner { return true }
