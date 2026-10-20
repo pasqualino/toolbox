@@ -149,14 +149,30 @@ final class AppModel {
         favoriteIDs.move(fromOffsets: source, toOffset: destination)
     }
 
-    /// Search results across every category, one section per category. Group members show individually,
-    /// so "snake" finds snake_case rather than Change Case.
+    /// Search results across every category, one section per category. A group shows once, like in the
+    /// sidebar; its members are pills inside the tool. The palette still lists members one by one.
     var searchSections: [ToolSection] {
         let hits = ToolSearch.rank(ToolRegistry.all, query: searchQuery, files: [])
+        var seen = Set<String>()
+        let entries = hits.map(ToolEntry.init).filter { seen.insert($0.id).inserted }
         return ToolCategory.allCases.compactMap { category in
-            let entries = hits.filter { $0.category == category }.map(ToolEntry.tool)
-            return entries.isEmpty ? nil : ToolSection(title: category.title, entries: entries)
+            let inCategory = entries.filter { ToolRegistry.tool(id: $0.primaryToolID)?.category == category }
+            return inCategory.isEmpty ? nil : ToolSection(title: category.title, entries: inCategory)
         }
+    }
+
+    /// What a search result opens: the member the query names, else the group's last-used member.
+    func searchResultTool(for entry: ToolEntry) -> String {
+        searchedMember(of: entry)?.toolID ?? toolToOpen(for: entry)
+    }
+
+    /// The group member a search names ("snake" → snake_case), or nil when the query matches the whole
+    /// group ("case") or no member in particular.
+    func searchedMember(of entry: ToolEntry) -> ToolGroup.Member? {
+        guard case .group(let group) = entry else { return nil }
+        let hits = ToolSearch.rank(group.members.compactMap { ToolRegistry.tool(id: $0.toolID) }, query: searchQuery, files: [])
+        guard let best = hits.first, hits.count < group.members.count else { return nil }
+        return group.members.first { $0.toolID == best.id }
     }
 
     /// Recently used tools as one section, groups shown once.

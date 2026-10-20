@@ -207,7 +207,12 @@ final class ToolSession {
 
     /// Options drawn in the main area instead of the Options panel (Make QR Code's Wi-Fi fields).
     var optionsShownElsewhere: Set<String> {
-        WiFiQRForm.applies(to: self) ? WiFiQRForm.fields : []
+        (WiFiQRForm.applies(to: self) ? WiFiQRForm.fields : []).union(modeOption.map { [$0.id] } ?? [])
+    }
+
+    /// A choice that changes what the input area asks for (Make QR Code's Content), shown as pills under the header.
+    var modeOption: OptionSpec? {
+        tool.id == "make-qr" ? tool.options.first { $0.id == "type" } : nil
     }
 
     /// The option that needs a visual editor (pages, trim range), shown in the main area.

@@ -33,7 +33,7 @@ struct MainView: View {
     /// Return in the search field opens the best match.
     private func openTopResult() {
         guard let first = model.searchSections.first?.entries.first,
-              let tool = ToolRegistry.tool(id: first.primaryToolID) else { return }
+              let tool = ToolRegistry.tool(id: model.searchResultTool(for: first)) else { return }
         model.open(tool)
     }
 
@@ -90,11 +90,10 @@ private struct ToolSidebar: View {
 
     private var searching: Bool { !model.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    /// Entry id of the open tool, for the selection highlight. Search results list single tools rather than
-    /// groups, so there the tool's own id is the match.
+    /// Entry id of the open tool, for the selection highlight.
     private var selectedID: String? {
         guard case .tool(let id) = model.route, let tool = ToolRegistry.tool(id: id) else { return nil }
-        return searching ? id : ToolEntry(tool).id
+        return ToolEntry(tool).id
     }
 
     var body: some View {
@@ -224,9 +223,10 @@ private struct ToolSidebar: View {
         switch cursor {
         case .header(let key):
             withAnimation(.snappy(duration: 0.25)) { model.expansion(key).wrappedValue.toggle() }
-        case .row(_, let entryID):
+        case .row(let section, let entryID):
             guard let entry = ToolRegistry.entry(id: entryID),
-                  let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
+                  let tool = ToolRegistry.tool(id: section == "search" ? model.searchResultTool(for: entry) : model.toolToOpen(for: entry))
+            else { return }
             model.open(tool)
         case nil:
             break
@@ -427,8 +427,8 @@ private struct EntryRow: View {
                             .foregroundStyle(selected && activeState == .key ? Color.white : Color.primary)
                         if entry.usesOnDeviceAI { AIMark() }
                     }
-                    if showGroup, let group = groupName {
-                        Text(group).font(.caption).lineLimit(1)
+                    if showGroup, let detail = searchDetail {
+                        Text(detail).font(.caption).lineLimit(1)
                             .foregroundStyle(selected && activeState == .key ? Color.white.opacity(0.8) : Color.secondary)
                     }
                 }
@@ -467,13 +467,14 @@ private struct EntryRow: View {
 
     private func open() {
         moveCursor(cursorHere)
-        guard let tool = ToolRegistry.tool(id: model.toolToOpen(for: entry)) else { return }
+        guard let tool = ToolRegistry.tool(id: section == "search" ? model.searchResultTool(for: entry) : model.toolToOpen(for: entry))
+        else { return }
         model.open(tool)
     }
 
-    private var groupName: String? {
-        if case .tool(let tool) = entry { return ToolRegistry.group(containing: tool.id)?.name }
-        return nil
+    /// Under a group's search result: the member the query names ("snake_case"), which the row opens.
+    private var searchDetail: String? {
+        model.searchedMember(of: entry)?.label
     }
 
     private var isRunning: Bool {
