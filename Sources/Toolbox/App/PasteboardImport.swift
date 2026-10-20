@@ -142,3 +142,23 @@ extension Tool {
     /// Tools that take dropped files (and so pasted images or files).
     var acceptsFiles: Bool { inputKind == .files || inputKind == .textOrFiles }
 }
+
+/// ↓ in the sidebar search field moves into the results. The search field is AppKit's, so SwiftUI key
+/// handlers don't see its keys; a local monitor does.
+@MainActor
+enum SearchFieldKeys {
+    private static var monitor: Any?
+
+    static func install() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.keyCode == 125, // down arrow
+                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.numericPad, .function]).isEmpty,
+                  let window = event.window, window === WindowController.shared.mainWindow,
+                  let editor = window.firstResponder as? NSTextView, editor.delegate is NSSearchField,
+                  !AppModel.shared.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else { return event }
+            AppModel.shared.sidebarFromSearchToken += 1
+            return nil
+        }
+    }
+}

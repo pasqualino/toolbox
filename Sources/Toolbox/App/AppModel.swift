@@ -38,6 +38,8 @@ final class AppModel {
     var searchQuery = ""
     /// Bumped by ⌥⌘S to give the sidebar keyboard focus.
     var sidebarFocusToken = 0
+    /// Bumped by ↓ in the search field: focus the sidebar on the first result.
+    var sidebarFromSearchToken = 0
     /// Bumped by ⌘F to focus the search field.
     var searchFocusToken = 0
     /// Bumped when History changes so the Recent list refreshes.

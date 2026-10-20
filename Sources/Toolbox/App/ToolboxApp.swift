@@ -32,11 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated {
             Appearance.apply()
             KeepAwakeModel.shared.refresh()
+            // Before the snapshot branch, so tests exercise the same key handling as the real app.
+            PasteShortcut.install()
+            SearchFieldKeys.install()
         }
         #if TOOLBOX_DEBUG_HOOKS
         if MainActor.assumeIsolated({ Snapshot.runIfRequested() }) { return }
         #endif
-        MainActor.assumeIsolated { PasteShortcut.install() }
         NSApp.servicesProvider = ServiceProvider()
         NSUpdateDynamicServices()
         HotKey.shared.start {

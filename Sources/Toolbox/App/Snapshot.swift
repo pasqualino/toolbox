@@ -131,7 +131,14 @@ enum Snapshot {
             }
             // TOOLBOX_KEYS=down,down,right,return…: focus the sidebar and send those key presses.
             if let keys = env["TOOLBOX_KEYS"], let window = WindowController.shared.mainWindow {
-                AppModel.shared.sidebarFocusToken += 1
+                if let q = env["TOOLBOX_KEYS_SEARCH"] {
+                    // Start in the search field with a query, as if typed.
+                    AppModel.shared.searchFocusToken += 1
+                    try? await Task.sleep(for: .milliseconds(300))
+                    AppModel.shared.searchQuery = q
+                } else {
+                    AppModel.shared.sidebarFocusToken += 1
+                }
                 try? await Task.sleep(for: .milliseconds(400))
                 let codes: [String: (UInt16, String)] = ["down": (125, "\u{F701}"), "up": (126, "\u{F700}"),
                                                          "left": (123, "\u{F702}"), "right": (124, "\u{F703}"),
@@ -142,7 +149,8 @@ enum Snapshot {
                         if let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: 0,
                                                         windowNumber: window.windowNumber, context: nil, characters: chars,
                                                         charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
-                            window.sendEvent(event)
+                            // Through the app's queue, so local key monitors see it as they would a real key.
+                            NSApp.postEvent(event, atStart: false)
                         }
                     }
                     try? await Task.sleep(for: .milliseconds(350))

@@ -90,10 +90,11 @@ private struct ToolSidebar: View {
 
     private var searching: Bool { !model.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    /// Entry id of the open tool, for the selection highlight.
+    /// Entry id of the open tool, for the selection highlight. Search results list single tools rather than
+    /// groups, so there the tool's own id is the match.
     private var selectedID: String? {
         guard case .tool(let id) = model.route, let tool = ToolRegistry.tool(id: id) else { return nil }
-        return ToolEntry(tool).id
+        return searching ? id : ToolEntry(tool).id
     }
 
     var body: some View {
@@ -132,6 +133,11 @@ private struct ToolSidebar: View {
             }
             .onChange(of: model.searchQuery) { cursor = nil }
             .onChange(of: model.sidebarFocusToken) { focused = true }
+            .onChange(of: model.sidebarFromSearchToken) {
+                cursor = visibleItems.first
+                focused = true
+                reveal(proxy)
+            }
             .environment(\.sidebarCursor, cursor)
             .environment(\.sidebarFocused, focused)
             .environment(\.moveSidebarCursor) { target in
@@ -184,6 +190,11 @@ private struct ToolSidebar: View {
         let items = visibleItems
         guard !items.isEmpty else { return }
         let index = cursor.flatMap { items.firstIndex(of: $0) } ?? (delta > 0 ? -1 : items.count)
+        // Up from the top result goes back to the search field to refine the query.
+        if searching, delta < 0, index == 0 {
+            model.searchFocusToken += 1
+            return
+        }
         cursor = items[min(max(index + delta, 0), items.count - 1)]
         reveal(proxy)
     }
