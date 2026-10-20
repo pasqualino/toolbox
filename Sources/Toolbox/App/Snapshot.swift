@@ -85,11 +85,19 @@ enum Snapshot {
                     ClipboardAction.apply(tool)
                     print("clipboard: \(NSPasteboard.general.string(forType: .string) ?? "")")
                 }
-                if env["TOOLBOX_RUN"] == "1" {
+                // TOOLBOX_RUN=1 runs; TOOLBOX_RUN=copy runs and copies, to a private pasteboard, and prints its types.
+                if let run = env["TOOLBOX_RUN"], run == "1" || run == "copy" {
+                    let board = NSPasteboard(name: .init("com.marcos.toolbox.snapshot"))
+                    if run == "copy" { ResultClipboard.pasteboard = board }
                     try? await Task.sleep(for: .milliseconds(500))
-                    AppModel.shared.runCurrent()
+                    AppModel.shared.runCurrent(copy: run == "copy")
                     while AppModel.shared.currentSession?.phase == .running {
                         try? await Task.sleep(for: .milliseconds(100))
+                    }
+                    if run == "copy" {
+                        let items = board.pasteboardItems ?? []
+                        print("copied: \(items.count) item(s) \(items.map { $0.types.map(\.rawValue) })")
+                        board.releaseGlobally()
                     }
                 }
                 // TOOLBOX_COMPARE=1 opens before and after for the first finished image.

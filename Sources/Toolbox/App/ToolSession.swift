@@ -277,11 +277,33 @@ final class ToolSession {
         return total / Double(items.count)
     }
 
+    /// Put the result on the clipboard when the current run finishes (Run and Copy, ⌥-click).
+    var copyWhenDone = false
+    /// Goes up each time the result is copied, so Copy buttons can flash "Copied".
+    var copiedCount = 0
+    /// The run copied its result as it finished; the status line says so.
+    var copiedOnFinish = false
+    /// The outputs are Run and Copy's temporary files, not saved ones: no folder to show.
+    var outputsAreTemporary = false
+
+    /// Copies the saved files, or the text when the tool only showed text.
+    func copyResult() {
+        if let outputs = result?.outputs, !outputs.isEmpty {
+            ResultClipboard.copy(outputs)
+        } else if !resultText.isEmpty {
+            TextExport.copy(resultText, to: ResultClipboard.pasteboard)
+        } else {
+            return
+        }
+        copiedCount += 1
+    }
+
     /// Starts a run. Returns its task, or nil when the session can't run yet.
     @discardableResult
     func run(outputRoot: URL) -> Task<Void, Never>? {
         guard canRun else { return nil }
         resetResults()
+        outputsAreTemporary = copyWhenDone
         phase = .running
         startedAt = Date()
         finishedAt = nil
@@ -316,9 +338,14 @@ final class ToolSession {
             self.phase = result.cancelled && result.outputs.isEmpty ? .idle : .finished
             self.finishedAt = Date()
             if result.cancelled { self.resetStatuses() }
+            if self.copyWhenDone, self.phase == .finished {
+                self.copyResult()
+                self.copiedOnFinish = self.copiedCount > 0
+            }
+            self.copyWhenDone = false
             if !result.outputs.isEmpty || !self.resultText.isEmpty {
                 History.record(tool.id)
-                if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), let folder = result.folder {
+                if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), !self.outputsAreTemporary, let folder = result.folder {
                     NSWorkspace.shared.activateFileViewerSelecting(result.outputs.isEmpty ? [folder] : result.outputs)
                 }
                 NSSound(named: "Glass")?.play()
@@ -404,6 +431,7 @@ final class ToolSession {
 
     func resetResults() {
         result = nil
+        copiedOnFinish = false
         resultText = ""
         texts = []
         textJoin?.cancel()

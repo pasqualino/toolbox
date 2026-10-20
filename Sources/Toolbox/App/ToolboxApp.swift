@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Before the snapshot branch, so tests exercise the same key handling as the real app.
             PasteShortcut.install()
             SearchFieldKeys.install()
+            ModifierKeys.install()
         }
         #if TOOLBOX_DEBUG_HOOKS
         if MainActor.assumeIsolated({ Snapshot.runIfRequested() }) { return }
@@ -84,6 +85,8 @@ struct AppCommands: Commands {
         CommandMenu("Tool") {
             Button("Run") { AppModel.shared.runCurrent() }
                 .keyboardShortcut(.return, modifiers: .command)
+            Button("Run and Copy") { AppModel.shared.runCurrent(copy: true) }
+                .keyboardShortcut(.return, modifiers: [.command, .option])
             Button("Stop") { AppModel.shared.cancelCurrent() }
                 .keyboardShortcut(".")
             Button("Show Results in Finder") { AppModel.shared.revealResults() }

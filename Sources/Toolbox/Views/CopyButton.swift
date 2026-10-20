@@ -12,6 +12,10 @@ struct CopyButton: View {
     /// How long "Copied" stays, in seconds.
     var flash: Double = 1.2
     var onCopy: () -> Void = {}
+    /// Copies something other than `text` (a run's files). The button calls it instead.
+    var action: (() -> Void)?
+    /// Flashes "Copied" whenever this changes, for copies made elsewhere (Run and Copy).
+    var copiedCount = 0
 
     @State private var copied = false
 
@@ -23,8 +27,10 @@ struct CopyButton: View {
             button
                 .buttonStyle(.borderedProminent)
                 .tint(copied ? .green : prominent)
+                .onChange(of: copiedCount) { flashCopied() }
         } else {
             button
+                .onChange(of: copiedCount) { flashCopied() }
         }
     }
 
@@ -45,9 +51,17 @@ struct CopyButton: View {
     }
 
     private func copy() {
-        guard !text.isEmpty else { return }
-        TextExport.copy(text)
+        if let action {
+            action()
+        } else {
+            guard !text.isEmpty else { return }
+            TextExport.copy(text)
+        }
         onCopy()
+        flashCopied()
+    }
+
+    private func flashCopied() {
         copied = true
         Task {
             try? await Task.sleep(for: .seconds(flash))

@@ -194,14 +194,16 @@ final class AppModel {
         return entries.isEmpty ? [] : [ToolSection(title: nil, entries: entries)]
     }
 
-    func runCurrent() {
-        if let session = currentSession { run(session) }
+    func runCurrent(copy: Bool = false) {
+        if let session = currentSession { run(session, copy: copy) }
     }
 
     /// Runs a specific session; tool windows call this so they don't run the main window's tool.
-    func run(_ session: ToolSession) {
+    /// With `copy`, the result goes on the clipboard when the run finishes, and isn't saved to the output folder.
+    func run(_ session: ToolSession, copy: Bool = false) {
         if session.tool.flow.run() { return }
-        session.run(outputRoot: Prefs.outputRoot)
+        session.copyWhenDone = copy
+        session.run(outputRoot: copy ? ResultClipboard.freshFolder() : Prefs.outputRoot)
     }
 
     func cancelCurrent() {
@@ -227,7 +229,8 @@ final class AppModel {
     }
 
     func revealResults() {
-        guard let result = currentSession?.result, !result.outputs.isEmpty else { return }
+        guard let session = currentSession, !session.outputsAreTemporary,
+              let result = session.result, !result.outputs.isEmpty else { return }
         NSWorkspace.shared.activateFileViewerSelecting(result.outputs)
     }
 }

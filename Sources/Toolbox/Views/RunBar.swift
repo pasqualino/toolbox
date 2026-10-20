@@ -147,7 +147,7 @@ struct RunBar: View {
                         .fontWeight(.medium)
                         .lineLimit(1)
                         .fixedSize()
-                    if let folder = result.folder {
+                    if let folder = result.folder, !session.outputsAreTemporary {
                         Button {
                             NSWorkspace.shared.activateFileViewerSelecting(result.outputs.isEmpty ? [folder] : result.outputs)
                         } label: {
@@ -165,10 +165,13 @@ struct RunBar: View {
 
     private func summary(_ result: RunResult) -> String {
         if session.isTextResult {
+            if session.copiedOnFinish { return result.failures > 0 ? "Copied, \(result.failures) failed" : "Copied" }
             return result.failures > 0 ? "Done, \(result.failures) failed" : "Done"
         }
         let n = result.outputs.count
-        var text = n == 0 ? "Nothing was saved" : "Saved \(n) file\(n == 1 ? "" : "s")"
+        let files = "\(n) file\(n == 1 ? "" : "s")"
+        var text = n == 0 ? "Nothing was saved" : session.outputsAreTemporary ? "Copied \(files)" : "Saved \(files)"
+        if session.outputsAreTemporary, !session.copiedOnFinish, n > 0 { text = "Made \(files)" }
         if result.failures > 0 { text += ", \(result.failures) failed" }
         if let error = session.runError, n == 0 { text = error }
         return text
@@ -189,17 +192,23 @@ struct RunBar: View {
             if session.isTextResult {
                 Button("Save As…") { TextExport.save(session.resultText, suggestedName: session.tool.name) }
                     .controlSize(.large)
-                CopyButton(text: session.resultText, prominent: tint, minWidth: 80)
+                CopyButton(text: session.resultText, prominent: tint, minWidth: 80, copiedCount: session.copiedCount)
                     .controlSize(.large)
                     .keyboardShortcut(.return, modifiers: .command)
             }
             if let result = session.result, !result.outputs.isEmpty {
-                Button {
-                    NSWorkspace.shared.activateFileViewerSelecting(result.outputs)
-                } label: {
-                    Label("Show in Finder", systemImage: "folder")
+                CopyButton(text: "", action: { session.copyResult() }, copiedCount: session.copiedCount)
+                    .controlSize(.large)
+                    .help(result.outputs.count == 1 ? "Copy the file" : "Copy the files")
+                // Run and Copy's files live in a cache folder; there's nothing worth showing.
+                if !session.outputsAreTemporary {
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting(result.outputs)
+                    } label: {
+                        Label("Show in Finder", systemImage: "folder")
+                    }
+                    .controlSize(.large)
                 }
-                .controlSize(.large)
                 if result.outputs.count == 1 {
                     Button("Open") { NSWorkspace.shared.open(result.outputs[0]) }
                         .controlSize(.large)
@@ -225,10 +234,11 @@ struct RunBar: View {
             }
         case .idle:
             Button {
-                model.run(session)
+                // ⌥-click also copies the result.
+                model.run(session, copy: NSEvent.modifierFlags.contains(.option))
             } label: {
                 HStack(spacing: 8) {
-                    Text(session.tool.actionTitle)
+                    Text(ModifierKeys.shared.option ? "\(session.tool.actionTitle) & Copy" : session.tool.actionTitle)
                         .fontWeight(.semibold)
                     Image(systemName: "return")
                         .font(.system(size: 11, weight: .bold))
