@@ -1,0 +1,27 @@
+Sources/Toolbox/App/Snapshot.swift
+  s_2b59deb0249666::t_d62ea9d5af4b41 114-119,121
+  s_2b59deb0249666::t_97cd8bf8979fa8 111-113,120,122-123,126,146-162
+  s_2b59deb0249666::t_98061fc90c9680 124-125,128
+  s_2b59deb0249666::t_54a8b7f1dd2a3d 127
+  s_2b59deb0249666::t_c0c31f8b5b917b 163
+Sources/Toolbox/Views/MainView.swift
+  s_2b59deb0249666::t_bfe8953e6be671 61-63,69-72,77,80-86,89-90,95-99,107-111,115-118,131,134-136,142,145,149-150,152,154,161-176,187,192-198,200-209,211-214,216-217,219,231,238,241-244,246-247,250-265,268-272,274-275,278-295
+  s_2b59deb0249666::t_e55a2b5f45a7c4 78-79
+  s_2b59deb0249666::t_aa89a858a91b1a 188,220-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4c2023dcbf93e2aeddf8b68f37bbd4da67b0e139",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
