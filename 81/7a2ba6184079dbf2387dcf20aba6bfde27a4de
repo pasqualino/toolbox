@@ -1,0 +1,193 @@
+Sources/Toolbox/Views/OptionsPanel.swift
+  s_2b59deb0249666::t_27f35596ce189f 47,89,96
+  s_2b59deb0249666::t_ee76e330771a79 188
+Sources/Toolbox/App/ToolSession.swift
+  s_2b59deb0249666::t_a11de98d5f5e92 97-98,281
+  s_2b59deb0249666::t_f9519412a584b6 230-233,277-280,282-283,407-421
+  s_2b59deb0249666::t_0e36013b8df9ff 19,24,26-32,49-51,53-57,77-80,89,96,99,101,103-111,113-117,150,204-206,208-214,254,257,260,303,305-333,340-344,358-361,465-469,473-474,483-484,486-490,494-496
+  s_2b59deb0249666::t_af32caac3c03e8 255,292
+  s_2b59deb0249666::t_b5db510e818886 193
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 61-64,66-67,118,125,130,139,142-147,189,268
+  s_2b59deb0249666::t_ee76e330771a79 148,422,437-449
+  s_2b59deb0249666::t_d02029bcb0b4f7 149
+Sources/ToolboxCore/Model/ToolGroup.swift
+  s_2b59deb0249666::t_8a51808a6e2454 38-42,200-214
+  s_2b59deb0249666::t_9138d69809ebc0 198,231,234
+Sources/Toolbox/Palette/Search.swift
+  s_2b59deb0249666::t_57aa3e5b040352 22,24,29,34-53,55-58,61-66
+  s_2b59deb0249666::t_77691e0045b1e0 6,14
+Sources/ToolboxCore/Support/DevJWT.swift
+  s_2b59deb0249666::t_e7e82526b0269c 33,37
+Sources/ToolboxCore/Tools/FileTools.swift
+  s_2b59deb0249666::t_161c292a69d9a1 34-35
+  s_2b59deb0249666::t_e6594150b0369b 51-53
+Sources/Toolbox/App/HotKey.swift
+  s_2b59deb0249666::t_af32caac3c03e8 106
+Sources/ToolboxCore/Support/MediaInfo.swift
+  s_2b59deb0249666::t_30e7390cb992d3 111-123
+  s_2b59deb0249666::t_6628b4925bc0c5 21
+Sources/Toolbox/Palette/Toast.swift
+  s_2b59deb0249666::t_2d704422d64cc0 52-67,112,123,126,128,130,162-163,167-168
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 104,136,140-141,144,154,157-158
+Sources/ToolboxCore/Support/ProcessRunner.swift
+  s_2b59deb0249666::t_6fcb2658ac56a7 19-42,75-76
+Sources/ToolboxCore/Model/Tool.swift
+  s_2b59deb0249666::t_ec2c8e7fea5a5e 105-106,111,113,116-122,125-132,154,157-165,182-188,206-210,216-217,222-223,231-232
+  s_2b59deb0249666::t_140d0dd234cdf7 6
+  s_2b59deb0249666::t_317e5a1383462a 153,181
+  s_2b59deb0249666::t_93dd335163ad86 233
+Sources/Toolbox/App/Snapshot.swift
+  s_2b59deb0249666::t_e1f1d9d879c3b9 59,62
+  s_2b59deb0249666::t_af32caac3c03e8 1,8,136-151
+Sources/Toolbox/Views/TextToolView.swift
+  s_2b59deb0249666::t_8439b6cca11dd9 101,133
+  s_2b59deb0249666::t_a0f46e2581475c 252,255
+  s_2b59deb0249666::t_27f35596ce189f 296,298-301,305,307,318,320,326,330,335-339,342,348-349
+  s_2b59deb0249666::t_cd7a75bbf6be6b 160-164,215,275-276
+  s_2b59deb0249666::t_31057ac5d43896 13-14,20,24,156,172-173,176,186,190,199-200,211
+Sources/Toolbox/Editors/CodeTextView.swift
+  s_2b59deb0249666::t_78e2be257db96b 116-120,125,128-131,136-138
+  s_2b59deb0249666::t_c62b77a18fb2b7 64,75-76,80,99-100,109-111
+  s_2b59deb0249666::t_e510fe974afcac 132-135
+  s_2b59deb0249666::t_8439b6cca11dd9 3,16
+Sources/ToolboxCore/Support/FFmpeg.swift
+  s_2b59deb0249666::t_6628b4925bc0c5 5-7,9-16,19-20,22,28-32,37,41,44
+README.md
+  s_2b59deb0249666::t_f463120fa63e77 62-63
+Sources/ToolboxCore/Engine/ToolEngine.swift
+  s_2b59deb0249666::t_317e5a1383462a 82
+  s_2b59deb0249666::t_d0612ed3a48096 22-27,137
+Sources/ToolboxCore/Support/Toolchain.swift
+  s_2b59deb0249666::t_e9ffe65360df3b 9-10,14-17,19-20,22,25-28
+Sources/ToolboxCore/Support/MediaReport.swift
+  s_2b59deb0249666::t_7bedff874df215 24,28,33-34,40-41,62-64,445,449-450,452,455-459,461-470
+Sources/ToolboxCore/Support/DevTime.swift
+  s_2b59deb0249666::t_d0612ed3a48096 8-11,13-14,21,29,32-42
+  s_2b59deb0249666::t_ef60d862c2378c 43
+Sources/ToolboxCore/Tools/DevWorkflowTools.swift
+  s_2b59deb0249666::t_8af8352d300810 9-10,140-141
+Sources/Toolbox/Views/ToolGrid.swift
+  s_2b59deb0249666::t_8a51808a6e2454 152
+  s_2b59deb0249666::t_b5db510e818886 61,179,208
+Sources/Toolbox/Views/ActionArea.swift
+  s_2b59deb0249666::t_6fd6fb350e489d 34-39,46
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 20-21
+Sources/ToolboxCore/Support/AppRepair.swift
+  s_2b59deb0249666::t_daabb3d05308ef 29,47,65,78,88
+Sources/ToolboxCore/Support/RenameNames.swift
+  s_2b59deb0249666::t_161c292a69d9a1 47-52
+  s_2b59deb0249666::t_d0612ed3a48096 25-28,41-45
+  s_2b59deb0249666::t_a4d2ce801ecaa7 46
+Sources/Toolbox/App/PasteboardImport.swift
+  s_2b59deb0249666::t_ee76e330771a79 85,114
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 46,49
+  s_2b59deb0249666::t_d0612ed3a48096 35-40
+  s_2b59deb0249666::t_e1f1d9d879c3b9 106-107,115-116,121-137
+  s_2b59deb0249666::t_3df24c46f73dab 138-140
+Sources/Toolbox/App/TextExport.swift
+  s_2b59deb0249666::t_2d704422d64cc0 8
+  s_2b59deb0249666::t_6e4cfaec2f3b6c 1-7,9-56
+Sources/toolbox-cli/main.swift
+  s_2b59deb0249666::t_317e5a1383462a 18
+  s_2b59deb0249666::t_e2c41d4bcf1979 48-51
+Sources/Toolbox/Views/RewriteView.swift
+  s_2b59deb0249666::t_f9519412a584b6 24-28
+  s_2b59deb0249666::t_cd7a75bbf6be6b 152,174,274-276
+  s_2b59deb0249666::t_a0f46e2581475c 318
+  s_2b59deb0249666::t_27f35596ce189f 116-117
+Sources/Toolbox/Editors/Highlighter.swift
+  s_2b59deb0249666::t_78e2be257db96b 95-101,105-109,111-116,121-140,142-144,149,151,153,158
+  s_2b59deb0249666::t_8439b6cca11dd9 2,4,31,103
+Sources/Toolbox/Views/RunBar.swift
+  s_2b59deb0249666::t_cd7a75bbf6be6b 150-152
+Sources/Toolbox/App/ToolboxApp.swift
+  s_2b59deb0249666::t_af32caac3c03e8 36,38
+  s_2b59deb0249666::t_8a51808a6e2454 86
+Sources/ToolboxCore/Tools/QRTools.swift
+  s_2b59deb0249666::t_e6594150b0369b 43,70-71
+Sources/Toolbox/Views/KeepAwakeView.swift
+  s_2b59deb0249666::t_27f35596ce189f 88
+Sources/Toolbox/App/Services.swift
+  s_2b59deb0249666::t_ed86b4a9d8d14a 52,55-56,58,69,76-85,90,97,104-106
+Sources/Toolbox/Views/JobsButton.swift
+  s_2b59deb0249666::t_902d683903c6c3 22-23,28,38,47,55,64-67
+Sources/ToolboxCore/Support/DevTextReport.swift
+  s_2b59deb0249666::t_7bedff874df215 6-8
+Sources/ToolboxCore/Tools/AITools.swift
+  s_2b59deb0249666::t_e6594150b0369b 101-102
+Sources/Toolbox/App/Theme.swift
+  s_2b59deb0249666::t_a0f46e2581475c 92-124
+  s_2b59deb0249666::t_b5db510e818886 19,73,77
+Sources/Toolbox/Views/Inputs.swift
+  s_2b59deb0249666::t_ee76e330771a79 84-88,191-192,263,390,436,464-465,542
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 107,160
+  s_2b59deb0249666::t_cd7a75bbf6be6b 485-487
+Sources/Toolbox/Views/ToolView.swift
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 17,19
+  s_2b59deb0249666::t_27f35596ce189f 133
+Sources/ToolboxCore/Support/SpeechTranscription.swift
+  s_2b59deb0249666::t_6628b4925bc0c5 133-139
+Sources/Toolbox/App/AppModel.swift
+  s_2b59deb0249666::t_8a51808a6e2454 120,144
+  s_2b59deb0249666::t_ee76e330771a79 35-40,63,176-179
+  s_2b59deb0249666::t_b5db510e818886 132
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 156
+Sources/ToolboxCore/Tools/VideoTools.swift
+  s_2b59deb0249666::t_ae8ad0d7931ee0 87-91
+  s_2b59deb0249666::t_30e7390cb992d3 60-63,181,227
+Sources/Toolbox/App/Permissions.swift
+  s_2b59deb0249666::t_e1f1d9d879c3b9 57-58
+Sources/Toolbox/Views/CopyButton.swift
+  s_2b59deb0249666::t_6e4cfaec2f3b6c 1-57
+Sources/ToolboxCore/Tools/DevFormatTools.swift
+  s_2b59deb0249666::t_ec2c8e7fea5a5e 25-26,34-35,44-45,53-54,63-64,77-78,96-97,106-107,115-116,127-128,136-137,148-149,157-158,169-170,178-179,189-190,205-206,220-221,234-235,242-243
+Sources/Toolbox/App/ToolFlow.swift
+  s_2b59deb0249666::t_fae4608f0dc030 1-92
+make-app.sh
+  s_2b59deb0249666::t_af32caac3c03e8 2-3,7-17,37
+Sources/ToolboxCore/ToolRegistry.swift
+  s_2b59deb0249666::t_317e5a1383462a 4,9,18,21
+  s_2b59deb0249666::t_8a51808a6e2454 12-13,15
+Sources/Toolbox/Editors/PreviewPane.swift
+  s_2b59deb0249666::t_27f35596ce189f 34
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 38
+Sources/Toolbox/Palette/PaletteView.swift
+  s_2b59deb0249666::t_8ef3df0e9ae5f2 30,215,219,224-227,231,237,242
+  s_2b59deb0249666::t_b3e90fd7a0a5f7 53,176,184
+  s_2b59deb0249666::t_ee76e330771a79 124
+  s_2b59deb0249666::t_e5084ffaa9ba69 232
+  s_2b59deb0249666::t_b5db510e818886 258
+Sources/ToolboxCore/Tools/MediaExtraTools.swift
+  s_2b59deb0249666::t_7bedff874df215 19-22,25
+Sources/ToolboxCore/Tools/ImageEditTools.swift
+  s_2b59deb0249666::t_e6594150b0369b 33,82
+Sources/Toolbox/Views/MainView.swift
+  s_2b59deb0249666::t_b5db510e818886 191
+Sources/ToolboxCore/Support/CaptureText.swift
+  s_2b59deb0249666::t_daabb3d05308ef 22
+Support/Info.plist
+  s_2b59deb0249666::t_8a51808a6e2454 47-48,70-71,93-94,116-117,135-136,154-155
+Sources/ToolboxCore/Tools/ImageTools.swift
+  s_2b59deb0249666::t_e6594150b0369b 247-248
+Sources/ToolboxCore/Tools/MacTools.swift
+  s_2b59deb0249666::t_e6594150b0369b 111-112,136-137
+Sources/ToolboxCore/Support/SpeedTest.swift
+  s_2b59deb0249666::t_d0612ed3a48096 111-114,117-118
+  s_2b59deb0249666::t_daabb3d05308ef 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "817a2ba6184079dbf2387dcf20aba6bfde27a4de",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
