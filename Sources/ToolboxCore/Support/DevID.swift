@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Synchronization
 
 /// ID generators (UUID v4/v7, ULID, cuid, cuid2, nanoid) and an inspector that decodes timestamps.
 enum DevID {
@@ -16,14 +17,13 @@ enum DevID {
     static func nowMs() -> UInt64 { UInt64(Date().timeIntervalSince1970 * 1000) }
 
     /// Process-wide counter for cuid, guarded by a lock since tools run off the main thread.
-    final class Counter: @unchecked Sendable {
-        private let lock = NSLock()
-        private var value = Int.random(in: 0..<1_679_616)
+    final class Counter: Sendable {
+        private let value = Mutex(Int.random(in: 0..<1_679_616))
         func next() -> Int {
-            lock.lock()
-            defer { lock.unlock() }
-            value = (value + 1) % 1_679_616  // 36^4
-            return value
+            value.withLock { value in
+                value = (value + 1) % 1_679_616  // 36^4
+                return value
+            }
         }
     }
     static let counter = Counter()
@@ -80,7 +80,7 @@ enum DevID {
         // gethostname, not ProcessInfo.hostName, which can block on a reverse DNS lookup.
         var buf = [CChar](repeating: 0, count: 256)
         gethostname(&buf, 255)
-        let host = String(cString: buf)
+        let host = String(decoding: buf.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self)
         let sum = host.unicodeScalars.reduce(host.count + 36) { $0 + Int($1.value) }
         return pid + toBase36(UInt64(sum), pad: 2)
     }()

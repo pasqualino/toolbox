@@ -474,24 +474,13 @@ enum MediaReport {
         return f
     }()
 
-    private static let isoFractional: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    private static let isoWhole: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime]
-        return f
-    }()
-
     /// EXIF "2024:05:01 10:00:00", in the camera's local time.
     private static func exifDate(_ text: String) -> String? {
         exifFormatter.date(from: text).map(date)
     }
 
     private static func isoDate(_ text: String) -> String? {
-        (isoFractional.date(from: text) ?? isoWhole.date(from: text)).map(date)
+        let fractional = try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(text)
+        return (fractional ?? (try? Date.ISO8601FormatStyle().parse(text))).map(date)
     }
 }

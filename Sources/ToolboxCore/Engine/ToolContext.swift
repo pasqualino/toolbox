@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Everything a tool's runner gets besides its inputs.
 public final class ToolContext: @unchecked Sendable {
@@ -52,20 +53,19 @@ public final class ToolContext: @unchecked Sendable {
 }
 
 /// Hands out unique file names across every item in one run.
-final class NameBook: @unchecked Sendable {
-    private let lock = NSLock()
-    private var used: Set<String> = []
+final class NameBook: Sendable {
+    private let used = Mutex<Set<String>>([])
 
     func claim(base: String, ext: String) -> String {
-        lock.lock()
-        defer { lock.unlock() }
-        var candidate = ext.isEmpty ? base : "\(base).\(ext)"
-        var n = 2
-        while used.contains(candidate.lowercased()) {
-            candidate = ext.isEmpty ? "\(base) \(n)" : "\(base) \(n).\(ext)"
-            n += 1
+        used.withLock { used in
+            var candidate = ext.isEmpty ? base : "\(base).\(ext)"
+            var n = 2
+            while used.contains(candidate.lowercased()) {
+                candidate = ext.isEmpty ? "\(base) \(n)" : "\(base) \(n).\(ext)"
+                n += 1
+            }
+            used.insert(candidate.lowercased())
+            return candidate
         }
-        used.insert(candidate.lowercased())
-        return candidate
     }
 }

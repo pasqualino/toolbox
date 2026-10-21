@@ -312,6 +312,7 @@ struct RequirementBanner: View {
     }
 }
 
+@MainActor
 @Observable
 final class Installer {
     var running = false

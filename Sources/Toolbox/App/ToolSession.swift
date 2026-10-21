@@ -6,6 +6,7 @@ import ToolboxCore
 import UniformTypeIdentifiers
 
 /// One dropped file and how its run went.
+@MainActor
 @Observable
 final class InputItem: Identifiable {
     enum Status: Equatable {
@@ -74,6 +75,7 @@ final class InputItem: Identifiable {
 }
 
 /// The working state of one tool: inputs, options, and the current run.
+@MainActor
 @Observable
 final class ToolSession {
     enum Phase: Equatable {

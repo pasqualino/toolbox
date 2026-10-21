@@ -90,11 +90,16 @@ public struct ToolSection: Identifiable, Sendable {
     }
 }
 
+/// An item in `ToolRegistry.layout`: a tool id or a group. Only these two conform.
+protocol LayoutEntry: Sendable {}
+extension String: LayoutEntry {}
+extension ToolGroup: LayoutEntry {}
+
 extension ToolRegistry {
     /// The whole organization: categories in order, their sections, and the tools or groups in each.
     /// A tool's category comes from here. Tools not listed land in an "Other" section of their declared
     /// category, and `toolbox-cli layout` flags them.
-    static let layout: [(ToolCategory, [(String?, [Any])])] = [
+    static let layout: [(ToolCategory, [(String?, [any LayoutEntry])])] = [
         (
             .writing,
             [

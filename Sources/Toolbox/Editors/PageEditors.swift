@@ -3,6 +3,7 @@ import SwiftUI
 import ToolboxCore
 
 /// Loads page thumbnails for a PDF off the main thread.
+@MainActor
 @Observable
 final class PDFThumbnails {
     var images: [Int: NSImage] = [:]

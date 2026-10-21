@@ -75,7 +75,8 @@ struct TimeRangeEditor: View {
             hasVideo = !tracks.isEmpty
             let p = AVPlayer(url: url)
             observer = p.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 20), queue: .main) { time in
-                playhead = time.seconds
+                // Delivered on the main queue, as asked.
+                MainActor.assumeIsolated { playhead = time.seconds }
             }
             player = p
             if value.isEmpty, duration > 0 { set(0...duration) }

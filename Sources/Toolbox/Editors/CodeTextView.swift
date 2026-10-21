@@ -94,6 +94,7 @@ struct CodeTextView: NSViewRepresentable {
         }
     }
 
+    @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CodeTextView
         var focusToken: Int

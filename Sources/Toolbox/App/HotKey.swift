@@ -66,6 +66,7 @@ struct Shortcut: Equatable, Codable {
 }
 
 /// Global hotkey via Carbon. Works without Accessibility permission.
+@MainActor
 final class HotKey {
     static let shared = HotKey()
     static let defaultsKey = "hotkey"
@@ -93,7 +94,7 @@ final class HotKey {
         InstallEventHandler(
             GetApplicationEventTarget(),
             { _, _, _ in
-                DispatchQueue.main.async { HotKey.shared.action?() }
+                Task { @MainActor in HotKey.shared.action?() }
                 return noErr
             }, 1, &spec, nil, &handler)
         register()

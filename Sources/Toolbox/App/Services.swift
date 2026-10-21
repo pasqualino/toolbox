@@ -1,8 +1,10 @@
 import AppKit
+import Synchronization
 import ToolboxCore
 
 /// macOS Services: right-click selected text or files in any app → Services → Toolbox.
-/// Declared in Info.plist (NSServices); each `NSMessage` there is a method here.
+/// Declared in Info.plist (NSServices); each `NSMessage` there is a method here. AppKit calls them on the main thread.
+@MainActor
 final class ServiceProvider: NSObject {
     /// Services that replace the selection must finish within this; slower results go to the clipboard instead.
     static let inPlaceTimeout: TimeInterval = 20
@@ -61,9 +63,8 @@ final class ServiceProvider: NSObject {
     private func transform(_ pboard: NSPasteboard, toolID: String, error: AutoreleasingUnsafeMutablePointer<NSString?>)
     {
         guard let text = pboard.string(forType: .string), let tool = ToolRegistry.tool(id: toolID) else { return }
-        let outcome = MainActor.assumeIsolated {
-            TextExport.transform(tool, text, options: AppModel.shared.session(for: tool).options, into: pboard)
-        }
+        let outcome = TextExport.transform(
+            tool, text, options: AppModel.shared.session(for: tool).options, into: pboard)
         if case .failed(let message) = outcome { error.pointee = message as NSString }
     }
 
@@ -75,17 +76,15 @@ final class ServiceProvider: NSObject {
         guard let text = pboard.string(forType: .string), !text.isEmpty,
             let tool = ToolRegistry.tool(id: "rewrite")
         else { return }
-        var options = MainActor.assumeIsolated { AppModel.shared.session(for: tool).options }
+        var options = AppModel.shared.session(for: tool).options
         options["mode"] = mode
         let settings = RewriteSession.Settings(options)
         // The wait below is synchronous, so the result also lands in a box it can read without awaiting.
         let box = ResultBox()
         let done = DispatchSemaphore(value: 0)
-        MainActor.assumeIsolated {
-            Toast.show(
-                mode == "fix" ? "Fixing grammar…" : "Rewriting…", detail: RewriteModel.describe(options),
-                symbol: "sparkles", tint: tool.tint, duration: Self.inPlaceTimeout)
-        }
+        Toast.show(
+            mode == "fix" ? "Fixing grammar…" : "Rewriting…", detail: RewriteModel.describe(options),
+            symbol: "sparkles", tint: tool.tint, duration: Self.inPlaceTimeout)
         let work = Task.detached {
             defer { done.signal() }
             do {
@@ -101,13 +100,11 @@ final class ServiceProvider: NSObject {
             switch result {
             case .success(let output):
                 TextExport.copy(output, to: pboard)
-                MainActor.assumeIsolated {
-                    History.record("rewrite")
-                    Toast.show(mode == "fix" ? "Grammar fixed" : "Rewritten", detail: output)
-                }
+                History.record("rewrite")
+                Toast.show(mode == "fix" ? "Grammar fixed" : "Rewritten", detail: output)
             case .failure(let failure):
                 error.pointee = failure.localizedDescription as NSString
-                MainActor.assumeIsolated { Toast.error("Rewrite failed", detail: failure.localizedDescription) }
+                Toast.error("Rewrite failed", detail: failure.localizedDescription)
             }
             return
         }
@@ -121,9 +118,8 @@ final class ServiceProvider: NSObject {
     }
 }
 
-private final class ResultBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored: Result<String, Error>?
-    var value: Result<String, Error>? { lock.withLock { stored } }
-    func set(_ result: Result<String, Error>) { lock.withLock { stored = result } }
+private final class ResultBox: Sendable {
+    private let stored = Mutex<Result<String, Error>?>(nil)
+    var value: Result<String, Error>? { stored.withLock { $0 } }
+    func set(_ result: Result<String, Error>) { stored.withLock { $0 = result } }
 }

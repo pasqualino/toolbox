@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import Synchronization
 
 /// Finds external binaries (ffmpeg, yt-dlp) and checks on-device model availability.
 public enum Toolchain {
@@ -13,17 +14,16 @@ public enum Toolchain {
         return (searchDirectories + inherited).filter { seen.insert($0).inserted }.joined(separator: ":")
     }()
 
-    private static let lock = NSLock()
-    nonisolated(unsafe) private static var found: [String: URL] = [:]
+    private static let found = Mutex<[String: URL]>([:])
 
     /// Finds an executable on `searchPath`. Hits are cached for the process lifetime; misses aren't,
     /// so a tool installed while the app runs (the Install button) is found on the next check.
     public static func locate(_ name: String) -> URL? {
-        if let url = lock.withLock({ found[name] }) { return url }
+        if let url = found.withLock({ $0[name] }) { return url }
         for dir in searchPath.split(separator: ":") {
             let url = URL(fileURLWithPath: String(dir)).appendingPathComponent(name)
             if FileManager.default.isExecutableFile(atPath: url.path) {
-                lock.withLock { found[name] = url }
+                found.withLock { $0[name] = url }
                 return url
             }
         }

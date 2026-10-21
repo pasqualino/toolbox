@@ -1,6 +1,7 @@
 import CoreWLAN
 import Foundation
 import Network
+import Synchronization
 import SystemConfiguration
 
 /// Raw measurements for Network Health. All local: the router, two public resolvers, DNS and Apple's captive check.
@@ -442,18 +443,16 @@ private final class Once<T: Sendable>: @unchecked Sendable {
     }
 }
 
-private final class Accumulator: @unchecked Sendable {
-    private let lock = NSLock()
-    private var data = Data()
+private final class Accumulator: Sendable {
+    private let data = Mutex(Data())
 
-    func append(_ more: Data) { lock.withLock { data.append(more) } }
-    var count: Int { lock.withLock { data.count } }
-    var text: String { lock.withLock { String(decoding: data, as: UTF8.self) } }
+    func append(_ more: Data) { data.withLock { $0.append(more) } }
+    var count: Int { data.withLock { $0.count } }
+    var text: String { data.withLock { String(decoding: $0, as: UTF8.self) } }
 }
 
-private final class Ticker: @unchecked Sendable {
-    private let lock = NSLock()
-    private var done = 0
+private final class Ticker: Sendable {
+    private let done = Mutex(0)
     private let total: Int
     private let progress: (@Sendable (Double) -> Void)?
 
@@ -463,7 +462,7 @@ private final class Ticker: @unchecked Sendable {
     }
 
     func step() {
-        let fraction = lock.withLock { () -> Double in
+        let fraction = done.withLock { done -> Double in
             done += 1
             return Double(done) / Double(total)
         }

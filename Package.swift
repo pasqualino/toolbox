@@ -1,8 +1,6 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-let swift5: [SwiftSetting] = [.swiftLanguageMode(.v5)]
-
 let package = Package(
     name: "Toolbox",
     platforms: [.macOS("26.0")],
@@ -14,10 +12,10 @@ let package = Package(
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.3")
     ],
     targets: [
-        .target(name: "ToolboxCore", dependencies: ["Yams"], swiftSettings: swift5),
+        .target(name: "ToolboxCore", dependencies: ["Yams"]),
         .executableTarget(
-            name: "Toolbox", dependencies: ["ToolboxCore"], swiftSettings: swift5,
+            name: "Toolbox", dependencies: ["ToolboxCore"],
             linkerSettings: [.linkedFramework("AVKit")]),
-        .executableTarget(name: "toolbox-cli", dependencies: ["ToolboxCore"], swiftSettings: swift5),
+        .executableTarget(name: "toolbox-cli", dependencies: ["ToolboxCore"]),
     ]
 )

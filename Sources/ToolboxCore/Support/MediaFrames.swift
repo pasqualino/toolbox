@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// Extract Frames: still images from a video at chosen times or at scene changes.
 enum MediaFrames {
@@ -192,14 +193,13 @@ enum MediaFrames {
     }
 }
 
-private final class Counter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var value = 0
+private final class Counter: Sendable {
+    private let value = Mutex(0)
 
     func increment() -> Int {
-        lock.lock()
-        defer { lock.unlock() }
-        value += 1
-        return value
+        value.withLock { value in
+            value += 1
+            return value
+        }
     }
 }

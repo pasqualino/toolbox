@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import ToolboxCore
 
 // Headless runner for testing tools.
@@ -101,8 +102,7 @@ if tool.isTransform {
 }
 
 // Ctrl-C cancels the run, which terminates any child process (ffmpeg) and cleans up staging.
-final class TextFlag: @unchecked Sendable { var seen = false }
-let gotText = TextFlag()
+let gotText = Atomic(false)
 let run = Task {
     await ToolEngine.run(tool, inputs: files, text: text, options: options, outputRoot: outRoot) { event in
         switch event {
@@ -111,7 +111,7 @@ let run = Task {
             print(
                 "ok   [\(i)] \(outputs.isEmpty ? "(text)" : outputs.map(\.lastPathComponent).joined(separator: ", "))")
         case .text(_, let t):
-            gotText.seen = true
+            gotText.store(true, ordering: .relaxed)
             print("text: \(t)")
         default: break
         }
@@ -123,4 +123,4 @@ interrupt.setEventHandler { run.cancel() }
 interrupt.resume()
 let result = await run.value
 for url in result.outputs { print("-> \(url.path)") }
-exit(result.failures == 0 && (!result.outputs.isEmpty || gotText.seen) ? 0 : 1)
+exit(result.failures == 0 && (!result.outputs.isEmpty || gotText.load(ordering: .relaxed)) ? 0 : 1)

@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import UniformTypeIdentifiers
 
 enum DownloadTools {
@@ -187,34 +188,16 @@ enum YTDLP {
     }
 }
 
-private final class LastError: @unchecked Sendable {
-    private let lock = NSLock()
-    private var line: String?
-    func set(_ value: String) {
-        lock.lock()
-        line = value
-        lock.unlock()
-    }
-    var value: String? {
-        lock.lock()
-        defer { lock.unlock() }
-        return line
-    }
+private final class LastError: Sendable {
+    private let line = Mutex<String?>(nil)
+    func set(_ value: String) { line.withLock { $0 = value } }
+    var value: String? { line.withLock { $0 } }
 }
 
-private final class PrintedPaths: @unchecked Sendable {
-    private let lock = NSLock()
-    private var paths: [String] = []
-    func add(_ path: String) {
-        lock.lock()
-        if !paths.contains(path) { paths.append(path) }
-        lock.unlock()
-    }
-    var all: [String] {
-        lock.lock()
-        defer { lock.unlock() }
-        return paths
-    }
+private final class PrintedPaths: Sendable {
+    private let paths = Mutex<[String]>([])
+    func add(_ path: String) { paths.withLock { if !$0.contains(path) { $0.append(path) } } }
+    var all: [String] { paths.withLock { $0 } }
 }
 
 /// Tracks which part (video, then audio) is downloading so progress doesn't jump back to 0 between them.

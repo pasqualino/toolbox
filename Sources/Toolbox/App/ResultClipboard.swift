@@ -3,9 +3,10 @@ import UniformTypeIdentifiers
 
 /// Puts a run's saved files on the clipboard: as files, which paste as attachments,
 /// and for a single image the picture too, which pastes inline.
+@MainActor
 enum ResultClipboard {
     /// Where results go. Snapshot runs swap in a private pasteboard so tests leave the real one alone.
-    nonisolated(unsafe) static var pasteboard = NSPasteboard.general
+    static var pasteboard = NSPasteboard.general
 
     /// Where Run and Copy saves, instead of the output folder: pasting a file needs a real file behind it.
     /// Only the latest run is kept, so what's on the clipboard stays pasteable until the next Run and Copy.
