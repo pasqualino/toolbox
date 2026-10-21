@@ -1,0 +1,167 @@
+Fixtures/ai/article.html
+  s_2b59deb0249666::t_88916577e5fe39 1-29
+Fixtures/ai/article.rtf
+  s_2b59deb0249666::t_f151d875f7249f 1-20
+Fixtures/ai/article.txt
+  s_2b59deb0249666::t_a6ae886e185aec 1-13
+Fixtures/ai/sample.srt
+  s_2b59deb0249666::t_08fae9c21707c9 1-12
+Fixtures/check-other.sh
+  s_2b59deb0249666::t_c6fe77c3c38b7d 1-58
+Fixtures/dev/check-enc.sh
+  s_2b59deb0249666::t_37aa5928fea56c 1-107
+Fixtures/dev/check-fmt.sh
+  s_2b59deb0249666::t_cfc3dcbf8169de 1-490
+Fixtures/dev/check-txt.sh
+  s_2b59deb0249666::t_026b7b87a7e263 1-185
+Fixtures/media/check-media.sh
+  s_2b59deb0249666::t_b3e0a87934b05c 1-91
+Package.swift
+  s_2b59deb0249666::t_1ce043882215d1 1-22
+README.md
+  s_2b59deb0249666::t_33776981333257 1-50
+Sources/Toolbox/App/AppModel.swift
+  s_2b59deb0249666::t_586abfd21eb71e 1-75
+Sources/Toolbox/App/HotKey.swift
+  s_2b59deb0249666::t_96988d72d4f062 1-117
+Sources/Toolbox/App/Snapshot.swift
+  s_2b59deb0249666::t_15b9307cc1339b 1-84
+Sources/Toolbox/App/Theme.swift
+  s_2b59deb0249666::t_728882776da23e 1-124
+Sources/Toolbox/App/ToolSession.swift
+  s_2b59deb0249666::t_06da3fe57fdddf 1-340
+Sources/Toolbox/App/ToolboxApp.swift
+  s_2b59deb0249666::t_7ef494a2f2d84f 1-109
+Sources/Toolbox/App/WindowController.swift
+  s_2b59deb0249666::t_adaa86f2e05379 1-60
+Sources/Toolbox/Editors/CodeTextView.swift
+  s_2b59deb0249666::t_6dd55710e5716f 1-126
+Sources/Toolbox/Editors/PageEditors.swift
+  s_2b59deb0249666::t_7949b8d4e90e09 1-214
+Sources/Toolbox/Editors/TimeRangeEditor.swift
+  s_2b59deb0249666::t_66f8e101c5aa45 1-183
+Sources/Toolbox/Palette/PalettePanel.swift
+  s_2b59deb0249666::t_970a69845d5c31 1-75
+Sources/Toolbox/Palette/PaletteView.swift
+  s_2b59deb0249666::t_d583132aad5685 1-267
+Sources/Toolbox/Palette/Search.swift
+  s_2b59deb0249666::t_46d3af7889e992 1-67
+Sources/Toolbox/Palette/Toast.swift
+  s_2b59deb0249666::t_624fb18ae0adfd 1-112
+Sources/Toolbox/Views/Inputs.swift
+  s_2b59deb0249666::t_a55f46eda098c8 1-544
+Sources/Toolbox/Views/MainView.swift
+  s_2b59deb0249666::t_98a59e35d9cca6 1-104
+Sources/Toolbox/Views/OptionsPanel.swift
+  s_2b59deb0249666::t_4ef97f4c7702e0 1-238
+Sources/Toolbox/Views/RunBar.swift
+  s_2b59deb0249666::t_742aa5dcf48509 1-277
+Sources/Toolbox/Views/SettingsView.swift
+  s_2b59deb0249666::t_dfbbe75fb28805 1-139
+Sources/Toolbox/Views/TextToolView.swift
+  s_2b59deb0249666::t_6cc3d23b6d538d 1-375
+Sources/Toolbox/Views/ToolView.swift
+  s_2b59deb0249666::t_bc0afdd38f55b5 1-169
+Sources/ToolboxCore/Engine/ToolContext.swift
+  s_2b59deb0249666::t_f8f11835c7ed51 1-68
+Sources/ToolboxCore/Engine/ToolEngine.swift
+  s_2b59deb0249666::t_fba77c5c4486e9 1-178
+Sources/ToolboxCore/Model/Tool.swift
+  s_2b59deb0249666::t_4386809970e9a9 1-219
+Sources/ToolboxCore/Support/AISummarizer.swift
+  s_2b59deb0249666::t_948da3be70cdc0 1-146
+Sources/ToolboxCore/Support/DevCodegen.swift
+  s_2b59deb0249666::t_251a7539cef2fb 1-253
+Sources/ToolboxCore/Support/DevCron.swift
+  s_2b59deb0249666::t_8497b0e089f8a1 1-423
+Sources/ToolboxCore/Support/DevDiff.swift
+  s_2b59deb0249666::t_087f68586e75fc 1-140
+Sources/ToolboxCore/Support/DevEncoding.swift
+  s_2b59deb0249666::t_292e6aa98e019b 1-369
+Sources/ToolboxCore/Support/DevEncodingReports.swift
+  s_2b59deb0249666::t_1e15cdeb1090bb 1-173
+Sources/ToolboxCore/Support/DevFormatData.swift
+  s_2b59deb0249666::t_07bbd89035a157 1-359
+Sources/ToolboxCore/Support/DevFormatJS.swift
+  s_2b59deb0249666::t_ca9c5df4b81683 1-73
+Sources/ToolboxCore/Support/DevFormatLog.swift
+  s_2b59deb0249666::t_c34b006407c545 1-74
+Sources/ToolboxCore/Support/DevGraphQL.swift
+  s_2b59deb0249666::t_274c20ba7066fa 1-813
+Sources/ToolboxCore/Support/DevID.swift
+  s_2b59deb0249666::t_06a731966b6029 1-239
+Sources/ToolboxCore/Support/DevJSON.swift
+  s_2b59deb0249666::t_277db116caf078 1-436
+Sources/ToolboxCore/Support/DevJWT.swift
+  s_2b59deb0249666::t_6ae74a72dda0c5 1-86
+Sources/ToolboxCore/Support/DevSQL.swift
+  s_2b59deb0249666::t_1248149e4f43ee 1-404
+Sources/ToolboxCore/Support/DevTextCase.swift
+  s_2b59deb0249666::t_653a1e3dffe119 1-102
+Sources/ToolboxCore/Support/DevTextLines.swift
+  s_2b59deb0249666::t_e6b2908c0a4afa 1-249
+Sources/ToolboxCore/Support/DevTime.swift
+  s_2b59deb0249666::t_6dbcbeda1e9384 1-150
+Sources/ToolboxCore/Support/FFmpeg.swift
+  s_2b59deb0249666::t_76dcd9b4377bc1 1-84
+Sources/ToolboxCore/Support/ImageMetadata.swift
+  s_2b59deb0249666::t_c3099c5de0d997 1-75
+Sources/ToolboxCore/Support/ImageTransform.swift
+  s_2b59deb0249666::t_bcbad255a932bb 1-110
+Sources/ToolboxCore/Support/MediaInfo.swift
+  s_2b59deb0249666::t_30c55f402b6d1c 1-211
+Sources/ToolboxCore/Support/PDFHelpers.swift
+  s_2b59deb0249666::t_4459099e461b63 1-99
+Sources/ToolboxCore/Support/RenameNames.swift
+  s_2b59deb0249666::t_92f4f7c53183d3 1-63
+Sources/ToolboxCore/Support/SpeechTranscription.swift
+  s_2b59deb0249666::t_f8c3d5202018bc 1-255
+Sources/ToolboxCore/Support/TextExtraction.swift
+  s_2b59deb0249666::t_d46a35b2656f2e 1-113
+Sources/ToolboxCore/Support/TextTranslation.swift
+  s_2b59deb0249666::t_0d36b033cf009d 1-126
+Sources/ToolboxCore/ToolRegistry.swift
+  s_2b59deb0249666::t_30d8bc80332658 1-51
+Sources/ToolboxCore/Tools/AITools.swift
+  s_2b59deb0249666::t_3660c8968450e7 1-196
+Sources/ToolboxCore/Tools/AudioTools.swift
+  s_2b59deb0249666::t_3f82d608c9d444 1-142
+Sources/ToolboxCore/Tools/DevEncodingTools.swift
+  s_2b59deb0249666::t_35bd6a372c34bc 1-224
+Sources/ToolboxCore/Tools/DevFormatTools.swift
+  s_2b59deb0249666::t_e72176c9c7f3f4 1-227
+Sources/ToolboxCore/Tools/DevWorkflowTools.swift
+  s_2b59deb0249666::t_921e00b8a2bfea 1-144
+Sources/ToolboxCore/Tools/DownloadTools.swift
+  s_2b59deb0249666::t_de0f38696075a2 1-204
+Sources/ToolboxCore/Tools/ImageTools.swift
+  s_2b59deb0249666::t_39e8002229217c 1-271
+Sources/ToolboxCore/Tools/PDFTools.swift
+  s_2b59deb0249666::t_4b12fbec4d40cf 1-360
+Sources/ToolboxCore/Tools/VideoTools.swift
+  s_2b59deb0249666::t_28818cb1017245 1-471
+Sources/toolbox-cli/main.swift
+  s_2b59deb0249666::t_53c0facbc0af68 1-93
+Support/Info.plist
+  s_2b59deb0249666::t_97eb6cbcf1ab09 1-51
+Support/make-icon.swift
+  s_2b59deb0249666::t_0072320b745e98 1-54
+make-app.sh
+  s_2b59deb0249666::t_1faeed3566a853 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "753a6ecea65db516810183f2cf5875e0e2bdb978",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
