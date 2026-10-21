@@ -1,35 +1,63 @@
 # Toolbox
 
-Native macOS all-in-one file toolbox. SwiftUI, macOS 26+, runs fully on device.
+A native macOS toolbox: 114 tools for text, code, screenshots, images, PDFs, audio, video, the network and the Mac. SwiftUI, macOS 26+. Everything runs on device.
 
-Press **⌃⌥Space** from any app, type what you need, drop files, press Return. With files selected in Finder, the shortcut opens straight to the tools that take them.
+Press **⌃⌥Space** from any app, type what you need, drop files, press Return. With files selected in Finder, the shortcut opens straight to the tools that take them. Change the shortcut in Settings.
 
-## Developer tools
+## Tools
 
-68 live text tools (case, lines, encoding and formatting, plus workflow ones: JWT, epoch, cron, GraphQL, JSON to Go/TS, IDs, diff). Input on the left, output updates as you type. From the palette:
+| Category | Examples |
+|---|---|
+| Writing | Rewrite, Summarize, Translate (on-device AI), Change Case, Lines, Text Diff |
+| Developer | Base64, URL encoding, hashes, JSON/GraphQL/SQL/XML formatting, JSON ⇄ YAML/CSV, JWT, epoch, cron, IDs |
+| Screen & Scan | Capture Text, Extract Text, Beautify Screenshot, Redact Image, QR Code |
+| Images | Convert, Compress, Resize, Rotate, Remove Background, Remove Metadata |
+| PDF | Merge, Split, Organize, Delete or Extract Pages, PDF Password, PDF ⇄ Images |
+| Audio & Video | Trim, Crop, Speed, Merge, Compress, Convert, GIF, Download, Transcribe, Media Info |
+| Network | Speed Test (history per network), Network Health |
+| Mac | Keep Awake, Fix "App Is Damaged", Batch Rename |
 
-- **Return** opens the tool with your clipboard already loaded.
-- **⌥Return** runs it on the clipboard in place and shows a "Copied" toast.
+Related tools share one row with pills to switch between them (Change Case: camelCase | snake_case | …). Text and dropped files carry over when you switch. `ToolRegistry.layout` in `ToolGroup.swift` decides the categories, sections and groups.
 
-From the CLI: `toolbox-cli <tool-id> --text "..."` or pipe stdin.
+The 68 text tools update as you type. From the palette, **Return** opens one with the clipboard loaded, and **⌥Return** runs it on the clipboard in place.
 
-## In every app
+## Results
 
-Select text or files anywhere, right-click → **Services**:
+Each run saves to `~/Downloads/Toolbox/<date> <tool>/`; change the folder in Settings. Originals are never changed, except by Batch Rename in "Rename originals" mode. Tools that only produce text show it instead of saving a file.
+
+**Run and Copy** puts the result on the clipboard without saving it to the output folder: files as files, a single image also as a picture, text as text. ⌥-click the run button (it reads "Make & Copy" while ⌥ is held), press ⌥⌘Return, or use Tool › Run and Copy. After a normal run, Copy sits next to Show in Finder.
+
+## Keyboard
+
+| Keys | Action |
+|---|---|
+| ⌃⌥Space | Palette, from any app |
+| ⌘K | Palette, inside Toolbox |
+| ⌘F | Search tools in the sidebar; ↓ moves into the results |
+| ⌥⌘S | Focus the sidebar; arrows move, ←/→ collapse and expand, Return opens |
+| ⌘1…⌘8, ⌘9, ⌘0 | Categories, Favorites, Recent |
+| ⌘O | Choose files |
+| ⌘Return / ⌥⌘Return | Run / Run and Copy |
+| ⌘. | Stop |
+| ⇧⌘R | Show results in Finder |
+| ⌃Tab, ⌃⇧Tab | Next or previous pill in a group |
+| ⌘D | Add to Favorites, or remove |
+| ⇧⌘N | Open the tool in a new window |
+| ⇧⌘⌫ | Clear files |
+
+## Services
+
+Select text or files in any app, then right-click › Services:
 
 | Service | Does |
 |---|---|
-| Toolbox: Rewrite / Fix Grammar | Replaces the selection with the rewritten text (on-device model) |
+| Toolbox: Rewrite / Fix Grammar | Replaces the selection with the rewritten text |
 | Toolbox: Format JSON | Replaces the selection with formatted JSON |
 | Toolbox: Decode JWT | Opens Decode JWT with the token |
-| Toolbox: Open Text in Toolbox | Palette with text tools, text preloaded |
-| Toolbox: Open in Toolbox (files) | Palette filtered to tools for the selected files |
+| Toolbox: Open Text in Toolbox | Opens the palette with the text loaded |
+| Toolbox: Open in Toolbox | Opens the palette with the tools for the selected files |
 
-Give any of them a shortcut in System Settings → Keyboard → Keyboard Shortcuts → Services.
-
-## Navigation
-
-Favorites (right-click a tool, or ⌘D), Recent, 8 task-based categories (Writing, Developer, Screen & Scan, Images, PDF, Audio & Video, Network, Mac; arranged in `ToolRegistry.layout`), toolbar search (⌘F), the Jobs button for runs in progress, and Open in New Window (⌘⇧N) to keep a tool beside the main window.
+Give any of them a shortcut in System Settings › Keyboard › Keyboard Shortcuts › Services.
 
 ## Build and run
 
@@ -37,30 +65,40 @@ Favorites (right-click a tool, or ⌘D), Recent, 8 task-based categories (Writin
 ./make-app.sh --open
 ```
 
-That builds `Toolbox.app` (release), signs it ad hoc, and launches it. Video, audio and download tools need Homebrew's `ffmpeg` and `yt-dlp`; WebP output needs `webp`. The app offers to install them.
+This builds `Toolbox.app` in release mode, signs it ad hoc, registers it and launches it. Video, audio and download tools need Homebrew's `ffmpeg` and `yt-dlp`; WebP output needs `webp`. The app offers to install them.
 
-## Layout
+## Development
 
 | Path | What |
 |---|---|
-| `Sources/ToolboxCore` | UI-free tool engine. Every tool is a `Tool` with declarative options and a runner. |
-| `Sources/ToolboxCore/Tools` | Tool definitions per group. `ToolRegistry.swift` lists them. |
+| `Sources/ToolboxCore` | UI-free engine. Each tool is a `Tool` with declarative options and a runner. |
+| `Sources/ToolboxCore/Tools` | Tool definitions, by area. `ToolRegistry.swift` collects them. |
 | `Sources/Toolbox` | The app: palette, main window, editors, settings. |
-| `Sources/toolbox-cli` | Headless runner: `toolbox-cli list`, `toolbox-cli <tool-id> key=value… files…` |
+| `Sources/toolbox-cli` | Headless runner for tests. |
 | `Fixtures` | Test inputs and check scripts. |
 
-## Tests
+The CLI runs any tool without the app:
+
+```bash
+toolbox-cli list                                # every tool and its options
+toolbox-cli layout                              # categories and groups; flags tools missing from the layout
+toolbox-cli <tool-id> key=value… files…         # file tools
+toolbox-cli <tool-id> --text "…"                # text tools; or pipe stdin
+```
+
+### Tests
+
+526 checks, run against the release CLI. Optimizations once exposed an engine bug that debug builds hid, so always test release.
 
 ```bash
 swift build -c release --product toolbox-cli
-zsh Fixtures/media/check-media.sh && zsh Fixtures/check-other.sh
-for s in Fixtures/dev/check-*.sh; do TZ=Europe/Berlin zsh $s </dev/null; done
+export CLI=$PWD/.build/release/toolbox-cli
+for s in Fixtures/dev/check-*.sh; do TZ=Europe/Berlin zsh $s </dev/null; done   # 284 text tools
+zsh Fixtures/media/check-media.sh                                              # 48 audio and video
+zsh Fixtures/check-other.sh                                                    # 27 image, PDF, AI, download
+for s in Fixtures/batch1/check-*.sh; do zsh $s </dev/null; done               # 167 more
 ```
 
-526 checks: 284 developer tools, 48 media (ffprobe), 27 image/PDF/AI/download, and 167 more in `Fixtures/batch1` (`for s in Fixtures/batch1/check-*.sh; do zsh $s </dev/null; done`; the Mac and network ones need a connection). Always test release builds: one engine bug only showed up with optimizations on.
+`check-mac.sh` and `check-net.sh` in `Fixtures/batch1` need a network connection.
 
-`./make-app.sh --debug-hooks` builds an app with the `TOOLBOX_SNAPSHOT` screenshot and `TOOLBOX_DEBUG` logging hooks (`Sources/Toolbox/App/Snapshot.swift`); normal builds leave them out.
-
-## Output
-
-Each run writes to `~/Downloads/Toolbox/<date> <tool>/` (changeable in Settings). Originals are never changed, except by Batch Rename in "Rename originals" mode.
+`./make-app.sh --debug-hooks` adds the `TOOLBOX_SNAPSHOT` screenshot and `TOOLBOX_DEBUG` logging hooks (`Sources/Toolbox/App/Snapshot.swift`). Normal builds leave them out.
