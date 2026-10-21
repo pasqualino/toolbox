@@ -15,8 +15,9 @@ public enum ImageMetadata {
     /// Returns false when ImageIO can't do it for this format; the caller should re-encode instead.
     public static func copy(_ url: URL, to out: URL, options: [CFString: Any]) -> Bool {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let type = CGImageSourceGetType(src),
-              let dest = CGImageDestinationCreateWithURL(out as CFURL, type, 1, nil) else { return false }
+            let type = CGImageSourceGetType(src),
+            let dest = CGImageDestinationCreateWithURL(out as CFURL, type, 1, nil)
+        else { return false }
         // CopyImageSource finalizes the destination itself.
         let ok = CGImageDestinationCopyImageSource(dest, src, options as CFDictionary, nil)
         if !ok { try? FileManager.default.removeItem(at: out) }
@@ -42,13 +43,16 @@ public enum ImageMetadata {
     /// Used where `copy` can't drop tags (it reports success on HEIC and PNG but keeps everything).
     public static func rewriteStripped(_ src: CGImageSource, to out: URL, orientation: Int?, quality: Double) throws {
         guard let type = CGImageSourceGetType(src),
-              let dest = CGImageDestinationCreateWithURL(out as CFURL, type, 1, nil) else {
+            let dest = CGImageDestinationCreateWithURL(out as CFURL, type, 1, nil)
+        else {
             throw ToolError.message("Can't write this image type.")
         }
         var props: [CFString: Any] = stripOptions(orientation: nil)
-        for key in [kCGImagePropertyGPSDictionary, kCGImagePropertyExifDictionary, kCGImagePropertyTIFFDictionary,
-                    kCGImagePropertyIPTCDictionary, kCGImagePropertyMakerAppleDictionary,
-                    kCGImagePropertyExifAuxDictionary, kCGImagePropertyPNGDictionary] {
+        for key in [
+            kCGImagePropertyGPSDictionary, kCGImagePropertyExifDictionary, kCGImagePropertyTIFFDictionary,
+            kCGImagePropertyIPTCDictionary, kCGImagePropertyMakerAppleDictionary,
+            kCGImagePropertyExifAuxDictionary, kCGImagePropertyPNGDictionary,
+        ] {
             props[key] = kCFNull
         }
         props[kCGImagePropertyOrientation] = orientation ?? 1
@@ -61,15 +65,20 @@ public enum ImageMetadata {
     /// Exif color space and pixel size, and TIFF orientation and tiling, are structural and allowed.
     public static func isClean(_ url: URL) -> Bool {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any] else { return false }
-        for key in [kCGImagePropertyGPSDictionary, kCGImagePropertyIPTCDictionary, kCGImagePropertyMakerAppleDictionary,
-                    kCGImagePropertyExifAuxDictionary] where props[key] != nil {
+            let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
+        else { return false }
+        for key in [
+            kCGImagePropertyGPSDictionary, kCGImagePropertyIPTCDictionary, kCGImagePropertyMakerAppleDictionary,
+            kCGImagePropertyExifAuxDictionary,
+        ] where props[key] != nil {
             return false
         }
         let exif = (props[kCGImagePropertyExifDictionary] as? [CFString: Any])?.keys.map { $0 as String } ?? []
         let tiff = (props[kCGImagePropertyTIFFDictionary] as? [CFString: Any])?.keys.map { $0 as String } ?? []
         let allowedExif: Set<String> = ["ColorSpace", "PixelXDimension", "PixelYDimension"]
-        let allowedTIFF: Set<String> = ["Orientation", "TileWidth", "TileLength", "ResolutionUnit", "XResolution", "YResolution"]
+        let allowedTIFF: Set<String> = [
+            "Orientation", "TileWidth", "TileLength", "ResolutionUnit", "XResolution", "YResolution",
+        ]
         return Set(exif).isSubset(of: allowedExif) && Set(tiff).isSubset(of: allowedTIFF)
     }
 }

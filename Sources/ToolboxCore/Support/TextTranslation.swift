@@ -19,7 +19,8 @@ enum TextTranslation {
         } else {
             sourceLanguage = Locale.Language(identifier: source)
         }
-        let sameScript = sourceLanguage.script == nil || targetLanguage.script == nil
+        let sameScript =
+            sourceLanguage.script == nil || targetLanguage.script == nil
             || sourceLanguage.script == targetLanguage.script
         if sourceLanguage.languageCode == targetLanguage.languageCode, sameScript {
             throw ToolError.message("This text is already in \(name(targetLanguage)). Pick another language.")
@@ -29,9 +30,11 @@ enum TextTranslation {
         case .installed:
             break
         case .supported:
-            throw ToolError.message("\(name(sourceLanguage)) and \(name(targetLanguage)) aren't downloaded. \(settingsHint)")
+            throw ToolError.message(
+                "\(name(sourceLanguage)) and \(name(targetLanguage)) aren't downloaded. \(settingsHint)")
         case .unsupported:
-            throw ToolError.message("Translation from \(name(sourceLanguage)) to \(name(targetLanguage)) isn't supported.")
+            throw ToolError.message(
+                "Translation from \(name(sourceLanguage)) to \(name(targetLanguage)) isn't supported.")
         @unknown default:
             break
         }
@@ -39,14 +42,18 @@ enum TextTranslation {
     }
 
     /// Translates paragraphs in one batch, keeping blank lines where they were.
-    static func translate(_ text: String, session: TranslationSession, progress: @Sendable (Double) -> Void) async throws -> String {
+    static func translate(_ text: String, session: TranslationSession, progress: @Sendable (Double) -> Void)
+        async throws -> String
+    {
         let lines = text.components(separatedBy: "\n")
         let translated = try await translate(lines: lines, session: session, progress: progress)
         return translated.joined(separator: "\n")
     }
 
     /// Translates each non-empty line; empty ones pass through.
-    static func translate(lines: [String], session: TranslationSession, progress: @Sendable (Double) -> Void) async throws -> [String] {
+    static func translate(lines: [String], session: TranslationSession, progress: @Sendable (Double) -> Void)
+        async throws -> [String]
+    {
         let indexed = lines.enumerated().filter { !$0.element.trimmingCharacters(in: .whitespaces).isEmpty }
         guard !indexed.isEmpty else { throw ToolError.message("There's no text to translate.") }
         var result = lines
@@ -57,7 +64,9 @@ enum TextTranslation {
             for start in stride(from: 0, to: indexed.count, by: batchSize) {
                 try Task.checkCancellation()
                 let slice = indexed[start..<min(start + batchSize, indexed.count)]
-                let requests = slice.map { TranslationSession.Request(sourceText: $0.element, clientIdentifier: String($0.offset)) }
+                let requests = slice.map {
+                    TranslationSession.Request(sourceText: $0.element, clientIdentifier: String($0.offset))
+                }
                 for response in try await session.translations(from: requests) {
                     if let id = response.clientIdentifier, let index = Int(id) { result[index] = response.targetText }
                 }
@@ -73,13 +82,16 @@ enum TextTranslation {
     }
 
     /// Translates the text lines of an SRT or VTT file, leaving numbers, timings and blank lines as they are.
-    static func translateSubtitles(_ text: String, session: TranslationSession, progress: @Sendable (Double) -> Void) async throws -> String {
+    static func translateSubtitles(_ text: String, session: TranslationSession, progress: @Sendable (Double) -> Void)
+        async throws -> String
+    {
         let lines = text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         var keep = Set<Int>()
         for (index, line) in lines.enumerated() {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty || trimmed.contains("-->") || Int(trimmed) != nil || trimmed.hasPrefix("WEBVTT")
-                || trimmed.hasPrefix("NOTE") || trimmed.hasPrefix("STYLE") {
+                || trimmed.hasPrefix("NOTE") || trimmed.hasPrefix("STYLE")
+            {
                 keep.insert(index)
             }
         }
@@ -108,12 +120,13 @@ enum TextTranslation {
     }
 
     static func message(for error: Error, session: TranslationSession) -> String {
-        let pair = [session.sourceLanguage, session.targetLanguage].compactMap { $0.map(name) }.joined(separator: " and ")
+        let pair = [session.sourceLanguage, session.targetLanguage].compactMap { $0.map(name) }.joined(
+            separator: " and ")
         switch error {
         case TranslationError.notInstalled:
             return "\(pair.isEmpty ? "These languages" : pair) aren't downloaded. \(settingsHint)"
         case TranslationError.unsupportedLanguagePairing, TranslationError.unsupportedSourceLanguage,
-             TranslationError.unsupportedTargetLanguage:
+            TranslationError.unsupportedTargetLanguage:
             return "Translation between \(pair.isEmpty ? "these languages" : pair) isn't supported."
         case TranslationError.unableToIdentifyLanguage:
             return "Couldn't tell which language this is. Pick the source language."

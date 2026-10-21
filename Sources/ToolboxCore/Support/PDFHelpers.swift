@@ -83,9 +83,12 @@ enum PDFHelpers {
         let size = quarterTurn ? CGSize(width: box.height, height: box.width) : box.size
         let width = max(1, Int((size.width * scale).rounded()))
         let height = max(1, Int((size.height * scale).rounded()))
-        guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                  bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else {
+        guard
+            let ctx = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+        else {
             throw ToolError.message("Page is too large to render.")
         }
         ctx.setFillColor(CGColor(gray: 1, alpha: 1))

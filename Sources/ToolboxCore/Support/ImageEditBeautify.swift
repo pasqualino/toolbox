@@ -32,12 +32,14 @@ enum Beautify {
 
     static func render(_ input: CGImage, _ options: Options) throws -> CGImage {
         let shot = try trimTransparentMargins(input)
-        let w = shot.width, h = shot.height
+        let w = shot.width
+        let h = shot.height
         let long = CGFloat(max(w, h))
         let pad = Int((long * options.double("padding") / 100).rounded())
         let radius = long * options.double("radius") / 100
 
-        var width = w + 2 * pad, height = h + 2 * pad
+        var width = w + 2 * pad
+        var height = h + 2 * pad
         if let r = ratio(options.string("ratio")) {
             // Grow the short side to reach the ratio, never crop.
             if CGFloat(width) / CGFloat(height) < r {
@@ -55,19 +57,22 @@ enum Beautify {
             ctx.setFillColor(colors[0])
             ctx.fill(canvasRect)
         } else if colors.count > 1,
-                  let gradient = CGGradient(colorsSpace: ImageEdit.sRGB, colors: colors as CFArray, locations: nil) {
+            let gradient = CGGradient(colorsSpace: ImageEdit.sRGB, colors: colors as CFArray, locations: nil)
+        {
             ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: height), end: CGPoint(x: width, y: 0), options: [])
         }
 
         // Whole pixels, so the screenshot is copied without resampling.
         let frame = CGRect(x: (width - w) / 2, y: (height - h) / 2, width: w, height: h)
-        let clip = CGPath(roundedRect: frame, cornerWidth: min(radius, frame.width / 2),
-                          cornerHeight: min(radius, frame.height / 2), transform: nil)
+        let clip = CGPath(
+            roundedRect: frame, cornerWidth: min(radius, frame.width / 2),
+            cornerHeight: min(radius, frame.height / 2), transform: nil)
         ctx.interpolationQuality = .none
         if options.bool("shadow") {
             let blur = max(4, long * 0.025)
-            ctx.setShadow(offset: CGSize(width: 0, height: -blur * 0.35), blur: blur,
-                          color: CGColor(gray: 0, alpha: 0.4))
+            ctx.setShadow(
+                offset: CGSize(width: 0, height: -blur * 0.35), blur: blur,
+                color: CGColor(gray: 0, alpha: 0.4))
         }
         // One layer, so the shadow follows the rounded shape and the image is drawn once.
         ctx.beginTransparencyLayer(auxiliaryInfo: nil)
@@ -86,17 +91,24 @@ enum Beautify {
         let ctx = try ImageEdit.rgba(image)
         guard let data = ctx.data else { return image }
         let bytes = data.assumingMemoryBound(to: UInt8.self)
-        let w = ctx.width, h = ctx.height, row = ctx.bytesPerRow
+        let w = ctx.width
+        let h = ctx.height
+        let row = ctx.bytesPerRow
         // Window shadows stay well below this; the window itself is opaque.
         let threshold: UInt8 = 230
-        var minX = w, minY = h, maxX = -1, maxY = -1
+        var minX = w
+        var minY = h
+        var maxX = -1
+        var maxY = -1
         for y in 0..<h {
             let line = bytes + y * row
             var x = 0
             while x < w {
                 if line[x * 4 + 3] >= threshold {
-                    minX = min(minX, x); maxX = max(maxX, x)
-                    minY = min(minY, y); maxY = max(maxY, y)
+                    minX = min(minX, x)
+                    maxX = max(maxX, x)
+                    minY = min(minY, y)
+                    maxY = max(maxY, y)
                     // The rest of this row only matters for maxX: scan it from the right.
                     var r = w - 1
                     while r > x, line[r * 4 + 3] < threshold { r -= 1 }

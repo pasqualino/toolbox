@@ -13,7 +13,9 @@ enum DevEncodingTools {
     static let base64Encode = Tool.text(
         id: "base64-encode", name: "Base64 Encode", summary: "Text to Base64 or base64url",
         symbol: "textformat.abc", keywords: ["base64", "b64", "encode", "base64url", "btoa"],
-        options: [OptionSpec("urlsafe", "URL-safe", .toggle(default: false), help: "base64url alphabet (- and _), no padding")]
+        options: [
+            OptionSpec("urlsafe", "URL-safe", .toggle(default: false), help: "base64url alphabet (- and _), no padding")
+        ]
     ) { input, options in
         DevEncoding.base64Encode(input.text, urlSafe: options.bool("urlsafe"))
     }
@@ -31,8 +33,12 @@ enum DevEncodingTools {
     static let urlEncode = Tool.text(
         id: "url-encode", name: "URL Encode", summary: "Percent-encode a query value or a whole URL",
         symbol: "link", keywords: ["url", "percent", "encode", "uri", "escape", "query", "encodeURIComponent"],
-        options: [OptionSpec("mode", "Encode", .choice([Choice("component", "Component"), Choice("url", "Whole URL")], default: "component"),
-                             help: "Component encodes everything but letters, digits and -._~. Whole URL keeps :/?#&= and friends.")]
+        options: [
+            OptionSpec(
+                "mode", "Encode",
+                .choice([Choice("component", "Component"), Choice("url", "Whole URL")], default: "component"),
+                help: "Component encodes everything but letters, digits and -._~. Whole URL keeps :/?#&= and friends.")
+        ]
     ) { input, options in
         DevEncoding.urlEncode(input.text, wholeURL: options.string("mode") == "url")
     }
@@ -49,7 +55,8 @@ enum DevEncodingTools {
 
     static let htmlEncode = Tool.text(
         id: "html-encode", name: "HTML Encode", summary: "Escape & < > \" ' as entities",
-        symbol: "chevron.left.forwardslash.chevron.right", keywords: ["html", "entities", "escape", "encode", "xml", "amp"],
+        symbol: "chevron.left.forwardslash.chevron.right",
+        keywords: ["html", "entities", "escape", "encode", "xml", "amp"],
         options: [OptionSpec("nonascii", "Encode all non-ASCII", .toggle(default: false))]
     ) { input, options in
         DevEncoding.htmlEncode(input.text, allNonASCII: options.bool("nonascii"))
@@ -57,7 +64,8 @@ enum DevEncodingTools {
 
     static let htmlDecode = Tool.text(
         id: "html-decode", name: "HTML Decode", summary: "Named and numeric entities to text",
-        symbol: "chevron.left.forwardslash.chevron.right", keywords: ["html", "entities", "unescape", "decode", "xml", "nbsp", "amp"]
+        symbol: "chevron.left.forwardslash.chevron.right",
+        keywords: ["html", "entities", "unescape", "decode", "xml", "nbsp", "amp"]
     ) { input, _ in
         DevEncoding.htmlDecode(input.text)
     }
@@ -77,7 +85,8 @@ enum DevEncodingTools {
     }
 
     static let unescapeString = Tool.text(
-        id: "unescape-string", name: "Unescape String", summary: "Turn \\\"escaped\\\" JSON from a log line back into text",
+        id: "unescape-string", name: "Unescape String",
+        summary: "Turn \\\"escaped\\\" JSON from a log line back into text",
         symbol: "quote.opening", keywords: ["unescape", "json", "string", "quote", "backslash", "log", "unquote"]
     ) { input, _ in
         try DevEncoding.unescapeString(input.text)
@@ -102,36 +111,50 @@ enum DevEncodingTools {
 
     // MARK: Hash and HMAC
 
-    static let outputFormat = OptionSpec("format", "Output", .choice([Choice("hex", "Hex"), Choice("base64", "Base64")], default: "hex"))
+    static let outputFormat = OptionSpec(
+        "format", "Output", .choice([Choice("hex", "Hex"), Choice("base64", "Base64")], default: "hex"))
 
     static let hash = Tool.text(
         id: "hash", name: "Hash", summary: "MD5, SHA-1, SHA-256 or SHA-512 of the text",
         symbol: "barcode", keywords: ["hash", "md5", "sha1", "sha256", "sha512", "sha", "checksum", "digest"],
         options: [
-            OptionSpec("algo", "Algorithm", .choice([Choice("md5", "MD5"), Choice("sha1", "SHA-1"), Choice("sha256", "SHA-256"), Choice("sha512", "SHA-512")], default: "sha256")),
+            OptionSpec(
+                "algo", "Algorithm",
+                .choice(
+                    [
+                        Choice("md5", "MD5"), Choice("sha1", "SHA-1"), Choice("sha256", "SHA-256"),
+                        Choice("sha512", "SHA-512"),
+                    ], default: "sha256")),
             outputFormat,
         ]
     ) { input, options in
         guard !input.text.isEmpty else { return "" }
         let data = Data(input.text.utf8)
-        let digest: Data = switch options.string("algo") {
-        case "md5": Data(Insecure.MD5.hash(data: data))
-        case "sha1": Data(Insecure.SHA1.hash(data: data))
-        case "sha512": Data(SHA512.hash(data: data))
-        default: Data(SHA256.hash(data: data))
-        }
+        let digest: Data =
+            switch options.string("algo") {
+            case "md5": Data(Insecure.MD5.hash(data: data))
+            case "sha1": Data(Insecure.SHA1.hash(data: data))
+            case "sha512": Data(SHA512.hash(data: data))
+            default: Data(SHA256.hash(data: data))
+            }
         return format(digest, options.string("format"))
     }
 
     static let hmac = Tool.text(
         id: "hmac", name: "HMAC", summary: "Sign or verify a webhook payload",
-        symbol: "signature", keywords: ["hmac", "webhook", "signature", "verify", "sign", "sha256", "secret", "github", "chargebee"],
+        symbol: "signature",
+        keywords: ["hmac", "webhook", "signature", "verify", "sign", "sha256", "secret", "github", "chargebee"],
         options: [
             OptionSpec("key", "Key", .text(default: "", placeholder: "Secret key")),
-            OptionSpec("algo", "Algorithm", .choice([Choice("sha1", "SHA-1"), Choice("sha256", "SHA-256"), Choice("sha512", "SHA-512")], default: "sha256")),
+            OptionSpec(
+                "algo", "Algorithm",
+                .choice(
+                    [Choice("sha1", "SHA-1"), Choice("sha256", "SHA-256"), Choice("sha512", "SHA-512")],
+                    default: "sha256")),
             outputFormat,
-            OptionSpec("expected", "Expected", .text(default: "", placeholder: "Signature to verify (optional)"),
-                       help: "Hex or Base64. A prefix like sha256= is ignored."),
+            OptionSpec(
+                "expected", "Expected", .text(default: "", placeholder: "Signature to verify (optional)"),
+                help: "Hex or Base64. A prefix like sha256= is ignored."),
         ]
     ) { input, options in
         guard !input.text.isEmpty else { return "" }
@@ -139,11 +162,12 @@ enum DevEncodingTools {
         guard !key.isEmpty else { throw ToolError.message("Enter the secret key.") }
         let symmetric = SymmetricKey(data: Data(key.utf8))
         let data = Data(input.text.utf8)
-        let mac: Data = switch options.string("algo") {
-        case "sha1": Data(HMAC<Insecure.SHA1>.authenticationCode(for: data, using: symmetric))
-        case "sha512": Data(HMAC<SHA512>.authenticationCode(for: data, using: symmetric))
-        default: Data(HMAC<SHA256>.authenticationCode(for: data, using: symmetric))
-        }
+        let mac: Data =
+            switch options.string("algo") {
+            case "sha1": Data(HMAC<Insecure.SHA1>.authenticationCode(for: data, using: symmetric))
+            case "sha512": Data(HMAC<SHA512>.authenticationCode(for: data, using: symmetric))
+            default: Data(HMAC<SHA256>.authenticationCode(for: data, using: symmetric))
+            }
         let signature = format(mac, options.string("format"))
         let expected = options.string("expected").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !expected.isEmpty else { return signature }
@@ -164,7 +188,9 @@ enum DevEncodingTools {
     static func signatureBytes(_ text: String, length: Int) -> Data? {
         var s = Substring(text)
         if let eq = s.firstIndex(of: "="), eq != s.startIndex,
-           s[..<eq].allSatisfy({ $0.isLetter || $0.isNumber }), s.index(after: eq) < s.endIndex, s[s.index(after: eq)] != "=" {
+            s[..<eq].allSatisfy({ $0.isLetter || $0.isNumber }), s.index(after: eq) < s.endIndex,
+            s[s.index(after: eq)] != "="
+        {
             s = s[s.index(after: eq)...]
         }
         let value = String(s)
@@ -192,7 +218,8 @@ enum DevEncodingTools {
 
     static let colorConvert = Tool.text(
         id: "color-convert", name: "Color Convert", summary: "Hex, rgb() and hsl() plus SwiftUI and UIColor code",
-        symbol: "paintpalette", keywords: ["color", "colour", "hex", "rgb", "hsl", "swiftui", "uicolor", "nscolor", "css"],
+        symbol: "paintpalette",
+        keywords: ["color", "colour", "hex", "rgb", "hsl", "swiftui", "uicolor", "nscolor", "css"],
         traits: .report
     ) { input, _ in
         guard !input.text.allSatisfy(\.isWhitespace) else { return "" }

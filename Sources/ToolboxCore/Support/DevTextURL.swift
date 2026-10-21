@@ -19,28 +19,38 @@ enum DevTextURL {
         guard !text.isEmpty else { return "" }
         var assumed = false
         if !text.contains("://"), !text.hasPrefix("mailto:"), let host = text.split(separator: "/").first,
-           host.contains("."), !host.contains(" ") {
+            host.contains("."), !host.contains(" ")
+        {
             text = "https://" + text
             assumed = true
         }
         let escaped = text.replacingOccurrences(of: " ", with: "%20")
-        guard let c = URLComponents(string: escaped), let scheme = c.scheme, c.host != nil || scheme == "mailto" || scheme == "file" else {
+        guard let c = URLComponents(string: escaped), let scheme = c.scheme,
+            c.host != nil || scheme == "mailto" || scheme == "file"
+        else {
             throw ToolError.message("That isn't a URL. Paste something like https://example.com/path?x=1.")
         }
         var rows: [(String, String)] = [("Scheme", scheme + (assumed ? " (assumed)" : ""))]
         if let u = c.user { rows.append(("User", u.removingPercentEncoding ?? u)) }
         if let p = c.password { rows.append(("Password", p.removingPercentEncoding ?? p)) }
         if let h = c.host { rows.append(("Host", h)) }
-        let defaults = ["http": 80, "https": 443, "ws": 80, "wss": 443, "ftp": 21, "postgres": 5432, "postgresql": 5432,
-                        "redis": 6379, "mysql": 3306, "mongodb": 27017, "amqp": 5672]
-        if let p = c.port { rows.append(("Port", "\(p)")) }
-        else if let d = defaults[scheme.lowercased()] { rows.append(("Port", "\(d) (default)")) }
+        let defaults = [
+            "http": 80, "https": 443, "ws": 80, "wss": 443, "ftp": 21, "postgres": 5432, "postgresql": 5432,
+            "redis": 6379, "mysql": 3306, "mongodb": 27017, "amqp": 5672,
+        ]
+        if let p = c.port {
+            rows.append(("Port", "\(p)"))
+        } else if let d = defaults[scheme.lowercased()] {
+            rows.append(("Port", "\(d) (default)"))
+        }
         rows.append(("Path", c.path.isEmpty ? "/" : c.path))
         var out = DevTextReport.table(rows)
 
         let segments = c.path.split(separator: "/").map { $0.removingPercentEncoding ?? String($0) }
         if segments.count > 1 {
-            out += "\n\nSegments\n" + DevTextReport.table(segments.enumerated().map { ("\($0.offset + 1)", $0.element) }, indent: "  ")
+            out +=
+                "\n\nSegments\n"
+                + DevTextReport.table(segments.enumerated().map { ("\($0.offset + 1)", $0.element) }, indent: "  ")
         }
         if let q = c.percentEncodedQuery, !q.isEmpty {
             let p = pairs(q)
@@ -68,7 +78,8 @@ enum DevTextURL {
 
     /// "ABC-5472 Retry failed webhook" or a Linear issue URL to "marcos/abc-5472-retry-failed-webhook".
     static func branch(_ raw: String, prefix: String, maxLength: Int, lowercaseTicket: Bool) -> String {
-        var line = raw.split(whereSeparator: \.isNewline).first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
+        var line =
+            raw.split(whereSeparator: \.isNewline).first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
         guard !line.isEmpty else { return "" }
         // https://linear.app/team/issue/ABC-5181/fix-csv-export-bug
         if let url = URLComponents(string: line), url.host != nil {
@@ -79,7 +90,8 @@ enum DevTextURL {
                 line = last
             }
         }
-        var id = "", title = line
+        var id = ""
+        var title = line
         let ns = line as NSString
         if let m = ticket.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) {
             id = ns.substring(with: m.range(at: 1))

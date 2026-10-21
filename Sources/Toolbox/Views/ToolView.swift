@@ -115,7 +115,8 @@ private struct InputArea: View {
                 if session.items.isEmpty {
                     DropZone(session: session)
                 } else if let id = session.comparing, let item = session.items.first(where: { $0.id == id }),
-                          let output = item.comparableOutput {
+                    let output = item.comparableOutput
+                {
                     CompareView(session: session, item: item, output: output)
                         .transition(.opacity)
                 } else if session.tool.preview != nil {

@@ -22,7 +22,8 @@ enum DevFormatData {
         case .number(let n): return Node(n, Tag(n.contains(where: { ".eE".contains($0) }) ? .float : .int))
         case .string(let s): return .scalar(s.represented())
         case .array(let items): return .sequence(.init(items.map(node)))
-        case .object(let members): return .mapping(.init(members.map { (.scalar($0.key.represented()), node($0.value)) }))
+        case .object(let members):
+            return .mapping(.init(members.map { (.scalar($0.key.represented()), node($0.value)) }))
         }
     }
 
@@ -42,7 +43,8 @@ enum DevFormatData {
 
     private static func describe(_ error: YamlError) -> String {
         switch error {
-        case let .scanner(_, problem, mark, _), let .parser(_, problem, mark, _), let .composer(_, problem, mark, _):
+        case .scanner(_, let problem, let mark, _), .parser(_, let problem, let mark, _),
+            .composer(_, let problem, let mark, _):
             return "Invalid YAML at line \(mark.line), column \(mark.column): \(problem)."
         default:
             return "That isn't valid YAML."
@@ -149,7 +151,8 @@ enum DevFormatData {
     }
 
     private static func field(_ s: String, _ d: String) -> String {
-        let needs = s.contains(d) || s.contains { $0 == "\"" || $0 == "\n" || $0 == "\r" }
+        let needs =
+            s.contains(d) || s.contains { $0 == "\"" || $0 == "\n" || $0 == "\r" }
             || s.first == " " || s.last == " "
         return needs ? "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" : s
     }
@@ -158,12 +161,13 @@ enum DevFormatData {
     static func parseCSV(_ text: String, delimiter: String) throws -> [[String]] {
         var bytes = Array(text.utf8)
         if bytes.starts(with: [0xEF, 0xBB, 0xBF]) { bytes.removeFirst(3) }
-        let d: UInt8 = switch delimiter {
-        case "tab": 9
-        case "semicolon": 59
-        case "comma": 44
-        default: detectDelimiter(bytes)
-        }
+        let d: UInt8 =
+            switch delimiter {
+            case "tab": 9
+            case "semicolon": 59
+            case "comma": 44
+            default: detectDelimiter(bytes)
+            }
         var rows = [[String]]()
         var row = [String]()
         var i = 0
@@ -179,7 +183,11 @@ enum DevFormatData {
                 while i < n {
                     let b = bytes[i]
                     if b == 34 {
-                        if i + 1 < n, bytes[i + 1] == 34 { buf.append(34); i += 2; continue }
+                        if i + 1 < n, bytes[i + 1] == 34 {
+                            buf.append(34)
+                            i += 2
+                            continue
+                        }
                         i += 1
                         closed = true
                         break
@@ -240,17 +248,25 @@ enum DevFormatData {
         var used = [String: Int]()
         for (i, raw) in first.enumerated() {
             var key = raw.isEmpty ? "column\(i + 1)" : raw
-            if let count = used[key] { used[key] = count + 1; key += "_\(count + 1)" } else { used[key] = 1 }
+            if let count = used[key] {
+                used[key] = count + 1
+                key += "_\(count + 1)"
+            } else {
+                used[key] = 1
+            }
             keys.append(key)
         }
-        return .array(rows.dropFirst().map { cells in
-            var members = [JSONMember]()
-            for (i, key) in keys.enumerated() { members.append(JSONMember(key, value(i < cells.count ? cells[i] : ""))) }
-            if cells.count > keys.count {
-                for i in keys.count..<cells.count { members.append(JSONMember("column\(i + 1)", value(cells[i]))) }
-            }
-            return .object(members)
-        })
+        return .array(
+            rows.dropFirst().map { cells in
+                var members = [JSONMember]()
+                for (i, key) in keys.enumerated() {
+                    members.append(JSONMember(key, value(i < cells.count ? cells[i] : "")))
+                }
+                if cells.count > keys.count {
+                    for i in keys.count..<cells.count { members.append(JSONMember("column\(i + 1)", value(cells[i]))) }
+                }
+                return .object(members)
+            })
     }
 
     // MARK: Query strings
@@ -258,8 +274,11 @@ enum DevFormatData {
     /// Takes a full URL or a bare query. Repeated keys and `key[]` become arrays. Values stay strings.
     static func json(fromQuery text: String) -> JSONValue {
         var query = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let q = query.firstIndex(of: "?") { query = String(query[query.index(after: q)...]) }
-        else if query.contains("://") { query = "" }
+        if let q = query.firstIndex(of: "?") {
+            query = String(query[query.index(after: q)...])
+        } else if query.contains("://") {
+            query = ""
+        }
         if let hash = query.firstIndex(of: "#") { query = String(query[..<hash]) }
         var members = [JSONMember]()
         var index = [String: Int]()
@@ -268,11 +287,17 @@ enum DevFormatData {
             var key = decode(parts[0])
             let value = JSONValue.string(parts.count > 1 ? decode(parts[1]) : "")
             var forceArray = false
-            if key.hasSuffix("[]") { key.removeLast(2); forceArray = true }
+            if key.hasSuffix("[]") {
+                key.removeLast(2)
+                forceArray = true
+            }
             if key.isEmpty { continue }
             if let i = index[key] {
-                if case .array(let items) = members[i].value { members[i].value = .array(items + [value]) }
-                else { members[i].value = .array([members[i].value, value]) }
+                if case .array(let items) = members[i].value {
+                    members[i].value = .array(items + [value])
+                } else {
+                    members[i].value = .array([members[i].value, value])
+                }
             } else {
                 index[key] = members.count
                 members.append(JSONMember(key, forceArray ? .array([value]) : value))
@@ -286,7 +311,8 @@ enum DevFormatData {
         return plus.removingPercentEncoding ?? plus
     }
 
-    private static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+    private static let unreserved = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 
     static func query(from value: JSONValue) throws -> String {
         guard case .object(let members) = value else { throw ToolError.message("Paste a JSON object.") }
@@ -330,7 +356,8 @@ enum DevFormatData {
         if pretty { options.insert(.nodePrettyPrint) }
         // Keep the declaration only when the input had one.
         let hasDeclaration = text.drop { $0.isWhitespace || $0 == "\u{FEFF}" }.hasPrefix("<?xml")
-        var out = hasDeclaration
+        var out =
+            hasDeclaration
             ? doc.xmlString(options: options)
             : (doc.children ?? []).map { $0.xmlString(options: options) }.joined(separator: pretty ? "\n" : "")
         if pretty, indent != 4 {
@@ -349,7 +376,8 @@ enum DevFormatData {
         let hasElements = children.contains { $0.kind == .element }
         for child in children.reversed() {
             if hasElements, child.kind == .text,
-               (child.stringValue ?? "").allSatisfy({ $0.isWhitespace }) {
+                (child.stringValue ?? "").allSatisfy({ $0.isWhitespace })
+            {
                 child.detach()
             } else {
                 stripWhitespace(child)

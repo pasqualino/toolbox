@@ -75,7 +75,8 @@ struct NetworkHealthView: View {
                             VStack(spacing: 12) {
                                 if model.running {
                                     ProgressView(value: model.progress).frame(width: 220)
-                                    Text("Checking Wi-Fi, your router, the internet and DNS…").foregroundStyle(.secondary)
+                                    Text("Checking Wi-Fi, your router, the internet and DNS…").foregroundStyle(
+                                        .secondary)
                                 } else {
                                     Image(systemName: "stethoscope")
                                         .font(.system(size: 44))
@@ -136,7 +137,9 @@ struct NetworkHealthView: View {
 
     private func groups(_ report: NetworkHealthReport) -> [(String, [NetworkHealthReport.Check])] {
         let byGroup = Dictionary(grouping: report.checks, by: \.group)
-        let ordered = Self.groupOrder.filter { byGroup[$0] != nil } + byGroup.keys.filter { !Self.groupOrder.contains($0) }.sorted()
+        let ordered =
+            Self.groupOrder.filter { byGroup[$0] != nil }
+            + byGroup.keys.filter { !Self.groupOrder.contains($0) }.sorted()
         return ordered.map { ($0, byGroup[$0] ?? []) }
     }
 }
@@ -270,7 +273,10 @@ private struct CheckGroup: View {
                                 .font(.callout)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(check.level.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .background(
+                                    check.level.color.opacity(0.10),
+                                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                )
                                 .padding(.leading, 136)
                                 .fixedSize(horizontal: false, vertical: true)
                         }

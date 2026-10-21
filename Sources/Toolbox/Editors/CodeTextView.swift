@@ -34,8 +34,9 @@ struct CodeTextView: NSViewRepresentable {
         textView.isHorizontallyResizable = !wraps
         if !wraps {
             textView.textContainer?.widthTracksTextView = false
-            textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude,
-                                                           height: CGFloat.greatestFiniteMagnitude)
+            textView.textContainer?.containerSize = NSSize(
+                width: CGFloat.greatestFiniteMagnitude,
+                height: CGFloat.greatestFiniteMagnitude)
             textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
             scroll.hasHorizontalScroller = true
         }
@@ -130,7 +131,8 @@ struct CodeTextView: NSViewRepresentable {
                 let text = storage.string
                 let requested = generation
                 Task { @MainActor [weak self, weak view] in
-                    let spans = await Task.detached(priority: .userInitiated) { Highlighter.spans(language, in: text) }.value
+                    let spans = await Task.detached(priority: .userInitiated) { Highlighter.spans(language, in: text) }
+                        .value
                     guard let self, view != nil, self.generation == requested else { return }
                     Highlighter.apply(spans, to: storage, baseFont: font)
                 }
@@ -165,14 +167,17 @@ final class DropTextView: NSTextView {
             .font: font ?? NSFont.monospacedSystemFont(ofSize: 12.5, weight: .regular),
             .foregroundColor: NSColor.placeholderTextColor,
         ]
-        let origin = NSPoint(x: textContainerInset.width + (textContainer?.lineFragmentPadding ?? 5),
-                             y: textContainerInset.height)
+        let origin = NSPoint(
+            x: textContainerInset.width + (textContainer?.lineFragmentPadding ?? 5),
+            y: textContainerInset.height)
         (placeholder as NSString).draw(at: origin, withAttributes: attrs)
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self],
-                                                         options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        let urls =
+            sender.draggingPasteboard.readObjects(
+                forClasses: [NSURL.self],
+                options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         if !urls.isEmpty, onDropFiles?(urls) == true { return true }
         return super.performDragOperation(sender)
     }

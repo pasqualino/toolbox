@@ -4,7 +4,10 @@ import Foundation
 /// AWS EventBridge cron(...) and rate(...), Quartz 7-field, and @macros.
 struct DevCron {
     enum DayRule: Equatable {
-        case lastDay, lastWeekday, nearestWeekday(Int), lastOf(Int), nth(Int, Int)
+        case lastDay, lastWeekday
+        case nearestWeekday(Int)
+        case lastOf(Int)
+        case nth(Int, Int)
     }
 
     struct Field {
@@ -26,7 +29,10 @@ struct DevCron {
 
     static let monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
     static let dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
-    static let monthLong = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    static let monthLong = [
+        "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
+        "December",
+    ]
     static let dayLong = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
     static let macros = [
@@ -49,30 +55,38 @@ struct DevCron {
         if !aws, f.count == 6, f[2] == "?" || f[4] == "?" { aws = true }
         switch (f.count, aws) {
         case (6, true):
-            return try DevCron(second: nil, minute: field(f[0], 0...59), hour: field(f[1], 0...23),
-                               dom: day(f[2]), month: field(f[3], 1...12, names: monthNames, base: 1),
-                               dow: weekday(f[4], sundayIs: 1), year: field(f[5], 1970...2199), flavor: "AWS")
+            return try DevCron(
+                second: nil, minute: field(f[0], 0...59), hour: field(f[1], 0...23),
+                dom: day(f[2]), month: field(f[3], 1...12, names: monthNames, base: 1),
+                dow: weekday(f[4], sundayIs: 1), year: field(f[5], 1970...2199), flavor: "AWS")
         case (5, false):
-            return try DevCron(second: nil, minute: field(f[0], 0...59), hour: field(f[1], 0...23),
-                               dom: day(f[2]), month: field(f[3], 1...12, names: monthNames, base: 1),
-                               dow: weekday(f[4], sundayIs: 0), year: nil, flavor: "standard")
+            return try DevCron(
+                second: nil, minute: field(f[0], 0...59), hour: field(f[1], 0...23),
+                dom: day(f[2]), month: field(f[3], 1...12, names: monthNames, base: 1),
+                dow: weekday(f[4], sundayIs: 0), year: nil, flavor: "standard")
         case (6, false):
-            return try DevCron(second: field(f[0], 0...59), minute: field(f[1], 0...59), hour: field(f[2], 0...23),
-                               dom: day(f[3]), month: field(f[4], 1...12, names: monthNames, base: 1),
-                               dow: weekday(f[5], sundayIs: 0), year: nil, flavor: "seconds")
+            return try DevCron(
+                second: field(f[0], 0...59), minute: field(f[1], 0...59), hour: field(f[2], 0...23),
+                dom: day(f[3]), month: field(f[4], 1...12, names: monthNames, base: 1),
+                dow: weekday(f[5], sundayIs: 0), year: nil, flavor: "seconds")
         case (7, false):
-            return try DevCron(second: field(f[0], 0...59), minute: field(f[1], 0...59), hour: field(f[2], 0...23),
-                               dom: day(f[3]), month: field(f[4], 1...12, names: monthNames, base: 1),
-                               dow: weekday(f[5], sundayIs: 1), year: field(f[6], 1970...2199), flavor: "Quartz")
+            return try DevCron(
+                second: field(f[0], 0...59), minute: field(f[1], 0...59), hour: field(f[2], 0...23),
+                dom: day(f[3]), month: field(f[4], 1...12, names: monthNames, base: 1),
+                dow: weekday(f[5], sundayIs: 1), year: field(f[6], 1970...2199), flavor: "Quartz")
         default:
-            throw ToolError.message(aws ? "AWS cron needs 6 fields: minute hour day month weekday year."
-                                        : "Cron needs 5 fields (minute hour day month weekday), or 6 with seconds first.")
+            throw ToolError.message(
+                aws
+                    ? "AWS cron needs 6 fields: minute hour day month weekday year."
+                    : "Cron needs 5 fields (minute hour day month weekday), or 6 with seconds first.")
         }
     }
 
     static func number(_ s: String, _ range: ClosedRange<Int>, names: [String], base: Int) throws -> Int {
         if let n = Int(s) {
-            guard range.contains(n) else { throw ToolError.message("\(n) is out of range \(range.lowerBound)-\(range.upperBound).") }
+            guard range.contains(n) else {
+                throw ToolError.message("\(n) is out of range \(range.lowerBound)-\(range.upperBound).")
+            }
             return n
         }
         if let i = names.firstIndex(of: s.uppercased()) { return i + base }
@@ -87,15 +101,20 @@ struct DevCron {
             var body = item
             var step = 1
             if let slash = item.firstIndex(of: "/") {
-                guard let s = Int(item[item.index(after: slash)...]), s > 0 else { throw ToolError.message("Bad step in \"\(item)\".") }
+                guard let s = Int(item[item.index(after: slash)...]), s > 0 else {
+                    throw ToolError.message("Bad step in \"\(item)\".")
+                }
                 step = s
                 body = String(item[..<slash])
             }
-            var lo = range.lowerBound, hi = range.upperBound
+            var lo = range.lowerBound
+            var hi = range.upperBound
             if body != "*" {
                 let ends = body.split(separator: "-", maxSplits: 1).map(String.init)
                 lo = try number(ends[0], range, names: names, base: base)
-                hi = ends.count == 2 ? try number(ends[1], range, names: names, base: base) : (step > 1 ? range.upperBound : lo)
+                hi =
+                    ends.count == 2
+                    ? try number(ends[1], range, names: names, base: base) : (step > 1 ? range.upperBound : lo)
                 guard lo <= hi else { throw ToolError.message("Range \(body) runs backwards.") }
             }
             values.formUnion(stride(from: lo, through: hi, by: step))
@@ -110,11 +129,17 @@ struct DevCron {
         guard u.contains("L") || u.contains("W") else { return try field(raw, 1...31) }
         var f = Field(values: [], raw: raw, any: false)
         for item in u.split(separator: ",").map(String.init) {
-            if item == "L" { f.rules.append(.lastDay) }
-            else if item == "LW" { f.rules.append(.lastWeekday) }
-            else if item.hasSuffix("W"), let n = Int(item.dropLast()), (1...31).contains(n) { f.rules.append(.nearestWeekday(n)) }
-            else if !item.contains("L"), !item.contains("W") { f.values.formUnion(try field(item, 1...31).values) }
-            else { throw unsupportedLW() }
+            if item == "L" {
+                f.rules.append(.lastDay)
+            } else if item == "LW" {
+                f.rules.append(.lastWeekday)
+            } else if item.hasSuffix("W"), let n = Int(item.dropLast()), (1...31).contains(n) {
+                f.rules.append(.nearestWeekday(n))
+            } else if !item.contains("L"), !item.contains("W") {
+                f.values.formUnion(try field(item, 1...31).values)
+            } else {
+                throw unsupportedLW()
+            }
         }
         return f
     }
@@ -128,10 +153,13 @@ struct DevCron {
             var f = Field(values: [], raw: raw, any: false)
             for item in u.split(separator: ",").map(String.init) {
                 if item.hasSuffix("L"), item.count > 1 {
-                    f.rules.append(.lastOf(norm(try number(String(item.dropLast()), range, names: dayNames, base: base))))
+                    f.rules.append(
+                        .lastOf(norm(try number(String(item.dropLast()), range, names: dayNames, base: base))))
                 } else if let hash = item.firstIndex(of: "#") {
                     let d = norm(try number(String(item[..<hash]), range, names: dayNames, base: base))
-                    guard let n = Int(item[item.index(after: hash)...]), (1...5).contains(n) else { throw unsupportedLW() }
+                    guard let n = Int(item[item.index(after: hash)...]), (1...5).contains(n) else {
+                        throw unsupportedLW()
+                    }
                     f.rules.append(.nth(d, n))
                 } else {
                     f.values.formUnion(try field(item, range, names: dayNames, base: base).values.map(norm))
@@ -149,7 +177,10 @@ struct DevCron {
 
     func dayMatches(_ date: Date, _ cal: Calendar) -> Bool {
         let c = cal.dateComponents([.year, .month, .day, .weekday], from: date)
-        let y = c.year!, m = c.month!, d = c.day!, wd = c.weekday! - 1
+        let y = c.year!
+        let m = c.month!
+        let d = c.day!
+        let wd = c.weekday! - 1
         if let year, !year.values.contains(y) { return false }
         guard month.values.contains(m) else { return false }
         let last = cal.range(of: .day, in: .month, for: date)!.count
@@ -158,8 +189,16 @@ struct DevCron {
             for r in dom.rules {
                 switch r {
                 case .lastDay: if d == last { return true }
-                case .lastWeekday: if d == Self.nearestWeekday(to: last, last: last, firstWeekday: weekday(of: 1, wd: wd, d: d)) { return true }
-                case .nearestWeekday(let n): if n <= last, d == Self.nearestWeekday(to: n, last: last, firstWeekday: weekday(of: 1, wd: wd, d: d)) { return true }
+                case .lastWeekday:
+                    if d == Self.nearestWeekday(to: last, last: last, firstWeekday: weekday(of: 1, wd: wd, d: d)) {
+                        return true
+                    }
+                case .nearestWeekday(let n):
+                    if n <= last,
+                        d == Self.nearestWeekday(to: n, last: last, firstWeekday: weekday(of: 1, wd: wd, d: d))
+                    {
+                        return true
+                    }
                 default: break
                 }
             }
@@ -198,7 +237,9 @@ struct DevCron {
         cal.timeZone = zone
         var results: [Date] = []
         var day = cal.startOfDay(for: after)
-        let hours = hour.values.sorted(), minutes = minute.values.sorted(), seconds = (second?.values ?? [0]).sorted()
+        let hours = hour.values.sorted()
+        let minutes = minute.values.sorted()
+        let seconds = (second?.values ?? [0]).sorted()
         for _ in 0..<(366 * 30) {
             if dayMatches(day, cal) {
                 let ymd = cal.dateComponents([.year, .month, .day], from: day)
@@ -206,7 +247,9 @@ struct DevCron {
                     for m in minutes {
                         for s in seconds {
                             var c = ymd
-                            c.hour = h; c.minute = m; c.second = s
+                            c.hour = h
+                            c.minute = m
+                            c.second = s
                             guard let t = cal.date(from: c), t > after else { continue }
                             // Skip wall times that don't exist on a DST change day.
                             guard cal.component(.hour, from: t) == h else { continue }
@@ -247,7 +290,8 @@ struct DevCron {
         var clock = false
         let s0 = sec?.values.first ?? 0
         if !minute.any, !hour.any, sec == nil || (!sec!.any && sec!.values.count == 1),
-           minute.values.count * hour.values.count <= 6 {
+            minute.values.count * hour.values.count <= 6
+        {
             // Few exact times: list them.
             var times: [String] = []
             for h in hour.values.sorted() {
@@ -259,7 +303,9 @@ struct DevCron {
             clock = true
         } else if sec == nil, !minute.any, minute.values.count == 1, hour.any {
             time = "Every hour at minute \(minute.values.first!)"
-        } else if sec == nil, !minute.any, minute.values.count == 1, Self.parts(hour.raw).count == 1, Self.parts(hour.raw)[0].step != nil {
+        } else if sec == nil, !minute.any, minute.values.count == 1, Self.parts(hour.raw).count == 1,
+            Self.parts(hour.raw)[0].step != nil
+        {
             let h = hourPhrase()
             time = h.prefix(1).uppercased() + h.dropFirst() + " at minute \(minute.values.first!) " + zoneLabel
         } else {
@@ -270,20 +316,32 @@ struct DevCron {
                 pieces.append(unitPhrase(minute, "minute", "minutes", within: "hour"))
             }
             if !hour.any { pieces.append(hourPhrase()) }
-            time = pieces.enumerated().map { $0.offset == 0 ? $0.element : $0.element.lowercasedFirst }.joined(separator: ", ")
+            time = pieces.enumerated().map { $0.offset == 0 ? $0.element : $0.element.lowercasedFirst }.joined(
+                separator: ", ")
             if !hour.any { time += " " + zoneLabel }
         }
 
         var days: [String] = []
-        let domText = domPhrase(), dowText = dowPhrase()
-        if dom.any && dow.any { days.append("every day") }
-        else if dom.any { days.append(dowText) }
-        else if dow.any, !month.any, month.values.count == 1, dom.rules.isEmpty, dom.values.count == 1 {
+        let domText = domPhrase()
+        let dowText = dowPhrase()
+        if dom.any && dow.any {
+            days.append("every day")
+        } else if dom.any {
+            days.append(dowText)
+        } else if dow.any, !month.any, month.values.count == 1, dom.rules.isEmpty, dom.values.count == 1 {
             days.append("on \(Self.monthLong[month.values.first! - 1]) \(dom.values.first!)")
-        } else if dow.any { days.append(domText) }
-        else { days.append(domText + " or " + dowText) }
-        if !month.any, !(dow.any && month.values.count == 1 && dom.rules.isEmpty && dom.values.count == 1) { days.append(monthPhrase()) }
-        if let year, !year.any { days.append("in " + Self.list(Self.parts(year.raw).map { p in p.hi.map { "\(p.lo) through \($0)" } ?? p.lo })) }
+        } else if dow.any {
+            days.append(domText)
+        } else {
+            days.append(domText + " or " + dowText)
+        }
+        if !month.any, !(dow.any && month.values.count == 1 && dom.rules.isEmpty && dom.values.count == 1) {
+            days.append(monthPhrase())
+        }
+        if let year, !year.any {
+            days.append(
+                "in " + Self.list(Self.parts(year.raw).map { p in p.hi.map { "\(p.lo) through \($0)" } ?? p.lo }))
+        }
         let dayText = days.joined(separator: " ")
         var out = time + (clock ? " " : ", ") + dayText
         if !clock && hour.any { out += " (\(zoneLabel))" }
@@ -294,7 +352,9 @@ struct DevCron {
         if f.any { return "Every \(one)" }
         let p = Self.parts(f.raw)
         if p.count == 1, let step = p[0].step {
-            let from = p[0].lo == "*" ? "" : " from \(p[0].lo) through \(p[0].hi ?? (one == "second" || one == "minute" ? "59" : "23"))"
+            let from =
+                p[0].lo == "*"
+                ? "" : " from \(p[0].lo) through \(p[0].hi ?? (one == "second" || one == "minute" ? "59" : "23"))"
             return "Every \(step) \(many)" + (p[0].lo == "*" || p[0].lo == "0" && p[0].hi == nil ? "" : from)
         }
         if p.count == 1, let hi = p[0].hi { return "Every \(one) from \(p[0].lo) through \(hi)" }
@@ -325,10 +385,14 @@ struct DevCron {
             }
         }
         if !dom.values.isEmpty {
-            let p = Self.parts(dom.raw.uppercased().split(separator: ",").filter { !$0.contains("L") && !$0.contains("W") }.joined(separator: ","))
-            if p.count == 1, let hi = p[0].hi, p[0].step == nil { items.insert("days \(p[0].lo) through \(hi)", at: 0) }
-            else if p.count == 1, let step = p[0].step { items.insert("every \(step) days" + (p[0].lo == "*" ? "" : " from day \(p[0].lo)"), at: 0) }
-            else {
+            let p = Self.parts(
+                dom.raw.uppercased().split(separator: ",").filter { !$0.contains("L") && !$0.contains("W") }.joined(
+                    separator: ","))
+            if p.count == 1, let hi = p[0].hi, p[0].step == nil {
+                items.insert("days \(p[0].lo) through \(hi)", at: 0)
+            } else if p.count == 1, let step = p[0].step {
+                items.insert("every \(step) days" + (p[0].lo == "*" ? "" : " from day \(p[0].lo)"), at: 0)
+            } else {
                 let v = dom.values.sorted().map(String.init)
                 items.insert((v.count == 1 ? "day " : "days ") + Self.list(v), at: 0)
             }
@@ -343,11 +407,18 @@ struct DevCron {
             // Collapse consecutive days into "Monday through Friday".
             var runs: [[Int]] = []
             for d in sorted {
-                if let last = runs.last?.last, last + 1 == d { runs[runs.count - 1].append(d) } else { runs.append([d]) }
+                if let last = runs.last?.last, last + 1 == d {
+                    runs[runs.count - 1].append(d)
+                } else {
+                    runs.append([d])
+                }
             }
             for r in runs {
-                if r.count >= 3 { items.append("\(Self.dayLong[r.first!]) through \(Self.dayLong[r.last!])") }
-                else { items += r.map { Self.dayLong[$0] } }
+                if r.count >= 3 {
+                    items.append("\(Self.dayLong[r.first!]) through \(Self.dayLong[r.last!])")
+                } else {
+                    items += r.map { Self.dayLong[$0] }
+                }
             }
         }
         let ordinals = ["first", "second", "third", "fourth", "fifth"]
@@ -388,7 +459,9 @@ struct DevCron {
         let seconds = cron.second != nil
         let other = isUTC ? TimeZone.current : DevTime.utc
         for r in runs {
-            out += "\n  " + DevTime.local(r, zone: zone, seconds: seconds) + "   " + DevTime.local(r, zone: other, seconds: seconds)
+            out +=
+                "\n  " + DevTime.local(r, zone: zone, seconds: seconds) + "   "
+                + DevTime.local(r, zone: other, seconds: seconds)
                 + "   " + DevTime.relative(r, now: now)
         }
         return out
@@ -399,23 +472,31 @@ struct DevCron {
         if let second { f.append("second \(second.raw)") }
         f += ["minute \(minute.raw)", "hour \(hour.raw)", "day \(dom.raw)", "month \(month.raw)", "weekday \(dow.raw)"]
         if let year { f.append("year \(year.raw)") }
-        return f.joined(separator: ", ") + (flavor == "AWS" ? " (AWS: weekday 1 is Sunday)" : flavor == "Quartz" ? " (Quartz: weekday 1 is Sunday)" : "")
+        return f.joined(separator: ", ")
+            + (flavor == "AWS"
+                ? " (AWS: weekday 1 is Sunday)" : flavor == "Quartz" ? " (Quartz: weekday 1 is Sunday)" : "")
     }
 
     static func rate(_ text: String) throws -> String {
         let inner = text.dropFirst(5).dropLast(text.hasSuffix(")") ? 1 : 0).trimmingCharacters(in: .whitespaces)
         let p = inner.split(separator: " ")
-        guard p.count == 2, let n = Int(p[0]), n > 0 else { throw ToolError.message("Use rate(5 minutes), rate(1 hour) or rate(7 days).") }
+        guard p.count == 2, let n = Int(p[0]), n > 0 else {
+            throw ToolError.message("Use rate(5 minutes), rate(1 hour) or rate(7 days).")
+        }
         let unit = p[1].lowercased().hasSuffix("s") ? String(p[1].lowercased().dropLast()) : p[1].lowercased()
-        guard ["minute", "hour", "day"].contains(unit) else { throw ToolError.message("Rate units are minutes, hours or days.") }
+        guard ["minute", "hour", "day"].contains(unit) else {
+            throw ToolError.message("Rate units are minutes, hours or days.")
+        }
         let schedule = n == 1 ? "Every \(unit)" : "Every \(n) \(unit)s"
-        return DevTextReport.table([("Schedule", schedule),
-                                    ("Note", "Rate schedules count from when the rule was created, so run times aren't fixed.")])
+        return DevTextReport.table([
+            ("Schedule", schedule),
+            ("Note", "Rate schedules count from when the rule was created, so run times aren't fixed."),
+        ])
     }
 }
 
-private extension String {
-    var lowercasedFirst: String {
+extension String {
+    fileprivate var lowercasedFirst: String {
         guard let f = first else { return self }
         // Keep "UTC" and clock times; only lower a leading capital word like "Every".
         return f.lowercased() + dropFirst()

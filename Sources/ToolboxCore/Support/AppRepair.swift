@@ -26,7 +26,8 @@ enum AppRepair {
     }
 
     static func signature(_ app: URL) async throws -> Signature {
-        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/codesign"), ["-dv", "--verbose=2", app.path])
+        let out = try await ProcessRunner.capture(
+            URL(fileURLWithPath: "/usr/bin/codesign"), ["-dv", "--verbose=2", app.path])
         let text = out.stderr + out.stdout
         var sig = Signature(signed: out.status == 0, adhoc: false, identifier: nil, team: nil, authorities: [])
         for line in text.split(whereSeparator: \.isNewline) {
@@ -44,7 +45,8 @@ enum AppRepair {
     }
 
     static func assess(_ app: URL) async throws -> Assessment {
-        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/sbin/spctl"), ["--assess", "--type", "execute", "-vv", app.path])
+        let out = try await ProcessRunner.capture(
+            URL(fileURLWithPath: "/usr/sbin/spctl"), ["--assess", "--type", "execute", "-vv", app.path])
         let text = out.stderr + out.stdout
         var result = Assessment(accepted: out.status == 0, source: nil, detail: nil)
         for line in text.split(whereSeparator: \.isNewline) {
@@ -54,7 +56,8 @@ enum AppRepair {
                 // "path: rejected (the code is valid but does not seem to be an app)"
                 let verdict = s.dropFirst(app.path.count + 2)
                 if let open = verdict.firstIndex(of: "("), verdict.hasSuffix(")") {
-                    result.detail = String(verdict[verdict.index(after: open)..<verdict.index(before: verdict.endIndex)])
+                    result.detail = String(
+                        verdict[verdict.index(after: open)..<verdict.index(before: verdict.endIndex)])
                 }
             }
         }
@@ -62,12 +65,17 @@ enum AppRepair {
     }
 
     static func quarantine(_ app: URL) async throws -> Quarantine? {
-        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/xattr"), ["-p", "com.apple.quarantine", app.path])
+        let out = try await ProcessRunner.capture(
+            URL(fileURLWithPath: "/usr/bin/xattr"), ["-p", "com.apple.quarantine", app.path])
         guard out.status == 0 else { return nil }
         // "flags;hex epoch;agent;uuid"
-        let fields = out.stdout.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ";", omittingEmptySubsequences: false)
+        let fields = out.stdout.trimmingCharacters(in: .whitespacesAndNewlines).split(
+            separator: ";", omittingEmptySubsequences: false)
         let agent = fields.count > 2 && !fields[2].isEmpty ? String(fields[2]) : nil
-        let date = fields.count > 1 ? UInt64(fields[1], radix: 16).flatMap { $0 > 0 ? Date(timeIntervalSince1970: TimeInterval($0)) : nil } : nil
+        let date =
+            fields.count > 1
+            ? UInt64(fields[1], radix: 16).flatMap { $0 > 0 ? Date(timeIntervalSince1970: TimeInterval($0)) : nil }
+            : nil
         return Quarantine(agent: agent, date: date)
     }
 
@@ -75,19 +83,27 @@ enum AppRepair {
 
     /// Removes the attribute recursively. Asks for an administrator password when the app isn't writable.
     static func removeQuarantine(_ app: URL) async throws -> RemoveOutcome {
-        let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/xattr"), ["-dr", "com.apple.quarantine", app.path])
+        let out = try await ProcessRunner.capture(
+            URL(fileURLWithPath: "/usr/bin/xattr"), ["-dr", "com.apple.quarantine", app.path])
         if out.status == 0 { return .removed }
-        guard out.stderr.localizedCaseInsensitiveContains("Operation not permitted")
-            || out.stderr.localizedCaseInsensitiveContains("Permission denied") else {
+        guard
+            out.stderr.localizedCaseInsensitiveContains("Operation not permitted")
+                || out.stderr.localizedCaseInsensitiveContains("Permission denied")
+        else {
             throw ToolError.message(ProcessRunner.summarize(out.stderr, fallback: "xattr"))
         }
         // The path goes in as an AppleScript string literal; `quoted form of` makes it shell-safe.
-        let literal = "\"" + app.path.replacingOccurrences(of: "\\", with: "\\\\")
+        let literal =
+            "\""
+            + app.path.replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"") + "\""
-        let script = "do shell script \"/usr/bin/xattr -dr com.apple.quarantine \" & quoted form of \(literal) with administrator privileges"
+        let script =
+            "do shell script \"/usr/bin/xattr -dr com.apple.quarantine \" & quoted form of \(literal) with administrator privileges"
         let admin = try await ProcessRunner.capture(URL(fileURLWithPath: "/usr/bin/osascript"), ["-e", script])
         if admin.status == 0 { return .removedAsAdmin }
-        if admin.stderr.contains("-128") || admin.stderr.localizedCaseInsensitiveContains("cancel") { return .userCancelled }
+        if admin.stderr.contains("-128") || admin.stderr.localizedCaseInsensitiveContains("cancel") {
+            return .userCancelled
+        }
         throw ToolError.message(ProcessRunner.summarize(admin.stderr, fallback: "osascript"))
     }
 
@@ -117,7 +133,8 @@ enum AppRepair {
             switch try await removeQuarantine(app) {
             case .removed, .removedAsAdmin:
                 stillQuarantined = try await quarantine(app) != nil
-                verdict = stillQuarantined
+                verdict =
+                    stillQuarantined
                     ? "Couldn't remove the quarantine from \(name)."
                     : "Fixed: quarantine removed. You can open \(name) now."
                 after = try await assess(app)
@@ -129,9 +146,13 @@ enum AppRepair {
         var warnings: [String] = []
         let source = (after ?? before).source ?? ""
         if !sig.signed {
-            warnings.append("This app isn't signed. macOS can't tell who made it or whether it was changed. Only open it if you trust where it came from.")
+            warnings.append(
+                "This app isn't signed. macOS can't tell who made it or whether it was changed. Only open it if you trust where it came from."
+            )
         } else if sig.adhoc {
-            warnings.append("This app is only ad-hoc signed, so it has no known developer. Only open it if you trust where it came from.")
+            warnings.append(
+                "This app is only ad-hoc signed, so it has no known developer. Only open it if you trust where it came from."
+            )
         } else if !(after ?? before).accepted || source.localizedCaseInsensitiveContains("Unnotarized") {
             warnings.append("This app isn't notarized by Apple. Only open it if you trust where it came from.")
         }

@@ -3,14 +3,18 @@ import Foundation
 public enum ToolRegistry {
     /// Every tool, grouped by category in display order.
     public static let all: [Tool] = {
-        let tools = VideoTools.all + AudioTools.all + ImageTools.all + PDFTools.all + AITools.all + FileTools.all + DownloadTools.all
+        let tools =
+            VideoTools.all + AudioTools.all + ImageTools.all + PDFTools.all + AITools.all + FileTools.all
+            + DownloadTools.all
             + MediaExtraTools.all + ImageEditTools.all + QRTools.all + MacTools.all
             + DevEncodingTools.all + DevFormatTools.all + DevTextTools.all + DevWorkflowTools.all
         // Category comes from the layout; then order by category, and within one by layout position.
-        let order = Dictionary(layout.flatMap { $0.1.flatMap { $0.1 } }.enumerated().flatMap { index, item -> [(String, Int)] in
-            if let g = item as? ToolGroup { return g.members.map { ($0.toolID, index) } }
-            return (item as? String).map { [($0, index)] } ?? []
-        }) { first, _ in first }
+        let order = Dictionary(
+            layout.flatMap { $0.1.flatMap { $0.1 } }.enumerated().flatMap { index, item -> [(String, Int)] in
+                if let g = item as? ToolGroup { return g.members.map { ($0.toolID, index) } }
+                return (item as? String).map { [($0, index)] } ?? []
+            }
+        ) { first, _ in first }
         let placed = tools.map { tool -> Tool in
             var tool = tool
             if let category = placement[tool.id]?.category { tool.category = category }

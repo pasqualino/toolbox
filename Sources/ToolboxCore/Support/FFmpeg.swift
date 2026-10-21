@@ -8,9 +8,11 @@ public enum FFmpeg {
         guard let ffprobe = Toolchain.ffprobe else { throw ToolError.missingRequirement(.ffmpeg) }
         let out: ProcessOutput
         do {
-            out = try await ProcessRunner.run(ffprobe, [
-                "-v", "error", "-print_format", "json", "-show_format", "-show_streams", url.path,
-            ])
+            out = try await ProcessRunner.run(
+                ffprobe,
+                [
+                    "-v", "error", "-print_format", "json", "-show_format", "-show_streams", url.path,
+                ])
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -29,22 +31,27 @@ public enum FFmpeg {
     }
 
     /// Runs ffmpeg without progress reporting, for helper conversions inside a tool.
-    static func run(_ arguments: [String], duration: Double = 0, progress: (@Sendable (Double) -> Void)? = nil) async throws {
+    static func run(_ arguments: [String], duration: Double = 0, progress: (@Sendable (Double) -> Void)? = nil)
+        async throws
+    {
         guard let ffmpeg = Toolchain.ffmpeg else { throw ToolError.missingRequirement(.ffmpeg) }
-        let args = ["-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats"] + arguments
+        let args =
+            ["-hide_banner", "-nostdin", "-y", "-loglevel", "error", "-progress", "pipe:1", "-nostats"] + arguments
         do {
-            try await ProcessRunner.run(ffmpeg, args, onLine: { line in
-                guard duration > 0, let progress else { return }
-                if line.hasPrefix("out_time_us=") || line.hasPrefix("out_time_ms=") {
-                    // Both keys are microseconds in current ffmpeg.
-                    if let us = Double(line.split(separator: "=").last ?? "") {
-                        progress(us / 1_000_000 / duration)
+            try await ProcessRunner.run(
+                ffmpeg, args,
+                onLine: { line in
+                    guard duration > 0, let progress else { return }
+                    if line.hasPrefix("out_time_us=") || line.hasPrefix("out_time_ms=") {
+                        // Both keys are microseconds in current ffmpeg.
+                        if let us = Double(line.split(separator: "=").last ?? "") {
+                            progress(us / 1_000_000 / duration)
+                        }
+                    } else if line == "progress=end", !Task.isCancelled {
+                        progress(1)
                     }
-                } else if line == "progress=end", !Task.isCancelled {
-                    progress(1)
-                }
-            })
-        } catch where Task.isCancelled {
+                })
+        } catch  where Task.isCancelled {
             // ffmpeg catches SIGTERM and exits with status 255, which reads as a failure.
             throw CancellationError()
         }

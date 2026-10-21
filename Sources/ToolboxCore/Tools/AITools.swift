@@ -6,20 +6,30 @@ enum AITools {
 
     /// Shared by the app's Rewrite view and the palette's clipboard action.
     public static let rewriteOptions: [OptionSpec] = [
-        OptionSpec("mode", "Mode", .choice([Choice("rewrite", "Improve"), Choice("fix", "Fix Grammar Only")], default: "rewrite")),
-        OptionSpec("tone", "Tone", .choice([
-            Choice("keep", "Keep Mine"), Choice("friendly", "Friendly"), Choice("professional", "Professional"),
-            Choice("casual", "Casual"), Choice("direct", "Direct"), Choice("diplomatic", "Diplomatic"),
-            Choice("confident", "Confident"),
-        ], default: "keep"), visibleWhen: ("mode", ["rewrite"])),
-        OptionSpec("length", "Length", .choice([
-            Choice("shorter", "Shorter"), Choice("same", "Same"), Choice("longer", "Longer"),
-        ], default: "same"), visibleWhen: ("mode", ["rewrite"])),
-        OptionSpec("slack", "Slack message", .toggle(default: true),
-                   help: "Keeps it conversational and preserves Slack formatting."),
+        OptionSpec(
+            "mode", "Mode",
+            .choice([Choice("rewrite", "Improve"), Choice("fix", "Fix Grammar Only")], default: "rewrite")),
+        OptionSpec(
+            "tone", "Tone",
+            .choice(
+                [
+                    Choice("keep", "Keep Mine"), Choice("friendly", "Friendly"), Choice("professional", "Professional"),
+                    Choice("casual", "Casual"), Choice("direct", "Direct"), Choice("diplomatic", "Diplomatic"),
+                    Choice("confident", "Confident"),
+                ], default: "keep"), visibleWhen: ("mode", ["rewrite"])),
+        OptionSpec(
+            "length", "Length",
+            .choice(
+                [
+                    Choice("shorter", "Shorter"), Choice("same", "Same"), Choice("longer", "Longer"),
+                ], default: "same"), visibleWhen: ("mode", ["rewrite"])),
+        OptionSpec(
+            "slack", "Slack message", .toggle(default: true),
+            help: "Keeps it conversational and preserves Slack formatting."),
         OptionSpec("nodash", "No em dashes", .toggle(default: true)),
-        OptionSpec("feedback", "Feedback", .text(default: "", placeholder: "Then refine with…"),
-                   help: "CLI only: one refine pass after the rewrite."),
+        OptionSpec(
+            "feedback", "Feedback", .text(default: "", placeholder: "Then refine with…"),
+            help: "CLI only: one refine pass after the rewrite."),
     ]
 
     static let rewrite = Tool(
@@ -28,8 +38,10 @@ enum AITools {
         summary: "Fix grammar, wording and tone before you send",
         category: .writing,
         symbol: "pencil.and.scribble",
-        keywords: ["grammar", "spelling", "proofread", "tone", "polish", "rephrase", "reword", "slack",
-                   "message", "edit", "improve", "fix", "writing", "friendly", "professional"],
+        keywords: [
+            "grammar", "spelling", "proofread", "tone", "polish", "rephrase", "reword", "slack",
+            "message", "edit", "improve", "fix", "writing", "friendly", "professional",
+        ],
         inputKind: .text,
         minimumInputs: 0,
         options: rewriteOptions,
@@ -53,14 +65,22 @@ enum AITools {
         summary: "Speech to text, subtitles or captions",
         category: .writing,
         symbol: "waveform.and.mic",
-        keywords: ["speech to text", "transcript", "transcription", "captions", "subtitles", "srt", "vtt",
-                   "dictate", "voice", "audio", "video", "meeting", "podcast", "interview"],
+        keywords: [
+            "speech to text", "transcript", "transcription", "captions", "subtitles", "srt", "vtt",
+            "dictate", "voice", "audio", "video", "meeting", "podcast", "interview",
+        ],
         accepts: [.audiovisualContent] + [UTType(filenameExtension: "mkv")].compactMap { $0 },
         options: [
-            OptionSpec("format", "Output", .choice([
-                Choice("txt", "Text"), Choice("srt", "SRT"), Choice("vtt", "WebVTT"),
-            ], default: "txt"), help: "Text shows the transcript here. SRT and WebVTT save timed subtitle files."),
-            OptionSpec("language", "Spoken language", .language(default: Locale.current.identifier(.bcp47), allowsDetect: false)),
+            OptionSpec(
+                "format", "Output",
+                .choice(
+                    [
+                        Choice("txt", "Text"), Choice("srt", "SRT"), Choice("vtt", "WebVTT"),
+                    ], default: "txt"),
+                help: "Text shows the transcript here. SRT and WebVTT save timed subtitle files."),
+            OptionSpec(
+                "language", "Spoken language",
+                .language(default: Locale.current.identifier(.bcp47), allowsDetect: false)),
         ],
         actionTitle: "Transcribe",
         runner: .perFile { url, ctx in
@@ -88,13 +108,16 @@ enum AITools {
         summary: "Copy text out of images and scanned PDFs",
         category: .writing,
         symbol: "text.viewfinder",
-        keywords: ["ocr", "recognize", "scan", "scanned", "screenshot", "photo", "image to text", "pdf to text",
-                   "read", "copy text", "live text"],
+        keywords: [
+            "ocr", "recognize", "scan", "scanned", "screenshot", "photo", "image to text", "pdf to text",
+            "read", "copy text", "live text",
+        ],
         accepts: [.image, .pdf],
         actionTitle: "Extract",
         runner: .perFile { url, ctx in
             let isPDF = UTType(filenameExtension: url.pathExtension.lowercased())?.conforms(to: .pdf) == true
-            let text = isPDF ? try await TextExtraction.pdf(url) { ctx.progress($0) } : try await TextExtraction.recognize(url)
+            let text =
+                isPDF ? try await TextExtraction.pdf(url) { ctx.progress($0) } : try await TextExtraction.recognize(url)
             guard !text.isEmpty else { throw ToolError.message("No text found in \(url.lastPathComponent).") }
             ctx.showText(text)
             return []
@@ -110,15 +133,20 @@ enum AITools {
         summary: "The gist of any text or document",
         category: .writing,
         symbol: "text.append",
-        keywords: ["summary", "tldr", "tl;dr", "gist", "digest", "shorten", "condense", "key points",
-                   "bullet points", "notes", "article", "document"],
+        keywords: [
+            "summary", "tldr", "tl;dr", "gist", "digest", "shorten", "condense", "key points",
+            "bullet points", "notes", "article", "document",
+        ],
         accepts: TextExtraction.documentTypes,
         inputKind: .textOrFiles,
         minimumInputs: 0,
         options: [
-            OptionSpec("length", "Length", .choice([
-                Choice("short", "Short"), Choice("bullets", "Bullet points"), Choice("detailed", "Detailed"),
-            ], default: "short")),
+            OptionSpec(
+                "length", "Length",
+                .choice(
+                    [
+                        Choice("short", "Short"), Choice("bullets", "Bullet points"), Choice("detailed", "Detailed"),
+                    ], default: "short"))
         ],
         requirements: [.appleIntelligence],
         actionTitle: "Summarize",
@@ -165,8 +193,10 @@ enum AITools {
         summary: "Text, documents and subtitles, on device",
         category: .writing,
         symbol: "translate",
-        keywords: ["language", "translation", "translator", "subtitles", "srt", "captions", "spanish", "english",
-                   "french", "german", "japanese", "chinese", "localize"],
+        keywords: [
+            "language", "translation", "translator", "subtitles", "srt", "captions", "spanish", "english",
+            "french", "german", "japanese", "chinese", "localize",
+        ],
         accepts: TextExtraction.documentTypes + [UTType(filenameExtension: "vtt")].compactMap { $0 },
         inputKind: .textOrFiles,
         minimumInputs: 0,
@@ -202,7 +232,8 @@ enum AITools {
                     sample: isSubtitles ? TextTranslation.spokenLines(content) : content)
                 let offset = done
                 let progress: @Sendable (Double) -> Void = { ctx.progress((offset + $0) / total) }
-                let result = isSubtitles
+                let result =
+                    isSubtitles
                     ? try await TextTranslation.translateSubtitles(content, session: session, progress: progress)
                     : try await TextTranslation.translate(content, session: session, progress: progress)
                 if isSubtitles {
@@ -211,7 +242,8 @@ enum AITools {
                     try (result + "\n").write(to: out, atomically: true, encoding: .utf8)
                     outputs.append(out)
                 } else {
-                    shown.append(files.count + (typed.isEmpty ? 0 : 1) > 1 ? "\(file.lastPathComponent)\n\(result)" : result)
+                    shown.append(
+                        files.count + (typed.isEmpty ? 0 : 1) > 1 ? "\(file.lastPathComponent)\n\(result)" : result)
                 }
                 done += 1
             }

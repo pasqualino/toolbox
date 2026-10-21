@@ -14,8 +14,10 @@ enum Highlighter {
         var group = 0
     }
 
-    private static func rule(_ pattern: String, _ color: NSColor, group: Int = 0,
-                             options: NSRegularExpression.Options = []) -> Rule {
+    private static func rule(
+        _ pattern: String, _ color: NSColor, group: Int = 0,
+        options: NSRegularExpression.Options = []
+    ) -> Rule {
         Rule(regex: try! NSRegularExpression(pattern: pattern, options: options), color: color, group: group)
     }
 
@@ -39,14 +41,18 @@ enum Highlighter {
             rule(#"#.*$"#, comment, options: .anchorsMatchLines),
             rule(#"^(\s*-?\s*)([^\s#:][^:#\n]*?)(?=:(?:\s|$))"#, key, group: 2, options: .anchorsMatchLines),
             rule(#""(?:[^"\\\n]|\\.)*"|'(?:[^'\n]|'')*'"#, string),
-            rule(#"(?<=:\s)(?:true|false|null|yes|no|on|off|~)\s*$"#, keyword, options: [.anchorsMatchLines, .caseInsensitive]),
+            rule(
+                #"(?<=:\s)(?:true|false|null|yes|no|on|off|~)\s*$"#, keyword,
+                options: [.anchorsMatchLines, .caseInsensitive]),
             rule(#"(?<=[:\-]\s)-?\d+(?:\.\d+)?\s*$"#, number, options: .anchorsMatchLines),
             rule(#"^---$|[&*][\w-]+"#, type, options: .anchorsMatchLines),
         ],
         .graphql: [
             rule(#"#.*$"#, comment, options: .anchorsMatchLines),
             rule(#""""[\s\S]*?"""|"(?:[^"\\\n]|\\.)*""#, string),
-            rule(#"\b(?:query|mutation|subscription|fragment|on|type|input|enum|interface|union|scalar|schema|extend|directive|implements|repeatable)\b"#, keyword),
+            rule(
+                #"\b(?:query|mutation|subscription|fragment|on|type|input|enum|interface|union|scalar|schema|extend|directive|implements|repeatable)\b"#,
+                keyword),
             rule(#"\$[_A-Za-z][_0-9A-Za-z]*"#, number),
             rule(#"@[_A-Za-z][_0-9A-Za-z]*"#, type),
             rule(#"\b[A-Z][_0-9A-Za-z]*\b"#, type),
@@ -57,7 +63,9 @@ enum Highlighter {
             rule(#"--.*$|/\*[\s\S]*?\*/"#, comment, options: .anchorsMatchLines),
             rule(#"'(?:[^']|'')*'|\$\$[\s\S]*?\$\$"#, string),
             rule(#""(?:[^"]|"")*""#, key),
-            rule(#"\b(?:SELECT|FROM|WHERE|AND|OR|NOT|IN|IS|NULL|AS|ON|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|GROUP|BY|ORDER|HAVING|LIMIT|OFFSET|UNION|ALL|DISTINCT|INSERT|INTO|VALUES|UPDATE|SET|DELETE|RETURNING|WITH|CASE|WHEN|THEN|ELSE|END|CREATE|TABLE|INDEX|ALTER|DROP|ADD|PRIMARY|KEY|FOREIGN|REFERENCES|DEFAULT|EXISTS|BETWEEN|LIKE|ILIKE|ASC|DESC|TRUE|FALSE|COALESCE|COUNT|SUM|AVG|MIN|MAX|OVER|PARTITION|CAST)\b"#, keyword, options: .caseInsensitive),
+            rule(
+                #"\b(?:SELECT|FROM|WHERE|AND|OR|NOT|IN|IS|NULL|AS|ON|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|GROUP|BY|ORDER|HAVING|LIMIT|OFFSET|UNION|ALL|DISTINCT|INSERT|INTO|VALUES|UPDATE|SET|DELETE|RETURNING|WITH|CASE|WHEN|THEN|ELSE|END|CREATE|TABLE|INDEX|ALTER|DROP|ADD|PRIMARY|KEY|FOREIGN|REFERENCES|DEFAULT|EXISTS|BETWEEN|LIKE|ILIKE|ASC|DESC|TRUE|FALSE|COALESCE|COUNT|SUM|AVG|MIN|MAX|OVER|PARTITION|CAST)\b"#,
+                keyword, options: .caseInsensitive),
             rule(#"\$\d+|:\w+"#, type),
             rule(#"\b\d+(?:\.\d+)?\b"#, number),
         ],
@@ -71,7 +79,9 @@ enum Highlighter {
         .go: [
             rule(#"//.*$"#, comment, options: .anchorsMatchLines),
             rule(#"`[^`]*`|"(?:[^"\\\n]|\\.)*""#, string),
-            rule(#"\b(?:package|import|type|struct|interface|func|var|const|map|chan|return|if|else|for|range)\b"#, keyword),
+            rule(
+                #"\b(?:package|import|type|struct|interface|func|var|const|map|chan|return|if|else|for|range)\b"#,
+                keyword),
             rule(#"\b(?:string|int|int64|float64|bool|any|byte|rune|error|time\.Time)\b"#, type),
             rule(#"\b[A-Z]\w*\b"#, key),
         ],
@@ -86,7 +96,9 @@ enum Highlighter {
         .javascript: [
             rule(#"//.*$|/\*[\s\S]*?\*/"#, comment, options: .anchorsMatchLines),
             rule(#"`(?:[^`\\]|\\.)*`|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'"#, string),
-            rule(#"\b(?:const|let|var|function|return|if|else|for|while|of|in|new|class|async|await|try|catch|throw|typeof|instanceof|import|export|default|=>)\b"#, keyword),
+            rule(
+                #"\b(?:const|let|var|function|return|if|else|for|while|of|in|new|class|async|await|try|catch|throw|typeof|instanceof|import|export|default|=>)\b"#,
+                keyword),
             rule(#"\b(?:true|false|null|undefined|NaN|Infinity)\b|\b\d+(?:\.\d+)?\b"#, number),
             rule(#"\b(?:console|Math|JSON|Object|Array|String|Number|Date|Promise)\b"#, type),
         ],
@@ -108,8 +120,9 @@ enum Highlighter {
     /// Resets the storage to the base color, then colors the spans, in one edit.
     static func apply(_ spans: [Span], to storage: NSTextStorage, baseFont: NSFont) {
         storage.beginEditing()
-        storage.setAttributes([.font: baseFont, .foregroundColor: NSColor.labelColor],
-                              range: NSRange(location: 0, length: storage.length))
+        storage.setAttributes(
+            [.font: baseFont, .foregroundColor: NSColor.labelColor],
+            range: NSRange(location: 0, length: storage.length))
         for span in spans {
             var attributes: [NSAttributedString.Key: Any] = [.foregroundColor: span.color]
             if let background = span.background { attributes[.backgroundColor] = background }
@@ -142,13 +155,19 @@ enum Highlighter {
     private static func diffSpans(_ text: String) -> [Span] {
         let text = text as NSString
         var spans: [Span] = []
-        text.enumerateSubstrings(in: NSRange(location: 0, length: text.length), options: [.byLines, .substringNotRequired]) { _, range, enclosing, _ in
+        text.enumerateSubstrings(
+            in: NSRange(location: 0, length: text.length), options: [.byLines, .substringNotRequired]
+        ) { _, range, enclosing, _ in
             let first = range.length > 0 ? text.substring(with: NSRange(location: range.location, length: 1)) : ""
             switch first {
             case "+":
-                spans.append(Span(range: enclosing, color: .systemGreen, background: NSColor.systemGreen.withAlphaComponent(0.10)))
+                spans.append(
+                    Span(
+                        range: enclosing, color: .systemGreen, background: NSColor.systemGreen.withAlphaComponent(0.10))
+                )
             case "-":
-                spans.append(Span(range: enclosing, color: .systemRed, background: NSColor.systemRed.withAlphaComponent(0.10)))
+                spans.append(
+                    Span(range: enclosing, color: .systemRed, background: NSColor.systemRed.withAlphaComponent(0.10)))
             case "@":
                 spans.append(Span(range: range, color: .systemBlue))
             default:

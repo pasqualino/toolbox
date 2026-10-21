@@ -57,12 +57,20 @@ struct CompareView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .contentTransition(.numericText())
-                Button { step(-1) } label: { Label("Previous", systemImage: "chevron.left") }
-                    .labelStyle(.iconOnly)
-                    .disabled(index == 0)
-                Button { step(1) } label: { Label("Next", systemImage: "chevron.right") }
-                    .labelStyle(.iconOnly)
-                    .disabled(index == list.count - 1)
+                Button {
+                    step(-1)
+                } label: {
+                    Label("Previous", systemImage: "chevron.left")
+                }
+                .labelStyle(.iconOnly)
+                .disabled(index == 0)
+                Button {
+                    step(1)
+                } label: {
+                    Label("Next", systemImage: "chevron.right")
+                }
+                .labelStyle(.iconOnly)
+                .disabled(index == list.count - 1)
             }
             Button("Open") { NSWorkspace.shared.open(output) }
                 .help("Open the result")
@@ -94,9 +102,11 @@ struct CompareView: View {
             }
             .frame(width: width, height: geo.size.height)
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
-                split = min(max(drag.location.x / max(width, 1), 0), 1)
-            })
+            .gesture(
+                DragGesture(minimumDistance: 0).onChanged { drag in
+                    split = min(max(drag.location.x / max(width, 1), 0), 1)
+                }
+            )
             .pointerStyle(.columnResize)
         }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -164,12 +174,15 @@ struct CompareView: View {
 
     private func step(_ delta: Int) {
         let list = comparable
-        guard let index = list.firstIndex(where: { $0.id == item.id }), list.indices.contains(index + delta) else { return }
+        guard let index = list.firstIndex(where: { $0.id == item.id }), list.indices.contains(index + delta) else {
+            return
+        }
         session.comparing = list[index + delta].id
     }
 
     private func load() async {
-        let original = item.url, result = output
+        let original = item.url
+        let result = output
         let (a, b) = await Task.detached(priority: .userInitiated) {
             (Self.image(at: original), Self.image(at: result))
         }.value

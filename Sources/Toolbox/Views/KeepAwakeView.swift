@@ -25,7 +25,8 @@ final class KeepAwakeModel {
 
     func start(_ options: Options) {
         do {
-            try KeepAwake.shared.start(duration: KeepAwake.duration(for: options), keepDisplayOn: options.bool("display"))
+            try KeepAwake.shared.start(
+                duration: KeepAwake.duration(for: options), keepDisplayOn: options.bool("display"))
             error = nil
             History.record("keep-awake")
         } catch {
@@ -113,8 +114,9 @@ struct KeepAwakeView: View {
 
     private func remaining(until end: Date, now: Date) -> String {
         let s = max(0, Int(end.timeIntervalSince(now)))
-        return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
-                         : String(format: "%d:%02d", s / 60, s % 60)
+        return s >= 3600
+            ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
+            : String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 
@@ -122,7 +124,9 @@ private struct DurationPicker: View {
     let session: ToolSession
 
     var body: some View {
-        if let spec = session.tool.options.first(where: { $0.id == "duration" }), case .choice(let choices, _) = spec.kind {
+        if let spec = session.tool.options.first(where: { $0.id == "duration" }),
+            case .choice(let choices, _) = spec.kind
+        {
             HStack(spacing: 6) {
                 ForEach(choices, id: \.value) { choice in
                     let selected = session.options["duration"] == choice.value

@@ -85,13 +85,26 @@ enum NetworkProbes {
             guard let address = link.router else { return nil }
             return try await ping(address)
         }()
-        async let first: Ping? = { defer { tick.step() }; return try await ping(pingTargets[0]) }()
-        async let second: Ping? = { defer { tick.step() }; return try await ping(pingTargets[1]) }()
-        async let dns: DNS = { defer { tick.step() }; return await resolve() }()
-        async let captive: Captive = { defer { tick.step() }; return await captiveCheck() }()
+        async let first: Ping? = {
+            defer { tick.step() }
+            return try await ping(pingTargets[0])
+        }()
+        async let second: Ping? = {
+            defer { tick.step() }
+            return try await ping(pingTargets[1])
+        }()
+        async let dns: DNS = {
+            defer { tick.step() }
+            return await resolve()
+        }()
+        async let captive: Captive = {
+            defer { tick.step() }
+            return await captiveCheck()
+        }()
 
-        let results = Results(link: link, wifi: wifi, router: try await router,
-                              internet: [try await first, try await second], dns: await dns, captive: await captive)
+        let results = Results(
+            link: link, wifi: wifi, router: try await router,
+            internet: [try await first, try await second], dns: await dns, captive: await captive)
         progress?(1)
         return results
     }
@@ -116,8 +129,11 @@ enum NetworkProbes {
         if primary == nil || isTunnel(primary!) {
             let keys = SCDynamicStoreCopyKeyList(store, "State:/Network/Service/.*/IPv4" as CFString) as? [String] ?? []
             let services = keys.compactMap(dict)
-            if let real = services.first(where: { ($0["InterfaceName"] as? String).map { !isTunnel($0) } == true && $0["Router"] != nil })
-                ?? services.first(where: { ($0["InterfaceName"] as? String).map { !isTunnel($0) } == true }) {
+            if let real = services.first(where: {
+                ($0["InterfaceName"] as? String).map { !isTunnel($0) } == true && $0["Router"] != nil
+            })
+                ?? services.first(where: { ($0["InterfaceName"] as? String).map { !isTunnel($0) } == true })
+            {
                 link.physical = real["InterfaceName"] as? String
                 link.router = real["Router"] as? String
             } else if primary != nil {
@@ -137,7 +153,8 @@ enum NetworkProbes {
         link.dnsViaVPN = tailscaleDNS || (primary.map(isTunnel) ?? false)
 
         // Tailscale gives its tunnel a 100.64.0.0/10 address.
-        let tunnels = (SCDynamicStoreCopyKeyList(store, "State:/Network/Interface/utun.*/IPv4" as CFString) as? [String] ?? [])
+        let tunnels =
+            (SCDynamicStoreCopyKeyList(store, "State:/Network/Interface/utun.*/IPv4" as CFString) as? [String] ?? [])
             .compactMap { dict($0)?["Addresses"] as? [String] }.flatMap { $0 }
         if tailscaleDNS || tunnels.contains(where: isTailscaleAddress) {
             link.vpn = tailscaleDNS ? "Tailscale (DNS through Tailscale)" : "Tailscale"
@@ -153,7 +170,9 @@ enum NetworkProbes {
     private static func kind(of name: String) -> String {
         if CWWiFiClient.shared().interfaceNames()?.contains(name) == true { return "Wi-Fi" }
         let all = SCNetworkInterfaceCopyAll() as? [SCNetworkInterface] ?? []
-        guard let match = all.first(where: { SCNetworkInterfaceGetBSDName($0) as String? == name }) else { return "Other" }
+        guard let match = all.first(where: { SCNetworkInterfaceGetBSDName($0) as String? == name }) else {
+            return "Other"
+        }
         if let type = SCNetworkInterfaceGetInterfaceType(match), type == kSCNetworkInterfaceTypeEthernet {
             let display = SCNetworkInterfaceGetLocalizedDisplayName(match) as String? ?? ""
             return display.localizedCaseInsensitiveContains("iPhone") ? display : "Ethernet"
@@ -175,45 +194,49 @@ enum NetworkProbes {
         var info = WiFi(ssid: wlan.ssid(), rssi: rssi, noise: wlan.noiseMeasurement(), rate: wlan.transmitRate())
         if let channel = wlan.wlanChannel() {
             info.channel = channel.channelNumber
-            info.band = switch channel.channelBand.rawValue {
-            case 1: "2.4 GHz"
-            case 2: "5 GHz"
-            case 3: "6 GHz"
+            info.band =
+                switch channel.channelBand.rawValue {
+                case 1: "2.4 GHz"
+                case 2: "5 GHz"
+                case 3: "6 GHz"
+                default: nil
+                }
+            info.width =
+                switch channel.channelWidth.rawValue {
+                case 1: "20 MHz"
+                case 2: "40 MHz"
+                case 3: "80 MHz"
+                case 4: "160 MHz"
+                default: nil
+                }
+        }
+        info.standard =
+            switch wlan.activePHYMode().rawValue {
+            case 1: "802.11a"
+            case 2: "802.11b"
+            case 3: "802.11g"
+            case 4: "Wi-Fi 4 (802.11n)"
+            case 5: "Wi-Fi 5 (802.11ac)"
+            case 6: "Wi-Fi 6 (802.11ax)"
+            case 7: "Wi-Fi 7 (802.11be)"
             default: nil
             }
-            info.width = switch channel.channelWidth.rawValue {
-            case 1: "20 MHz"
-            case 2: "40 MHz"
-            case 3: "80 MHz"
-            case 4: "160 MHz"
+        info.security =
+            switch wlan.security().rawValue {
+            case 0: "None"
+            case 1, 6: "WEP"
+            case 2, 3: "WPA Personal"
+            case 4: "WPA2 Personal"
+            case 5: "WPA/WPA2 Personal"
+            case 7, 8: "WPA Enterprise"
+            case 9: "WPA2 Enterprise"
+            case 10: "WPA/WPA2 Enterprise"
+            case 11: "WPA3 Personal"
+            case 12: "WPA3 Enterprise"
+            case 13: "WPA2/WPA3 Personal"
+            case 14, 15: "Enhanced Open"
             default: nil
             }
-        }
-        info.standard = switch wlan.activePHYMode().rawValue {
-        case 1: "802.11a"
-        case 2: "802.11b"
-        case 3: "802.11g"
-        case 4: "Wi-Fi 4 (802.11n)"
-        case 5: "Wi-Fi 5 (802.11ac)"
-        case 6: "Wi-Fi 6 (802.11ax)"
-        case 7: "Wi-Fi 7 (802.11be)"
-        default: nil
-        }
-        info.security = switch wlan.security().rawValue {
-        case 0: "None"
-        case 1, 6: "WEP"
-        case 2, 3: "WPA Personal"
-        case 4: "WPA2 Personal"
-        case 5: "WPA/WPA2 Personal"
-        case 7, 8: "WPA Enterprise"
-        case 9: "WPA2 Enterprise"
-        case 10: "WPA/WPA2 Enterprise"
-        case 11: "WPA3 Personal"
-        case 12: "WPA3 Enterprise"
-        case 13: "WPA2/WPA3 Personal"
-        case 14, 15: "Enhanced Open"
-        default: nil
-        }
         return info
     }
 
@@ -222,8 +245,9 @@ enum NetworkProbes {
     /// 10 pings, 0.2 s apart, 5 s at most. Throws only on cancellation.
     static func ping(_ host: String) async throws -> Ping {
         do {
-            let out = try await ProcessRunner.capture(URL(fileURLWithPath: "/sbin/ping"),
-                                                      ["-c", "10", "-i", "0.2", "-q", "-t", "5", host])
+            let out = try await ProcessRunner.capture(
+                URL(fileURLWithPath: "/sbin/ping"),
+                ["-c", "10", "-i", "0.2", "-q", "-t", "5", host])
             return parsePing(out.stdout, host: host)
         } catch is CancellationError {
             throw CancellationError()
@@ -251,7 +275,8 @@ enum NetworkProbes {
 
     private static func match(_ pattern: String, _ text: String) -> [String]? {
         guard let regex = try? NSRegularExpression(pattern: pattern),
-              let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
+            let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text))
+        else { return nil }
         return (1..<m.numberOfRanges).compactMap { Range(m.range(at: $0), in: text).map { String(text[$0]) } }
     }
 
@@ -317,11 +342,14 @@ enum NetworkProbes {
             connection.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
-                    let request = "GET /hotspot-detect.html HTTP/1.0\r\nHost: captive.apple.com\r\n"
+                    let request =
+                        "GET /hotspot-detect.html HTTP/1.0\r\nHost: captive.apple.com\r\n"
                         + "User-Agent: CaptiveNetworkSupport/1.0 wispr\r\nConnection: close\r\n\r\n"
-                    connection.send(content: Data(request.utf8), completion: .contentProcessed { error in
-                        if error != nil { done(.unknown) } else { receive() }
-                    })
+                    connection.send(
+                        content: Data(request.utf8),
+                        completion: .contentProcessed { error in
+                            if error != nil { done(.unknown) } else { receive() }
+                        })
                 case .failed, .waiting:
                     done(.unknown)
                 default: break
@@ -398,7 +426,10 @@ private final class Once<T: Sendable>: @unchecked Sendable {
 
     func finish(_ value: T, givingUp: Bool = false) {
         lock.lock()
-        guard !finished else { lock.unlock(); return }
+        guard !finished else {
+            lock.unlock()
+            return
+        }
         finished = true
         let c = continuation
         continuation = nil

@@ -7,14 +7,14 @@ enum FinderSelection {
     }
 
     private static let source = """
-    tell application "Finder"
-        set out to {}
-        repeat with f in (get selection as alias list)
-            set end of out to POSIX path of f
-        end repeat
-        return out
-    end tell
-    """
+        tell application "Finder"
+            set out to {}
+            repeat with f in (get selection as alias list)
+                set end of out to POSIX path of f
+            end repeat
+            return out
+        end tell
+        """
 
     /// Asks Finder over Apple Events. The first call triggers the Automation permission prompt.
     /// NSAppleScript is main-thread only; the call returns in a few milliseconds once permitted.

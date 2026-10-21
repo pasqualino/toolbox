@@ -12,9 +12,10 @@ final class PalettePanel: NSPanel {
     private var generation = 0
 
     init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 640, height: 420),
-                   styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView],
-                   backing: .buffered, defer: false)
+        super.init(
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 420),
+            styleMask: [.nonactivatingPanel, .borderless, .fullSizeContentView],
+            backing: .buffered, defer: false)
         isFloatingPanel = true
         level = .floating
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
@@ -37,7 +38,8 @@ final class PalettePanel: NSPanel {
     override var canBecomeMain: Bool { false }
 
     func present(files: [URL], text: String? = nil) {
-        let fromFinder = files.isEmpty && text == nil && FinderSelection.finderIsFrontmost
+        let fromFinder =
+            files.isEmpty && text == nil && FinderSelection.finderIsFrontmost
             && UserDefaults.standard.bool(forKey: Prefs.useFinderSelection)
             && PermissionPrimer.ensure(.finderAutomation)
         state.reset(files: files)
@@ -93,8 +95,9 @@ final class PalettePanel: NSPanel {
         let inset = Self.shadowInset
         let size = NSSize(width: 640 + inset * 2, height: 600 + inset * 2)
         // Card top sits a little above center, like Spotlight.
-        let origin = NSPoint(x: frame.midX - size.width / 2,
-                             y: frame.minY + frame.height * 0.80 + inset - size.height)
+        let origin = NSPoint(
+            x: frame.midX - size.width / 2,
+            y: frame.minY + frame.height * 0.80 + inset - size.height)
         setFrame(NSRect(origin: origin, size: size), display: false)
     }
 }

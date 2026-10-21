@@ -4,8 +4,10 @@ import PDFKit
 import UniformTypeIdentifiers
 
 enum PDFTools {
-    static let all: [Tool] = [merge, split, organize, deletePages, extractPages,
-                              addPassword, removePassword, imagesToPDF, pdfToImages]
+    static let all: [Tool] = [
+        merge, split, organize, deletePages, extractPages,
+        addPassword, removePassword, imagesToPDF, pdfToImages,
+    ]
 
     static let merge = Tool(
         id: "merge-pdf",
@@ -44,15 +46,20 @@ enum PDFTools {
         keywords: ["separate", "pages", "break", "divide"],
         accepts: [.pdf],
         options: [
-            OptionSpec("mode", "Split", .choice([
-                Choice("every", "Every page"),
-                Choice("chunks", "Every N pages"),
-                Choice("ranges", "By ranges"),
-            ], default: "every")),
-            OptionSpec("size", "Pages per file", .number(1...1000, default: 2, unit: "pages"),
-                       visibleWhen: ("mode", ["chunks"])),
-            OptionSpec("ranges", "Ranges", .text(default: "", placeholder: "1-3, 4-6"),
-                       help: "Each range becomes one PDF.", visibleWhen: ("mode", ["ranges"])),
+            OptionSpec(
+                "mode", "Split",
+                .choice(
+                    [
+                        Choice("every", "Every page"),
+                        Choice("chunks", "Every N pages"),
+                        Choice("ranges", "By ranges"),
+                    ], default: "every")),
+            OptionSpec(
+                "size", "Pages per file", .number(1...1000, default: 2, unit: "pages"),
+                visibleWhen: ("mode", ["chunks"])),
+            OptionSpec(
+                "ranges", "Ranges", .text(default: "", placeholder: "1-3, 4-6"),
+                help: "Each range becomes one PDF.", visibleWhen: ("mode", ["ranges"])),
         ],
         actionTitle: "Split",
         runner: .perFile { url, ctx in
@@ -84,7 +91,7 @@ enum PDFTools {
         keywords: ["reorder", "rotate", "arrange", "sort", "move", "pages"],
         accepts: [.pdf],
         options: [
-            OptionSpec("pages", "Pages", .pageArrangement),
+            OptionSpec("pages", "Pages", .pageArrangement)
         ],
         actionTitle: "Save",
         runner: .perFile { url, ctx in
@@ -112,7 +119,7 @@ enum PDFTools {
         keywords: ["remove", "pages", "drop", "cut"],
         accepts: [.pdf],
         options: [
-            OptionSpec("pages", "Pages to delete", .pageSelection),
+            OptionSpec("pages", "Pages to delete", .pageSelection)
         ],
         actionTitle: "Delete",
         runner: .perFile { url, ctx in
@@ -137,10 +144,13 @@ enum PDFTools {
         accepts: [.pdf],
         options: [
             OptionSpec("pages", "Pages to extract", .pageSelection),
-            OptionSpec("mode", "Save as", .choice([
-                Choice("one", "One PDF"),
-                Choice("each", "One file per page"),
-            ], default: "one")),
+            OptionSpec(
+                "mode", "Save as",
+                .choice(
+                    [
+                        Choice("one", "One PDF"),
+                        Choice("each", "One file per page"),
+                    ], default: "one")),
         ],
         actionTitle: "Extract",
         runner: .perFile { url, ctx in
@@ -173,16 +183,21 @@ enum PDFTools {
         runner: .perFile { url, ctx in
             let password = ctx.options.string("password")
             guard !password.isEmpty else { throw ToolError.message("Enter a password.") }
-            let allowPrint = ctx.options.bool("print"), allowCopy = ctx.options.bool("copy")
+            let allowPrint = ctx.options.bool("print")
+            let allowCopy = ctx.options.bool("copy")
             let doc = try PDFHelpers.open(url)
             let out = ctx.output(for: url, suffix: " protected", ext: "pdf")
-            var options: [PDFDocumentWriteOption: Any] = [.userPasswordOption: password, .ownerPasswordOption: password]
+            var options: [PDFDocumentWriteOption: Any] = [
+                .userPasswordOption: password, .ownerPasswordOption: password,
+            ]
             if !allowPrint || !allowCopy {
                 // Restrictions only bind the user password, so the owner password must be another, unknown one.
                 options[.ownerPasswordOption] = UUID().uuidString + UUID().uuidString
                 // PDFAccessPermissions is imported as a plain enum, so combine the raw bit values.
-                var allowed: [PDFAccessPermissions] = [.allowsDocumentChanges, .allowsDocumentAssembly,
-                                                       .allowsCommenting, .allowsFormFieldEntry, .allowsContentAccessibility]
+                var allowed: [PDFAccessPermissions] = [
+                    .allowsDocumentChanges, .allowsDocumentAssembly,
+                    .allowsCommenting, .allowsFormFieldEntry, .allowsContentAccessibility,
+                ]
                 if allowPrint { allowed += [.allowsLowQualityPrinting, .allowsHighQualityPrinting] }
                 if allowCopy { allowed.append(.allowsContentCopying) }
                 options[.accessPermissionsOption] = NSNumber(value: allowed.reduce(0) { $0 | $1.rawValue })
@@ -190,8 +205,9 @@ enum PDFTools {
             try PDFHelpers.write(doc, to: out, options: options)
             // Never hand back a file that isn't really locked, or that doesn't enforce the chosen permissions.
             guard let check = PDFDocument(url: out), check.isEncrypted, check.isLocked,
-                  check.unlock(withPassword: password),
-                  check.allowsPrinting == allowPrint, check.allowsCopying == allowCopy else {
+                check.unlock(withPassword: password),
+                check.allowsPrinting == allowPrint, check.allowsCopying == allowCopy
+            else {
                 try? FileManager.default.removeItem(at: out)
                 throw ToolError.message("Couldn't encrypt \(url.lastPathComponent).")
             }
@@ -208,7 +224,7 @@ enum PDFTools {
         keywords: ["unlock", "decrypt", "password", "unprotect", "open"],
         accepts: [.pdf],
         options: [
-            OptionSpec("password", "Password", .secureText(placeholder: "The PDF's password")),
+            OptionSpec("password", "Password", .secureText(placeholder: "The PDF's password"))
         ],
         actionTitle: "Unlock",
         runner: .perFile { url, ctx in
@@ -220,9 +236,10 @@ enum PDFTools {
                 guard !password.isEmpty else { throw ToolError.message("Enter the PDF's password.") }
                 let wasLocked = doc.isLocked
                 guard doc.unlock(withPassword: password), doc.permissionsStatus == .owner else {
-                    throw ToolError.message(wasLocked && !doc.isLocked
-                        ? "This password opens the PDF but can't remove its protection."
-                        : "Wrong password.")
+                    throw ToolError.message(
+                        wasLocked && !doc.isLocked
+                            ? "This password opens the PDF but can't remove its protection."
+                            : "Wrong password.")
                 }
             }
             // PDFKit keeps the encryption when it rewrites a document, so copy into a fresh one.
@@ -249,30 +266,38 @@ enum PDFTools {
         accepts: [.image],
         ordered: true,
         options: [
-            OptionSpec("size", "Page size", .choice([
-                Choice("fit", "Fit image"),
-                Choice("a4", "A4"),
-                Choice("letter", "US Letter"),
-            ], default: "fit")),
-            OptionSpec("margin", "Margin", .choice([
-                Choice("none", "None"),
-                Choice("small", "Small"),
-                Choice("large", "Large"),
-            ], default: "none")),
+            OptionSpec(
+                "size", "Page size",
+                .choice(
+                    [
+                        Choice("fit", "Fit image"),
+                        Choice("a4", "A4"),
+                        Choice("letter", "US Letter"),
+                    ], default: "fit")),
+            OptionSpec(
+                "margin", "Margin",
+                .choice(
+                    [
+                        Choice("none", "None"),
+                        Choice("small", "Small"),
+                        Choice("large", "Large"),
+                    ], default: "none")),
         ],
         actionTitle: "Create PDF",
         runner: .batch { urls, ctx in
             let out = urls.count == 1 ? ctx.output(for: urls[0], ext: "pdf") : ctx.output(named: "Images", ext: "pdf")
-            let margin: CGFloat = switch ctx.options.string("margin") {
-            case "small": 18
-            case "large": 36
-            default: 0
-            }
-            let paper: CGSize? = switch ctx.options.string("size") {
-            case "a4": CGSize(width: 595.28, height: 841.89)
-            case "letter": CGSize(width: 612, height: 792)
-            default: nil
-            }
+            let margin: CGFloat =
+                switch ctx.options.string("margin") {
+                case "small": 18
+                case "large": 36
+                default: 0
+                }
+            let paper: CGSize? =
+                switch ctx.options.string("size") {
+                case "a4": CGSize(width: 595.28, height: 841.89)
+                case "letter": CGSize(width: 612, height: 792)
+                default: nil
+                }
             guard let pdf = CGContext(out as CFURL, mediaBox: nil, nil) else {
                 throw ToolError.message("Couldn't create the PDF.")
             }
@@ -286,8 +311,9 @@ enum PDFTools {
                 let sideways = (5...8).contains(orientation)
                 let dpi = props[kCGImagePropertyDPIWidth] as? Double ?? 72
                 let pointsPerPixel = CGFloat(72 / ((72...1200).contains(dpi) ? dpi : 72))
-                let natural = CGSize(width: CGFloat(sideways ? image.height : image.width) * pointsPerPixel,
-                                     height: CGFloat(sideways ? image.width : image.height) * pointsPerPixel)
+                let natural = CGSize(
+                    width: CGFloat(sideways ? image.height : image.width) * pointsPerPixel,
+                    height: CGFloat(sideways ? image.width : image.height) * pointsPerPixel)
 
                 var page: CGSize
                 if let paper {
@@ -298,8 +324,9 @@ enum PDFTools {
                 let area = CGRect(origin: .zero, size: page).insetBy(dx: margin, dy: margin)
                 let scale = min(area.width / natural.width, area.height / natural.height)
                 let drawn = CGSize(width: natural.width * scale, height: natural.height * scale)
-                let rect = CGRect(x: area.midX - drawn.width / 2, y: area.midY - drawn.height / 2,
-                                  width: drawn.width, height: drawn.height)
+                let rect = CGRect(
+                    x: area.midX - drawn.width / 2, y: area.midY - drawn.height / 2,
+                    width: drawn.width, height: drawn.height)
 
                 var box = CGRect(origin: .zero, size: page)
                 let info = [kCGPDFContextMediaBox: Data(bytes: &box, count: MemoryLayout<CGRect>.size)]
@@ -328,16 +355,22 @@ enum PDFTools {
         keywords: ["export", "png", "jpg", "jpeg", "heic", "convert", "render", "pages"],
         accepts: [.pdf],
         options: [
-            OptionSpec("format", "Format", .choice([
-                Choice("png", "PNG"),
-                Choice("jpeg", "JPEG"),
-                Choice("heic", "HEIC"),
-            ], default: "png")),
-            OptionSpec("dpi", "Resolution", .choice([
-                Choice("72", "72 DPI"),
-                Choice("150", "150 DPI"),
-                Choice("300", "300 DPI"),
-            ], default: "150")),
+            OptionSpec(
+                "format", "Format",
+                .choice(
+                    [
+                        Choice("png", "PNG"),
+                        Choice("jpeg", "JPEG"),
+                        Choice("heic", "HEIC"),
+                    ], default: "png")),
+            OptionSpec(
+                "dpi", "Resolution",
+                .choice(
+                    [
+                        Choice("72", "72 DPI"),
+                        Choice("150", "150 DPI"),
+                        Choice("300", "300 DPI"),
+                    ], default: "150")),
         ],
         actionTitle: "Export",
         runner: .perFile { url, ctx in

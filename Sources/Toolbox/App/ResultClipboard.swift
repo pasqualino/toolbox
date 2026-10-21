@@ -22,7 +22,7 @@ enum ResultClipboard {
         guard !urls.isEmpty else { return }
         pasteboard.clearContents()
         guard urls.count == 1, let url = urls.first,
-              let type = UTType(filenameExtension: url.pathExtension.lowercased()), type.conforms(to: .image)
+            let type = UTType(filenameExtension: url.pathExtension.lowercased()), type.conforms(to: .image)
         else {
             pasteboard.writeObjects(urls.map { $0 as NSURL })
             return
@@ -51,7 +51,9 @@ final class ModifierKeys {
             return event
         }
         // Released while another app was in front: no flagsChanged reaches us.
-        NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { _ in
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+        ) { _ in
             MainActor.assumeIsolated { shared.option = false }
         }
     }

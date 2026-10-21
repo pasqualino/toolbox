@@ -32,7 +32,8 @@ public struct NetworkIdentity: Codable, Sendable, Hashable {
         let link = NetworkProbes.currentLink()
         let name = NetworkProbes.wifiName(link.physical)
         guard let router = link.router else {
-            return link.physical == nil ? nil : NetworkIdentity(id: "if:\(link.kind)", kind: link.kind, router: nil, name: name)
+            return link.physical == nil
+                ? nil : NetworkIdentity(id: "if:\(link.kind)", kind: link.kind, router: nil, name: name)
         }
         if let mac = await hardwareAddress(of: router) {
             return NetworkIdentity(id: "router:\(mac)", kind: link.kind, router: router, name: name)
@@ -50,7 +51,8 @@ public struct NetworkIdentity: Codable, Sendable, Hashable {
     }
 
     static func parseARP(_ text: String) -> String? {
-        guard let range = text.range(of: #" at ([0-9a-fA-F]{1,2}(:[0-9a-fA-F]{1,2}){5}) "#, options: .regularExpression) else {
+        guard let range = text.range(of: #" at ([0-9a-fA-F]{1,2}(:[0-9a-fA-F]{1,2}){5}) "#, options: .regularExpression)
+        else {
             return nil
         }
         let raw = text[range].split(separator: " ")[1]

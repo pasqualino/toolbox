@@ -48,7 +48,9 @@ enum PermissionPrimer {
 @MainActor
 enum CaptureFlow {
     static func run(showResultInApp: Bool = false) {
-        guard let tool = ToolRegistry.tool(id: "capture-text"), PermissionPrimer.ensure(.screenRecording) else { return }
+        guard let tool = ToolRegistry.tool(id: "capture-text"), PermissionPrimer.ensure(.screenRecording) else {
+            return
+        }
         WindowController.shared.hidePalette()
         let wasVisible = WindowController.shared.isMainVisible
         // Keep our own windows out of the way of the crosshair.

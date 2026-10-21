@@ -19,7 +19,9 @@ enum AISummarizer {
     /// About 6,000 characters of English fits with room for the answer.
     static let chunkCharacters = 6_000
 
-    static func summarize(_ text: String, length: Length, progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+    static func summarize(_ text: String, length: Length, progress: @escaping @Sendable (Double) -> Void) async throws
+        -> String
+    {
         try ensureAvailable()
         let words = text.split(whereSeparator: { $0.isWhitespace }).count
         guard words >= 25 else { throw ToolError.message("This text is too short to summarize (\(words) words).") }
@@ -37,7 +39,9 @@ enum AISummarizer {
         }
     }
 
-    private static func summarize(_ text: String, length: Length, limit: Int, progress: @Sendable (Double) -> Void) async throws -> String {
+    private static func summarize(_ text: String, length: Length, limit: Int, progress: @Sendable (Double) -> Void)
+        async throws -> String
+    {
         let chunks = split(text, limit: limit)
         if chunks.count == 1 {
             let summary = try await respond(instructions: length.instruction, prompt: chunks[0])
@@ -48,9 +52,11 @@ enum AISummarizer {
         var notes: [String] = []
         for (index, chunk) in chunks.enumerated() {
             try Task.checkCancellation()
-            notes.append(try await respond(
-                instructions: "Summarize this part of a longer document in a few sentences. Keep key facts, names and numbers.",
-                prompt: chunk))
+            notes.append(
+                try await respond(
+                    instructions:
+                        "Summarize this part of a longer document in a few sentences. Keep key facts, names and numbers.",
+                    prompt: chunk))
             progress(0.9 * Double(index + 1) / Double(chunks.count))
         }
         var combined = notes.joined(separator: "\n\n")
@@ -59,16 +65,18 @@ enum AISummarizer {
             var shorter: [String] = []
             for part in parts {
                 try Task.checkCancellation()
-                shorter.append(try await respond(
-                    instructions: "Condense these notes from a longer document. Keep key facts, names and numbers.",
-                    prompt: part))
+                shorter.append(
+                    try await respond(
+                        instructions: "Condense these notes from a longer document. Keep key facts, names and numbers.",
+                        prompt: part))
             }
             let next = shorter.joined(separator: "\n\n")
             guard next.count < combined.count else { break }
             combined = next
         }
         let summary = try await respond(
-            instructions: "These are notes on the parts of one document, in order. Summarize the whole document. " + length.instruction,
+            instructions: "These are notes on the parts of one document, in order. Summarize the whole document. "
+                + length.instruction,
             prompt: combined)
         progress(1)
         return summary
@@ -79,7 +87,8 @@ enum AISummarizer {
         let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
         let session = LanguageModelSession(
             model: model,
-            instructions: instructions + " Reply with the summary only, in the same language as the text, without a title or preamble.")
+            instructions: instructions
+                + " Reply with the summary only, in the same language as the text, without a title or preamble.")
         // Fence the text so the model treats it as material, not as a message to answer.
         let fenced = "Text to work on:\n<<<\n\(prompt)\n>>>"
         let response = try await session.respond(to: fenced, options: GenerationOptions(temperature: 0.3))

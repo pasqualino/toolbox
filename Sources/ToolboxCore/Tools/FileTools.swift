@@ -14,20 +14,28 @@ enum FileTools {
         accepts: [],
         ordered: true,
         options: [
-            OptionSpec("pattern", "Pattern", .text(default: "{name} {n}", placeholder: "{name} {n}"),
-                       help: "Tokens: {name} {n} {date} {ext}"),
+            OptionSpec(
+                "pattern", "Pattern", .text(default: "{name} {n}", placeholder: "{name} {n}"),
+                help: "Tokens: {name} {n} {date} {ext}"),
             OptionSpec("start", "Start at", .number(0...99_999, default: 1, unit: "")),
-            OptionSpec("pad", "Digits", .number(0...8, default: 0, unit: ""),
-                       help: "0 fits the file count."),
+            OptionSpec(
+                "pad", "Digits", .number(0...8, default: 0, unit: ""),
+                help: "0 fits the file count."),
             OptionSpec("find", "Find", .text(default: "", placeholder: "Text to replace")),
             OptionSpec("replace", "Replace with", .text(default: "", placeholder: "Nothing")),
-            OptionSpec("case", "Case", .choice([
-                Choice("none", "Keep"), Choice("lower", "lower"),
-                Choice("upper", "UPPER"), Choice("title", "Title"),
-            ], default: "none")),
-            OptionSpec("mode", "Mode", .choice([
-                Choice("copy", "Copy to Downloads"), Choice("rename", "Rename originals"),
-            ], default: "copy")),
+            OptionSpec(
+                "case", "Case",
+                .choice(
+                    [
+                        Choice("none", "Keep"), Choice("lower", "lower"),
+                        Choice("upper", "UPPER"), Choice("title", "Title"),
+                    ], default: "none")),
+            OptionSpec(
+                "mode", "Mode",
+                .choice(
+                    [
+                        Choice("copy", "Copy to Downloads"), Choice("rename", "Rename originals"),
+                    ], default: "copy")),
         ],
         actionTitle: "Rename",
         runner: .batch { urls, ctx in
@@ -58,15 +66,18 @@ enum FileTools {
         let fm = FileManager.default
         let targets = zip(urls, names).map { $0.deletingLastPathComponent().appendingPathComponent($1) }
         let inputs = Set(urls.map { $0.standardizedFileURL.path.lowercased() })
-        for target in targets where fm.fileExists(atPath: target.path)
-            && !inputs.contains(target.standardizedFileURL.path.lowercased()) {
+        for target in targets
+        where fm.fileExists(atPath: target.path)
+            && !inputs.contains(target.standardizedFileURL.path.lowercased())
+        {
             throw ToolError.message("A file named \(target.lastPathComponent) is already there.")
         }
 
         var moved: [(temp: URL, original: URL)] = []
         do {
             for url in urls {
-                let temp = url.deletingLastPathComponent().appendingPathComponent(".toolbox-rename-\(UUID().uuidString)")
+                let temp = url.deletingLastPathComponent().appendingPathComponent(
+                    ".toolbox-rename-\(UUID().uuidString)")
                 try fm.moveItem(at: url, to: temp)
                 moved.append((temp, url))
             }

@@ -18,27 +18,35 @@ final class SpeedTestModel {
 
     private init() {
         let data = UserDefaults.standard.data(forKey: Self.key)
-        history = data.flatMap { try? JSONDecoder().decode([SpeedTestResult].self, from: $0) } ?? Self.migrateTextHistory()
+        history =
+            data.flatMap { try? JSONDecoder().decode([SpeedTestResult].self, from: $0) } ?? Self.migrateTextHistory()
     }
 
     /// Earlier versions kept speed tests as report text under "speedHistory"; read the numbers back once.
     private static func migrateTextHistory() -> [SpeedTestResult] {
-        struct Old: Decodable { let date: Date; let report: String }
+        struct Old: Decodable {
+            let date: Date
+            let report: String
+        }
         guard let data = UserDefaults.standard.data(forKey: "speedHistory"),
-              let old = try? JSONDecoder().decode([Old].self, from: data) else { return [] }
+            let old = try? JSONDecoder().decode([Old].self, from: data)
+        else { return [] }
         func number(_ label: String, in report: String) -> Double? {
             guard let line = report.split(separator: "\n").first(where: { $0.hasPrefix(label) }) else { return nil }
             let digits = line.split(separator: " ").compactMap { Double($0.replacingOccurrences(of: ",", with: "")) }
             return digits.first
         }
         let results = old.compactMap { entry -> SpeedTestResult? in
-            guard let down = number("Download", in: entry.report), let up = number("Upload", in: entry.report) else { return nil }
+            guard let down = number("Download", in: entry.report), let up = number("Upload", in: entry.report) else {
+                return nil
+            }
             let iface = entry.report.split(separator: "\n").first { $0.hasPrefix("Interface") }.map(String.init) ?? ""
-            return SpeedTestResult(downloadMbps: down, uploadMbps: up,
-                                   responsivenessRPM: number("Responsiveness", in: entry.report),
-                                   idleLatencyMs: number("Idle latency", in: entry.report),
-                                   interface: iface.contains("en0") ? "en0" : "",
-                                   interfaceType: iface.contains("Wi-Fi") ? "Wi-Fi" : "", date: entry.date)
+            return SpeedTestResult(
+                downloadMbps: down, uploadMbps: up,
+                responsivenessRPM: number("Responsiveness", in: entry.report),
+                idleLatencyMs: number("Idle latency", in: entry.report),
+                interface: iface.contains("en0") ? "en0" : "",
+                interfaceType: iface.contains("Wi-Fi") ? "Wi-Fi" : "", date: entry.date)
         }
         if let encoded = try? JSONEncoder().encode(results) { UserDefaults.standard.set(encoded, forKey: key) }
         UserDefaults.standard.removeObject(forKey: "speedHistory")
@@ -158,8 +166,9 @@ struct SpeedTestView: View {
                     if model.running {
                         RunningCard(startedAt: model.startedAt ?? Date(), tint: session.tool.tint)
                     } else if let latest = model.latest {
-                        LatestResult(result: latest, tint: session.tool.tint,
-                                     networkName: model.name(for: SpeedTestModel.networkID(latest)))
+                        LatestResult(
+                            result: latest, tint: session.tool.tint,
+                            networkName: model.name(for: SpeedTestModel.networkID(latest)))
                     } else {
                         EmptyCard(tint: session.tool.tint)
                     }
@@ -197,11 +206,14 @@ struct SpeedTestView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 12) {
-                Toggle("One direction at a time", isOn: Binding(
-                    get: { session.options.bool("sequential") },
-                    set: { session.options["sequential"] = $0 ? "true" : "false" }))
-                    .toggleStyle(.checkbox)
-                    .help("Tests download, then upload, instead of both at once. Slower, but closer to what one app sees.")
+                Toggle(
+                    "One direction at a time",
+                    isOn: Binding(
+                        get: { session.options.bool("sequential") },
+                        set: { session.options["sequential"] = $0 ? "true" : "false" })
+                )
+                .toggleStyle(.checkbox)
+                .help("Tests download, then upload, instead of both at once. Slower, but closer to what one app sees.")
                 Spacer()
                 if model.running {
                     Button("Stop") { model.stop() }
@@ -241,10 +253,12 @@ private struct LatestResult: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                Metric(title: "Download", value: result.downloadMbps, unit: "Mbps",
-                       symbol: "arrow.down.circle.fill", color: .blue)
-                Metric(title: "Upload", value: result.uploadMbps, unit: "Mbps",
-                       symbol: "arrow.up.circle.fill", color: .purple)
+                Metric(
+                    title: "Download", value: result.downloadMbps, unit: "Mbps",
+                    symbol: "arrow.down.circle.fill", color: .blue)
+                Metric(
+                    title: "Upload", value: result.uploadMbps, unit: "Mbps",
+                    symbol: "arrow.up.circle.fill", color: .purple)
             }
             HStack(alignment: .top, spacing: 12) {
                 Panel(padding: 16) {
@@ -252,12 +266,15 @@ private struct LatestResult: View {
                 }
                 Panel(padding: 16) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Detail(label: "Idle latency", value: result.idleLatencyMs.map { "\(Int($0.rounded())) ms" } ?? "n/a",
-                               symbol: "timer")
+                        Detail(
+                            label: "Idle latency",
+                            value: result.idleLatencyMs.map { "\(Int($0.rounded())) ms" } ?? "n/a",
+                            symbol: "timer")
                         Detail(label: "Network", value: networkName, symbol: connectionSymbol)
                         Detail(label: "Connection", value: connection, symbol: "network")
-                        Detail(label: "Tested", value: result.date.formatted(date: .abbreviated, time: .shortened),
-                               symbol: "calendar")
+                        Detail(
+                            label: "Tested", value: result.date.formatted(date: .abbreviated, time: .shortened),
+                            symbol: "calendar")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -290,10 +307,14 @@ private struct Metric: View {
                     .font(.headline)
                     .foregroundStyle(color)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(value < 10 ? value.formatted(.number.precision(.fractionLength(1))) : value.formatted(.number.precision(.fractionLength(0))))
-                        .font(.system(size: 46, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
+                    Text(
+                        value < 10
+                            ? value.formatted(.number.precision(.fractionLength(1)))
+                            : value.formatted(.number.precision(.fractionLength(0)))
+                    )
+                    .font(.system(size: 46, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
                     Text(unit)
                         .font(.title3.weight(.medium))
                         .foregroundStyle(.secondary)
@@ -364,10 +385,12 @@ private struct ResponsivenessMeter: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.tertiary)
-                Text("\(Int(rpm.rounded())) round trips per minute while the line is busy. Higher means calls and games feel snappier.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "\(Int(rpm.rounded())) round trips per minute while the line is busy. Higher means calls and games feel snappier."
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("Not reported.").foregroundStyle(.secondary)
             }
@@ -459,8 +482,10 @@ private struct HistoryChart: View {
             if byNetwork {
                 return [Point(date: r.date, mbps: r.downloadMbps, series: name(SpeedTestModel.networkID(r)))]
             }
-            return [Point(date: r.date, mbps: r.downloadMbps, series: "Download"),
-                    Point(date: r.date, mbps: r.uploadMbps, series: "Upload")]
+            return [
+                Point(date: r.date, mbps: r.downloadMbps, series: "Download"),
+                Point(date: r.date, mbps: r.uploadMbps, series: "Upload"),
+            ]
         }
     }
 
@@ -563,7 +588,8 @@ private struct HistoryTable: View {
         Panel(padding: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label(showNetwork ? "All runs" : "Runs on this network", systemImage: "clock.arrow.circlepath").font(.headline)
+                    Label(showNetwork ? "All runs" : "Runs on this network", systemImage: "clock.arrow.circlepath")
+                        .font(.headline)
                     Spacer()
                     Button("Clear History", role: .destructive, action: clear)
                         .buttonStyle(.borderless)
@@ -571,7 +597,12 @@ private struct HistoryTable: View {
                 }
                 Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
                     GridRow {
-                        ForEach(["When", "Download", "Upload", "Responsiveness", "Latency", showNetwork ? "Network" : "Connection"], id: \.self) {
+                        ForEach(
+                            [
+                                "When", "Download", "Upload", "Responsiveness", "Latency",
+                                showNetwork ? "Network" : "Connection",
+                            ], id: \.self
+                        ) {
                             Text($0).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         }
                     }
@@ -581,11 +612,17 @@ private struct HistoryTable: View {
                             Text(r.date.formatted(date: .abbreviated, time: .shortened))
                             Text("\(Int(r.downloadMbps.rounded())) Mbps").gridColumnAlignment(.trailing)
                             Text("\(Int(r.uploadMbps.rounded())) Mbps").gridColumnAlignment(.trailing)
-                            Text(r.responsivenessRPM.map { "\(Int($0.rounded())) RPM" } ?? "n/a").gridColumnAlignment(.trailing)
-                            Text(r.idleLatencyMs.map { "\(Int($0.rounded())) ms" } ?? "n/a").gridColumnAlignment(.trailing)
-                            Text(showNetwork ? name(SpeedTestModel.networkID(r)) : (r.interfaceType.isEmpty ? r.interface : r.interfaceType))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                            Text(r.responsivenessRPM.map { "\(Int($0.rounded())) RPM" } ?? "n/a").gridColumnAlignment(
+                                .trailing)
+                            Text(r.idleLatencyMs.map { "\(Int($0.rounded())) ms" } ?? "n/a").gridColumnAlignment(
+                                .trailing)
+                            Text(
+                                showNetwork
+                                    ? name(SpeedTestModel.networkID(r))
+                                    : (r.interfaceType.isEmpty ? r.interface : r.interfaceType)
+                            )
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                         }
                         .font(.callout.monospacedDigit())
                     }

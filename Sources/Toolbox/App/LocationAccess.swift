@@ -27,7 +27,8 @@ final class LocationAccess: NSObject, CLLocationManagerDelegate {
 
     /// For "Show network names" after a decline: the choice can only be changed in System Settings.
     func openSettings() {
-        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+        NSWorkspace.shared.open(
+            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {

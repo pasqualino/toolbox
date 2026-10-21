@@ -1,37 +1,46 @@
 import Foundation
 
 enum DevTextTools {
-    static let all: [Tool] = caseTools + [
-        sortLines, reverseLines, shuffleLines, dedupeLines, trimLines, collapseLines, numberLines,
-        markdownQuote, reverseText, countText, sumAll, loremIpsum, straightQuotes, removeDiacritics,
-    ]
+    static let all: [Tool] =
+        caseTools + [
+            sortLines, reverseLines, shuffleLines, dedupeLines, trimLines, collapseLines, numberLines,
+            markdownQuote, reverseText, countText, sumAll, loremIpsum, straightQuotes, removeDiacritics,
+        ]
 
     static let caseTools: [Tool] = [
         caseTool(.camel, id: "camel-case", name: "camelCase", keywords: ["camel", "lower camel", "js"]),
         caseTool(.pascal, id: "pascal-case", name: "PascalCase", keywords: ["pascal", "upper camel", "type name"]),
-        caseTool(.snake, id: "snake-case", name: "snake_case", keywords: ["snake", "underscore", "python", "postgres", "column"]),
+        caseTool(
+            .snake, id: "snake-case", name: "snake_case",
+            keywords: ["snake", "underscore", "python", "postgres", "column"]),
         caseTool(.kebab, id: "kebab-case", name: "kebab-case", keywords: ["kebab", "dash", "hyphen", "slug", "css"]),
-        caseTool(.constant, id: "constant-case", name: "CONSTANT_CASE", keywords: ["constant", "screaming", "env", "macro"]),
-        caseTool(.title, id: "title-case", name: "Title Case", keywords: ["title", "start case", "capitalize", "headline"]),
+        caseTool(
+            .constant, id: "constant-case", name: "CONSTANT_CASE", keywords: ["constant", "screaming", "env", "macro"]),
+        caseTool(
+            .title, id: "title-case", name: "Title Case", keywords: ["title", "start case", "capitalize", "headline"]),
         caseTool(.upper, id: "upper-case", name: "UPPERCASE", keywords: ["upper", "caps", "capital"]),
         caseTool(.lower, id: "lower-case", name: "lowercase", keywords: ["lower", "small", "downcase"]),
-        caseTool(.sponge, id: "sponge-case", name: "sPoNgEcAsE", keywords: ["sponge", "mock", "alternating", "spongebob"]),
+        caseTool(
+            .sponge, id: "sponge-case", name: "sPoNgEcAsE", keywords: ["sponge", "mock", "alternating", "spongebob"]),
     ]
 
     static func caseTool(_ style: DevTextCase, id: String, name: String, keywords: [String]) -> Tool {
-        let example: String = switch style {
-        case .camel: "userId from user_id"
-        case .pascal: "UserId from user_id"
-        case .snake: "user_id from userId"
-        case .kebab: "user-id from userId"
-        case .constant: "USER_ID from userId"
-        case .title: "User Id from userId"
-        case .upper: "Every letter upper case"
-        case .lower: "Every letter lower case"
-        case .sponge: "aLtErNaTiNg LeTtErS"
-        }
-        return Tool.text(id: id, name: name, summary: example, symbol: "textformat",
-                         keywords: keywords + ["case", "convert"]) { input, _ in
+        let example: String =
+            switch style {
+            case .camel: "userId from user_id"
+            case .pascal: "UserId from user_id"
+            case .snake: "user_id from userId"
+            case .kebab: "user-id from userId"
+            case .constant: "USER_ID from userId"
+            case .title: "User Id from userId"
+            case .upper: "Every letter upper case"
+            case .lower: "Every letter lower case"
+            case .sponge: "aLtErNaTiNg LeTtErS"
+            }
+        return Tool.text(
+            id: id, name: name, summary: example, symbol: "textformat",
+            keywords: keywords + ["case", "convert"]
+        ) { input, _ in
             style.convert(input.text)
         }
     }
@@ -45,8 +54,9 @@ enum DevTextTools {
             OptionSpec("ignorecase", "Ignore case", .toggle(default: true)),
         ]
     ) { input, options in
-        DevTextLines.sort(input.text, descending: options.string("order") == "desc",
-                          natural: options.bool("natural"), caseInsensitive: options.bool("ignorecase"))
+        DevTextLines.sort(
+            input.text, descending: options.string("order") == "desc",
+            natural: options.bool("natural"), caseInsensitive: options.bool("ignorecase"))
     }
 
     static let reverseLines = Tool.text(
@@ -82,9 +92,18 @@ enum DevTextTools {
     static let collapseLines = Tool.text(
         id: "collapse-lines", name: "Collapse Lines", summary: "Join all lines into one",
         symbol: "text.alignleft", keywords: ["join", "collapse", "single line", "one line", "merge", "flatten"],
-        options: [OptionSpec("sep", "Separator", .choice([Choice("space", "Space"), Choice("comma", "Comma"), Choice("none", "None")], default: "space"))]
+        options: [
+            OptionSpec(
+                "sep", "Separator",
+                .choice([Choice("space", "Space"), Choice("comma", "Comma"), Choice("none", "None")], default: "space"))
+        ]
     ) { input, options in
-        let sep = switch options.string("sep") { case "comma": ", "; case "none": ""; default: " " }
+        let sep =
+            switch options.string("sep") {
+            case "comma": ", "
+            case "none": ""
+            default: " "
+            }
         return DevTextLines.collapse(input.text, separator: sep)
     }
 
@@ -130,7 +149,11 @@ enum DevTextTools {
         symbol: "text.alignleft", keywords: ["lorem", "ipsum", "placeholder", "dummy", "filler", "text"],
         options: [
             OptionSpec("count", "Count", .number(1...100, default: 3, unit: "")),
-            OptionSpec("unit", "Unit", .choice([Choice("paragraphs", "Paragraphs"), Choice("sentences", "Sentences"), Choice("words", "Words")], default: "paragraphs")),
+            OptionSpec(
+                "unit", "Unit",
+                .choice(
+                    [Choice("paragraphs", "Paragraphs"), Choice("sentences", "Sentences"), Choice("words", "Words")],
+                    default: "paragraphs")),
         ],
         traits: .generator
     ) { _, options in
@@ -139,14 +162,16 @@ enum DevTextTools {
 
     static let straightQuotes = Tool.text(
         id: "straight-quotes", name: "Replace Smart Quotes", summary: "Curly quotes and dashes to plain ASCII",
-        symbol: "quote.opening", keywords: ["smart quotes", "curly", "straight", "quotes", "dashes", "ascii", "typographic"]
+        symbol: "quote.opening",
+        keywords: ["smart quotes", "curly", "straight", "quotes", "dashes", "ascii", "typographic"]
     ) { input, _ in
         DevTextLines.straightenQuotes(input.text)
     }
 
     static let removeDiacritics = Tool.text(
         id: "remove-diacritics", name: "Remove Diacritics", summary: "Strip accents: café to cafe",
-        symbol: "character.cursor.ibeam", keywords: ["deburr", "accents", "diacritics", "ascii", "unaccent", "normalize"]
+        symbol: "character.cursor.ibeam",
+        keywords: ["deburr", "accents", "diacritics", "ascii", "unaccent", "normalize"]
     ) { input, _ in
         DevTextLines.deburr(input.text)
     }

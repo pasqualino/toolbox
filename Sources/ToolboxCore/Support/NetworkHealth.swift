@@ -18,8 +18,10 @@ public struct NetworkHealthReport: Codable, Sendable {
         /// One fix, only when warning or bad.
         public var advice: String?
 
-        public init(id: String, group: String, title: String, value: String, level: Level,
-                    detail: String? = nil, advice: String? = nil) {
+        public init(
+            id: String, group: String, title: String, value: String, level: Level,
+            detail: String? = nil, advice: String? = nil
+        ) {
             self.id = id
             self.group = group
             self.title = title
@@ -59,12 +61,14 @@ public enum NetworkHealth {
     }
 
     /// Builds the verdict, score and text for a set of checks. `simulate` feeds this directly.
-    static func report(for checks: [Check], date: Date = Date(), network: NetworkIdentity? = nil) -> NetworkHealthReport {
+    static func report(for checks: [Check], date: Date = Date(), network: NetworkIdentity? = nil) -> NetworkHealthReport
+    {
         let (verdict, level) = verdict(for: checks)
         let score = score(for: checks)
-        return NetworkHealthReport(date: date, score: score, verdict: verdict, verdictLevel: level, checks: checks,
-                                   report: text(verdict: verdict, score: score, checks: checks, network: network),
-                                   network: network)
+        return NetworkHealthReport(
+            date: date, score: score, verdict: verdict, verdictLevel: level, checks: checks,
+            report: text(verdict: verdict, score: score, checks: checks, network: network),
+            network: network)
     }
 
     // MARK: - Verdict
@@ -73,9 +77,11 @@ public enum NetworkHealth {
         static let healthy = "Your connection is healthy."
         static let tips = "Your connection is healthy. One tip below."
         static let notConnected = "You're offline: this Mac isn't connected to a network."
-        static let noAddress = "You're offline: the network didn't give this Mac an address. Turn Wi-Fi off and on, or restart the router."
+        static let noAddress =
+            "You're offline: the network didn't give this Mac an address. Turn Wi-Fi off and on, or restart the router."
         static let noRouter = "You're offline: this Mac can't reach your router. Restart the router, then reconnect."
-        static let noInternet = "You're offline: your router answers, but the internet doesn't. Restart the modem, or check your provider for an outage."
+        static let noInternet =
+            "You're offline: your router answers, but the internet doesn't. Restart the modem, or check your provider for an outage."
         static let captive = "A sign-in page is blocking the internet (hotel/airport Wi-Fi). Open a browser to sign in."
         static let wifi = "Wi-Fi is the weak link: "
         static let local = "Your local network is the weak link: "
@@ -188,7 +194,8 @@ public enum NetworkHealth {
     }
 
     static func graded(_ text: String, _ level: Level) -> String {
-        level == .info ? text : "\(text) (\(level.rawValue == "bad" ? "poor" : level.rawValue == "warning" ? "fair" : "good"))"
+        level == .info
+            ? text : "\(text) (\(level.rawValue == "bad" ? "poor" : level.rawValue == "warning" ? "fair" : "good"))"
     }
 
     // MARK: - Checks from measurements
@@ -200,27 +207,38 @@ public enum NetworkHealth {
 
         // Connection
         guard let interface = link.physical else {
-            out.append(Check(id: "connection.interface", group: "Connection", title: "Interface", value: "Not connected",
-                             level: .bad, detail: "No Wi-Fi or cable connection is active.",
-                             advice: "Turn on Wi-Fi and join a network, or plug in a cable."))
+            out.append(
+                Check(
+                    id: "connection.interface", group: "Connection", title: "Interface", value: "Not connected",
+                    level: .bad, detail: "No Wi-Fi or cable connection is active.",
+                    advice: "Turn on Wi-Fi and join a network, or plug in a cable."))
             return out
         }
-        out.append(Check(id: "connection.interface", group: "Connection", title: "Interface",
-                         value: "\(link.kind) (\(interface))", level: .good))
+        out.append(
+            Check(
+                id: "connection.interface", group: "Connection", title: "Interface",
+                value: "\(link.kind) (\(interface))", level: .good))
         if let ip = link.ipv4, !ip.hasPrefix("169.254.") {
-            out.append(Check(id: "connection.ipv4", group: "Connection", title: "IPv4 address", value: ip, level: .good))
+            out.append(
+                Check(id: "connection.ipv4", group: "Connection", title: "IPv4 address", value: ip, level: .good))
         } else {
-            out.append(Check(id: "connection.ipv4", group: "Connection", title: "IPv4 address",
-                             value: link.ipv4.map { "\($0) (self-assigned)" } ?? "None", level: .bad,
-                             detail: "The router didn't hand out an address.",
-                             advice: "Turn Wi-Fi off and on, or restart the router."))
+            out.append(
+                Check(
+                    id: "connection.ipv4", group: "Connection", title: "IPv4 address",
+                    value: link.ipv4.map { "\($0) (self-assigned)" } ?? "None", level: .bad,
+                    detail: "The router didn't hand out an address.",
+                    advice: "Turn Wi-Fi off and on, or restart the router."))
             return out
         }
-        out.append(Check(id: "connection.ipv6", group: "Connection", title: "IPv6",
-                         value: link.ipv6 ? "Available" : "Not available", level: .info,
-                         detail: link.ipv6 ? nil : "Fine: most sites still work over IPv4."))
-        out.append(Check(id: "connection.vpn", group: "Connection", title: "VPN", value: link.vpn ?? "None", level: .info,
-                         detail: link.vpn == nil ? nil : "Traffic or lookups may go through the VPN."))
+        out.append(
+            Check(
+                id: "connection.ipv6", group: "Connection", title: "IPv6",
+                value: link.ipv6 ? "Available" : "Not available", level: .info,
+                detail: link.ipv6 ? nil : "Fine: most sites still work over IPv4."))
+        out.append(
+            Check(
+                id: "connection.vpn", group: "Connection", title: "VPN", value: link.vpn ?? "None", level: .info,
+                detail: link.vpn == nil ? nil : "Traffic or lookups may go through the VPN."))
 
         // Wi-Fi
         if let w = p.wifi { out += wifiChecks(w) }
@@ -235,69 +253,111 @@ public enum NetworkHealth {
         if let router = link.router, let stats = p.router {
             if stats.received == 0 {
                 if internet != nil || webWorks {
-                    out.append(Check(id: "router.reach", group: "Router", title: "Router", value: "\(router), no reply to pings",
-                                     level: .info, detail: "Your router ignores pings. That's common and harmless."))
+                    out.append(
+                        Check(
+                            id: "router.reach", group: "Router", title: "Router", value: "\(router), no reply to pings",
+                            level: .info, detail: "Your router ignores pings. That's common and harmless."))
                 } else {
-                    out.append(Check(id: "router.reach", group: "Router", title: "Router", value: "\(router), no reply",
-                                     level: .bad, detail: "Nothing came back from your router.",
-                                     advice: "Restart the router, then reconnect."))
+                    out.append(
+                        Check(
+                            id: "router.reach", group: "Router", title: "Router", value: "\(router), no reply",
+                            level: .bad, detail: "Nothing came back from your router.",
+                            advice: "Restart the router, then reconnect."))
                 }
             } else {
-                let fixLink = wired ? "Check the cable, then restart the router."
+                let fixLink =
+                    wired
+                    ? "Check the cable, then restart the router."
                     : "Move closer to the router, or try a cable to confirm Wi-Fi is the cause."
                 let latency = grade(stats.avg ?? 0, good: 10, warning: 30)
                 let jitter = grade(stats.jitter ?? 0, good: 5, warning: 20)
                 let loss: Level = stats.loss == 0 ? .good : stats.loss <= 2 ? .warning : .bad
                 localProblem = [latency, jitter, loss].contains { $0 != .good }
-                out.append(Check(id: "router.latency", group: "Router", title: "Latency", value: graded(ms(stats.avg ?? 0), latency),
-                                 level: latency, detail: "Average of \(stats.sent) pings to \(router).",
-                                 advice: latency == .good ? nil : fixLink))
-                out.append(Check(id: "router.jitter", group: "Router", title: "Jitter", value: graded(ms(stats.jitter ?? 0), jitter),
-                                 level: jitter, detail: "How much each ping varies. High jitter makes calls stutter.",
-                                 advice: jitter == .good ? nil : fixLink))
-                out.append(Check(id: "router.loss", group: "Router", title: "Packet loss", value: graded(percent(stats.loss), loss),
-                                 level: loss, advice: loss == .good ? nil : fixLink))
+                out.append(
+                    Check(
+                        id: "router.latency", group: "Router", title: "Latency",
+                        value: graded(ms(stats.avg ?? 0), latency),
+                        level: latency, detail: "Average of \(stats.sent) pings to \(router).",
+                        advice: latency == .good ? nil : fixLink))
+                out.append(
+                    Check(
+                        id: "router.jitter", group: "Router", title: "Jitter",
+                        value: graded(ms(stats.jitter ?? 0), jitter),
+                        level: jitter, detail: "How much each ping varies. High jitter makes calls stutter.",
+                        advice: jitter == .good ? nil : fixLink))
+                out.append(
+                    Check(
+                        id: "router.loss", group: "Router", title: "Packet loss",
+                        value: graded(percent(stats.loss), loss),
+                        level: loss, advice: loss == .good ? nil : fixLink))
             }
         } else {
-            out.append(Check(id: "router.reach", group: "Router", title: "Router", value: "None", level: webWorks ? .info : .bad,
-                             detail: "This network didn't give your Mac a router address.",
-                             advice: webWorks ? nil : "Reconnect to the network, or restart the router."))
+            out.append(
+                Check(
+                    id: "router.reach", group: "Router", title: "Router", value: "None", level: webWorks ? .info : .bad,
+                    detail: "This network didn't give your Mac a router address.",
+                    advice: webWorks ? nil : "Reconnect to the network, or restart the router."))
         }
-        localProblem = localProblem || out.contains { ($0.id == "wifi.signal" || $0.id == "wifi.snr") && $0.level != .good }
+        localProblem =
+            localProblem || out.contains { ($0.id == "wifi.signal" || $0.id == "wifi.snr") && $0.level != .good }
 
         // Internet
-        let upstreamFix = localProblem ? "Start with the router issue above; it slows every connection."
+        let upstreamFix =
+            localProblem
+            ? "Start with the router issue above; it slows every connection."
             : "Restart the modem and router. If it continues, contact your internet provider."
         if let best = internet {
             let latency = grade(best.avg ?? 0, good: 50, warning: 100)
             let jitter = grade(best.jitter ?? 0, good: 5, warning: 20)
             let loss: Level = best.loss == 0 ? .good : best.loss <= 2 ? .warning : .bad
-            let name = best.host == "1.1.1.1" ? "1.1.1.1 (Cloudflare)" : best.host == "8.8.8.8" ? "8.8.8.8 (Google)" : best.host
-            out.append(Check(id: "internet.latency", group: "Internet", title: "Latency", value: graded(ms(best.avg ?? 0), latency),
-                             level: latency, detail: "Average of \(best.sent) pings to \(name), the faster of two.",
-                             advice: latency == .good ? nil : upstreamFix))
-            out.append(Check(id: "internet.jitter", group: "Internet", title: "Jitter", value: graded(ms(best.jitter ?? 0), jitter),
-                             level: jitter, advice: jitter == .good ? nil : upstreamFix))
-            out.append(Check(id: "internet.loss", group: "Internet", title: "Packet loss", value: graded(percent(best.loss), loss),
-                             level: loss, advice: loss == .good ? nil : upstreamFix))
+            let name =
+                best.host == "1.1.1.1"
+                ? "1.1.1.1 (Cloudflare)" : best.host == "8.8.8.8" ? "8.8.8.8 (Google)" : best.host
+            out.append(
+                Check(
+                    id: "internet.latency", group: "Internet", title: "Latency",
+                    value: graded(ms(best.avg ?? 0), latency),
+                    level: latency, detail: "Average of \(best.sent) pings to \(name), the faster of two.",
+                    advice: latency == .good ? nil : upstreamFix))
+            out.append(
+                Check(
+                    id: "internet.jitter", group: "Internet", title: "Jitter",
+                    value: graded(ms(best.jitter ?? 0), jitter),
+                    level: jitter, advice: jitter == .good ? nil : upstreamFix))
+            out.append(
+                Check(
+                    id: "internet.loss", group: "Internet", title: "Packet loss",
+                    value: graded(percent(best.loss), loss),
+                    level: loss, advice: loss == .good ? nil : upstreamFix))
         } else if webWorks {
-            out.append(Check(id: "internet.reach", group: "Internet", title: "Internet", value: "Reachable, pings blocked", level: .info,
-                             detail: "This network blocks pings, so latency isn't measured. Web traffic gets through."))
+            out.append(
+                Check(
+                    id: "internet.reach", group: "Internet", title: "Internet", value: "Reachable, pings blocked",
+                    level: .info,
+                    detail: "This network blocks pings, so latency isn't measured. Web traffic gets through."))
         } else if p.captive != .portal {
-            out.append(Check(id: "internet.reach", group: "Internet", title: "Internet", value: "No internet", level: .bad,
-                             detail: "Neither 1.1.1.1 nor 8.8.8.8 answered.",
-                             advice: "Restart the modem and router. If that doesn't help, check your provider for an outage."))
+            out.append(
+                Check(
+                    id: "internet.reach", group: "Internet", title: "Internet", value: "No internet", level: .bad,
+                    detail: "Neither 1.1.1.1 nor 8.8.8.8 answered.",
+                    advice: "Restart the modem and router. If that doesn't help, check your provider for an outage."))
         }
         switch p.captive {
         case .clear:
-            out.append(Check(id: "internet.captive", group: "Internet", title: "Sign-in page", value: "None", level: .good))
+            out.append(
+                Check(id: "internet.captive", group: "Internet", title: "Sign-in page", value: "None", level: .good))
         case .portal:
-            out.append(Check(id: "internet.captive", group: "Internet", title: "Sign-in page", value: "Blocking the internet",
-                             level: .warning, detail: "A hotel, airport or cafe sign-in page intercepts web traffic.",
-                             advice: "Open a browser to sign in."))
+            out.append(
+                Check(
+                    id: "internet.captive", group: "Internet", title: "Sign-in page", value: "Blocking the internet",
+                    level: .warning, detail: "A hotel, airport or cafe sign-in page intercepts web traffic.",
+                    advice: "Open a browser to sign in."))
         case .unknown:
-            out.append(Check(id: "internet.captive", group: "Internet", title: "Sign-in page", value: "Not checked", level: .info,
-                             detail: "Couldn't reach captive.apple.com."))
+            out.append(
+                Check(
+                    id: "internet.captive", group: "Internet", title: "Sign-in page", value: "Not checked",
+                    level: .info,
+                    detail: "Couldn't reach captive.apple.com."))
         }
 
         // DNS
@@ -315,76 +375,108 @@ public enum NetworkHealth {
             out.append(Check(id: "wifi.network", group: "Wi-Fi", title: "Network", value: ssid, level: .info))
         }
         let signal: Level = w.rssi >= -60 ? .good : w.rssi >= -70 ? .warning : .bad
-        out.append(Check(id: "wifi.signal", group: "Wi-Fi", title: "Signal", value: graded("\(w.rssi) dBm", signal), level: signal,
-                         detail: "-60 dBm or stronger is good; below -70 dBm is poor.",
-                         advice: signal == .good ? nil : "Move closer to the router, or add a mesh point or extender."))
+        out.append(
+            Check(
+                id: "wifi.signal", group: "Wi-Fi", title: "Signal", value: graded("\(w.rssi) dBm", signal),
+                level: signal,
+                detail: "-60 dBm or stronger is good; below -70 dBm is poor.",
+                advice: signal == .good ? nil : "Move closer to the router, or add a mesh point or extender."))
         if w.noise < 0 {
             let snr = w.rssi - w.noise
             let level: Level = snr >= 25 ? .good : snr >= 15 ? .warning : .bad
-            out.append(Check(id: "wifi.snr", group: "Wi-Fi", title: "Signal to noise", value: graded("\(snr) dB", level), level: level,
-                             detail: "Noise \(w.noise) dBm. Higher is cleaner.",
-                             advice: level == .good ? nil
-                                : "Move away from microwaves and other routers, or switch to 5 GHz."))
+            out.append(
+                Check(
+                    id: "wifi.snr", group: "Wi-Fi", title: "Signal to noise", value: graded("\(snr) dB", level),
+                    level: level,
+                    detail: "Noise \(w.noise) dBm. Higher is cleaner.",
+                    advice: level == .good
+                        ? nil
+                        : "Move away from microwaves and other routers, or switch to 5 GHz."))
         }
         if let band = w.band {
             var parts = [band]
             if let channel = w.channel { parts.append("channel \(channel)") }
             if let width = w.width { parts.append(width) }
             let slow = band == "2.4 GHz"
-            out.append(Check(id: "wifi.band", group: "Wi-Fi", title: "Band", value: parts.joined(separator: ", "),
-                             level: slow ? .warning : .good,
-                             detail: slow ? "2.4 GHz is slower and more crowded." : nil,
-                             advice: slow ? "Join your router's 5 GHz network if it has one." : nil))
+            out.append(
+                Check(
+                    id: "wifi.band", group: "Wi-Fi", title: "Band", value: parts.joined(separator: ", "),
+                    level: slow ? .warning : .good,
+                    detail: slow ? "2.4 GHz is slower and more crowded." : nil,
+                    advice: slow ? "Join your router's 5 GHz network if it has one." : nil))
         }
         if let standard = w.standard {
             out.append(Check(id: "wifi.standard", group: "Wi-Fi", title: "Standard", value: standard, level: .info))
         }
         if w.rate > 0 {
-            out.append(Check(id: "wifi.rate", group: "Wi-Fi", title: "Link rate", value: String(format: "%.0f Mbps", w.rate), level: .info,
-                             detail: "Top speed between this Mac and the router right now."))
+            out.append(
+                Check(
+                    id: "wifi.rate", group: "Wi-Fi", title: "Link rate", value: String(format: "%.0f Mbps", w.rate),
+                    level: .info,
+                    detail: "Top speed between this Mac and the router right now."))
         }
         if let security = w.security {
             let open = security == "None" || security.hasPrefix("WEP")
-            out.append(Check(id: "wifi.security", group: "Wi-Fi", title: "Security", value: security, level: open ? .warning : .info,
-                             detail: open ? "People nearby can see unencrypted traffic." : nil,
-                             advice: open ? "Use a WPA2 or WPA3 network, or turn on a VPN." : nil))
+            out.append(
+                Check(
+                    id: "wifi.security", group: "Wi-Fi", title: "Security", value: security,
+                    level: open ? .warning : .info,
+                    detail: open ? "People nearby can see unencrypted traffic." : nil,
+                    advice: open ? "Use a WPA2 or WPA3 network, or turn on a VPN." : nil))
         }
         return out
     }
 
     private static func dnsChecks(_ dns: NetworkProbes.DNS, servers: [String], viaVPN: Bool) -> [Check] {
         var out: [Check] = []
-        let fix = viaVPN ? "Your VPN answers lookups. Turn it off briefly to compare."
+        let fix =
+            viaVPN
+            ? "Your VPN answers lookups. Turn it off briefly to compare."
             : "Set DNS to 1.1.1.1 or 8.8.8.8 in System Settings > Network > Details > DNS, or restart the router."
         let times = dns.known.compactMap(\.milliseconds).sorted()
         let failed = dns.known.count - times.count
         if times.isEmpty {
-            out.append(Check(id: "dns.lookup", group: "DNS", title: "Lookups", value: "All \(dns.known.count) failed", level: .bad,
-                             detail: "Site names couldn't be turned into addresses.", advice: fix))
+            out.append(
+                Check(
+                    id: "dns.lookup", group: "DNS", title: "Lookups", value: "All \(dns.known.count) failed",
+                    level: .bad,
+                    detail: "Site names couldn't be turned into addresses.", advice: fix))
         } else {
             let median = times[times.count / 2]
             var level = grade(median, good: 50, warning: 150)
             if failed > 0 { level = failed * 2 >= dns.known.count ? .bad : max(level, .warning) }
             let value = failed > 0 ? "\(ms(median)), \(failed) of \(dns.known.count) failed" : ms(median)
-            out.append(Check(id: "dns.lookup", group: "DNS", title: "Lookups", value: graded(value, level), level: level,
-                             detail: "Median for \(dns.known.count) common sites. Answers may come from cache.",
-                             advice: level == .good ? nil : fix))
+            out.append(
+                Check(
+                    id: "dns.lookup", group: "DNS", title: "Lookups", value: graded(value, level), level: level,
+                    detail: "Median for \(dns.known.count) common sites. Answers may come from cache.",
+                    advice: level == .good ? nil : fix))
         }
         if let uncached = dns.uncached {
             if let time = uncached.milliseconds {
                 let level = grade(time, good: 100, warning: 300)
-                out.append(Check(id: "dns.uncached", group: "DNS", title: "Uncached lookup", value: graded(ms(time), level), level: level,
-                                 detail: "A name nobody asked for before, so the resolver does the full work.",
-                                 advice: level == .good ? nil : fix))
+                out.append(
+                    Check(
+                        id: "dns.uncached", group: "DNS", title: "Uncached lookup", value: graded(ms(time), level),
+                        level: level,
+                        detail: "A name nobody asked for before, so the resolver does the full work.",
+                        advice: level == .good ? nil : fix))
             } else {
-                out.append(Check(id: "dns.uncached", group: "DNS", title: "Uncached lookup", value: "Timed out (poor)", level: .bad,
-                                 advice: fix))
+                out.append(
+                    Check(
+                        id: "dns.uncached", group: "DNS", title: "Uncached lookup", value: "Timed out (poor)",
+                        level: .bad,
+                        advice: fix))
             }
         }
         let list = servers.isEmpty ? "None" : servers.prefix(3).joined(separator: ", ")
-        out.append(Check(id: "dns.servers", group: "DNS", title: "Servers", value: list, level: servers.isEmpty ? .warning : .info,
-                         detail: viaVPN ? "Through Tailscale/VPN. The VPN forwards lookups to its own upstream." : nil,
-                         advice: servers.isEmpty ? "Reconnect to the network, or set DNS servers in System Settings > Network." : nil))
+        out.append(
+            Check(
+                id: "dns.servers", group: "DNS", title: "Servers", value: list,
+                level: servers.isEmpty ? .warning : .info,
+                detail: viaVPN ? "Through Tailscale/VPN. The VPN forwards lookups to its own upstream." : nil,
+                advice: servers.isEmpty
+                    ? "Reconnect to the network, or set DNS servers in System Settings > Network." : nil))
         return out
     }
 }
@@ -411,13 +503,16 @@ extension MacTools {
         summary: "Find what's slowing your connection, and where",
         category: .mac,
         symbol: "stethoscope",
-        keywords: ["network", "wifi", "wi-fi", "ping", "latency", "jitter", "packet loss", "dns", "router", "internet",
-                   "slow", "diagnose", "health"],
+        keywords: [
+            "network", "wifi", "wi-fi", "ping", "latency", "jitter", "packet loss", "dns", "router", "internet",
+            "slow", "diagnose", "health",
+        ],
         inputKind: .action,
         minimumInputs: 0,
         options: [
-            OptionSpec("simulate", "Simulate", .text(default: "", placeholder: "JSON checks or path"),
-                       help: "For testing: judges these checks instead of measuring.", visibleWhen: ("cli", ["true"])),
+            OptionSpec(
+                "simulate", "Simulate", .text(default: "", placeholder: "JSON checks or path"),
+                help: "For testing: judges these checks instead of measuring.", visibleWhen: ("cli", ["true"]))
         ],
         actionTitle: "Check",
         runner: .text { _, _, ctx in
@@ -426,12 +521,15 @@ extension MacTools {
             if simulate.isEmpty {
                 report = try await NetworkHealth.run(progress: { ctx.progress($0) })
             } else {
-                let data = simulate.hasPrefix("[") ? Data(simulate.utf8) : try Data(contentsOf: URL(fileURLWithPath: simulate))
-                report = NetworkHealth.report(for: try JSONDecoder().decode([NetworkHealthReport.Check].self, from: data))
+                let data =
+                    simulate.hasPrefix("[") ? Data(simulate.utf8) : try Data(contentsOf: URL(fileURLWithPath: simulate))
+                report = NetworkHealth.report(
+                    for: try JSONDecoder().decode([NetworkHealthReport.Check].self, from: data))
             }
             ctx.showText(report.report)
             return []
         },
-        runningHint: "Checks Wi-Fi, your router, the internet and DNS. Takes about 2 seconds, a little longer on a slow network."
+        runningHint:
+            "Checks Wi-Fi, your router, the internet and DNS. Takes about 2 seconds, a little longer on a slow network."
     )
 }

@@ -82,13 +82,16 @@ public enum ImageIOHelpers {
     }
 
     /// Encodes `image` to `url`. `quality` is 0...1 for lossy formats. WebP goes through cwebp.
-    public static func write(_ image: CGImage, to url: URL, format: ImageFormat,
-                             quality: Double, properties: [CFString: Any] = [:]) async throws {
+    public static func write(
+        _ image: CGImage, to url: URL, format: ImageFormat,
+        quality: Double, properties: [CFString: Any] = [:]
+    ) async throws {
         if format == .webp {
             try await writeWebP(image, to: url, quality: quality)
             return
         }
-        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, format.type.identifier as CFString, 1, nil) else {
+        guard let dest = CGImageDestinationCreateWithURL(url as CFURL, format.type.identifier as CFString, 1, nil)
+        else {
             throw ToolError.message("Can't write \(format.label).")
         }
         var props = properties
@@ -104,7 +107,8 @@ public enum ImageIOHelpers {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
         defer { try? FileManager.default.removeItem(at: tmp) }
         try await write(image, to: tmp, format: .png, quality: 1)
-        try await ProcessRunner.run(cwebp, ["-quiet", "-q", String(Int(quality * 100)), "-metadata", "none", tmp.path, "-o", url.path])
+        try await ProcessRunner.run(
+            cwebp, ["-quiet", "-q", String(Int(quality * 100)), "-metadata", "none", tmp.path, "-o", url.path])
     }
 
     public static func fileSize(_ url: URL) -> Int64 {

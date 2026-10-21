@@ -19,7 +19,7 @@ enum AudioTools {
         keywords: ["cut", "clip", "trim", "shorten", "ringtone", "mp3", "m4a", "wav", "start", "end"],
         accepts: [.audio],
         options: [
-            OptionSpec("range", "Keep", .timeRange),
+            OptionSpec("range", "Keep", .timeRange)
         ],
         requirements: [.ffmpeg],
         actionTitle: "Trim",
@@ -30,8 +30,10 @@ enum AudioTools {
             let (ext, codec) = trimCodec(for: url, info: info)
             let out = ctx.output(for: url, suffix: " trimmed", ext: ext)
             try await FFmpeg.run(
-                ["-ss", Media.time(range.lowerBound), "-i", url.path, "-t", Media.time(length),
-                 "-map", "0:a:0", "-vn"] + codec + [out.path],
+                [
+                    "-ss", Media.time(range.lowerBound), "-i", url.path, "-t", Media.time(length),
+                    "-map", "0:a:0", "-vn",
+                ] + codec + [out.path],
                 duration: length, context: ctx)
             return [out]
         }
@@ -75,15 +77,20 @@ enum AudioTools {
         summary: "Save the sound from a video",
         category: .media,
         symbol: "waveform.badge.plus",
-        keywords: ["extract", "rip", "mp3", "m4a", "wav", "flac", "soundtrack", "audio from video",
-                   "music", "podcast", "video to mp3"],
+        keywords: [
+            "extract", "rip", "mp3", "m4a", "wav", "flac", "soundtrack", "audio from video",
+            "music", "podcast", "video to mp3",
+        ],
         accepts: VideoTools.videoTypes,
         options: [
-            OptionSpec("format", "Format", .choice(
-                [Media.AudioFormat.m4a, .mp3, .wav, .flac].map { Choice($0.rawValue, $0.label) },
-                default: "m4a")),
-            OptionSpec("bitrate", "Quality", .choice(bitrateChoices, default: "192"),
-                       visibleWhen: ("format", ["mp3"])),
+            OptionSpec(
+                "format", "Format",
+                .choice(
+                    [Media.AudioFormat.m4a, .mp3, .wav, .flac].map { Choice($0.rawValue, $0.label) },
+                    default: "m4a")),
+            OptionSpec(
+                "bitrate", "Quality", .choice(bitrateChoices, default: "192"),
+                visibleWhen: ("format", ["mp3"])),
         ],
         requirements: [.ffmpeg],
         actionTitle: "Extract",
@@ -98,8 +105,9 @@ enum AudioTools {
                 codec = format.encodeArgs(bitrate: ctx.options.int("bitrate") > 0 ? ctx.options.int("bitrate") : 192)
             }
             let out = ctx.output(for: url, ext: format.rawValue)
-            try await FFmpeg.run(["-i", url.path, "-map", "0:a:0", "-vn"] + codec + [out.path],
-                                 duration: info.duration, context: ctx)
+            try await FFmpeg.run(
+                ["-i", url.path, "-map", "0:a:0", "-vn"] + codec + [out.path],
+                duration: info.duration, context: ctx)
             return [out]
         }
     )
@@ -115,10 +123,13 @@ enum AudioTools {
         keywords: ["mp3", "m4a", "aac", "wav", "flac", "aiff", "ogg", "opus", "format", "change", "transcode"],
         accepts: [.audio],
         options: [
-            OptionSpec("format", "Format", .choice(
-                Media.AudioFormat.allCases.map { Choice($0.rawValue, $0.label) }, default: "m4a")),
-            OptionSpec("bitrate", "Quality", .choice(bitrateChoices, default: "192"),
-                       visibleWhen: ("format", ["m4a", "mp3"])),
+            OptionSpec(
+                "format", "Format",
+                .choice(
+                    Media.AudioFormat.allCases.map { Choice($0.rawValue, $0.label) }, default: "m4a")),
+            OptionSpec(
+                "bitrate", "Quality", .choice(bitrateChoices, default: "192"),
+                visibleWhen: ("format", ["m4a", "mp3"])),
         ],
         requirements: [.ffmpeg],
         actionTitle: "Convert",
@@ -127,8 +138,9 @@ enum AudioTools {
             let format = Media.AudioFormat(rawValue: ctx.options.string("format")) ?? .m4a
             let bitrate = ctx.options.int("bitrate") > 0 ? ctx.options.int("bitrate") : 192
             let out = ctx.output(for: url, ext: format.rawValue)
-            try await FFmpeg.run(["-i", url.path, "-map", "0:a:0", "-vn"] + format.encodeArgs(bitrate: bitrate) + [out.path],
-                                 duration: info.duration, context: ctx)
+            try await FFmpeg.run(
+                ["-i", url.path, "-map", "0:a:0", "-vn"] + format.encodeArgs(bitrate: bitrate) + [out.path],
+                duration: info.duration, context: ctx)
             return [out]
         }
     )

@@ -44,7 +44,8 @@ enum DevTime {
     /// "Wed 2026-10-21 16:03:00 GMT+2"
     static func local(_ date: Date, zone: TimeZone = .current, seconds: Bool = true) -> String {
         let z = isUTC(zone) ? "'UTC'" : "zzz"
-        return formatter(seconds ? "EEE yyyy-MM-dd HH:mm:ss \(z)" : "EEE yyyy-MM-dd HH:mm \(z)", zone: zone).string(from: date)
+        return formatter(seconds ? "EEE yyyy-MM-dd HH:mm:ss \(z)" : "EEE yyyy-MM-dd HH:mm \(z)", zone: zone).string(
+            from: date)
     }
 
     /// Foundation reports TimeZone(identifier: "UTC") as "GMT"; both mean UTC here.
@@ -95,11 +96,18 @@ enum DevTime {
     /// Reads an epoch number, picking the unit by magnitude.
     static func epoch(_ text: String) -> (Date, EpochUnit)? {
         guard let first = text.first, first == "-" || first.isNumber,
-              text.allSatisfy({ $0.isNumber || $0 == "." || $0 == "-" }),
-              let value = Double(text) else { return nil }
+            text.allSatisfy({ $0.isNumber || $0 == "." || $0 == "-" }),
+            let value = Double(text)
+        else { return nil }
         let a = abs(value)
         let unit: EpochUnit = a < 1e11 ? .seconds : a < 1e14 ? .milliseconds : a < 1e17 ? .microseconds : .nanoseconds
-        let divisor: Double = switch unit { case .seconds: 1; case .milliseconds: 1e3; case .microseconds: 1e6; case .nanoseconds: 1e9 }
+        let divisor: Double =
+            switch unit {
+            case .seconds: 1
+            case .milliseconds: 1e3
+            case .microseconds: 1e6
+            case .nanoseconds: 1e9
+            }
         // Integer division keeps precision for ns values beyond Double's 53 bits.
         if let int = Int64(text), unit != .seconds {
             let d = Int64(divisor)
@@ -116,8 +124,10 @@ enum DevTime {
 
     /// Patterns tried in order. Fractional seconds are stripped first and added back.
     static let zoned = [
-        "yyyy-MM-dd'T'HH:mm:ssXXXXX", "yyyy-MM-dd'T'HH:mmXXXXX", "yyyy-MM-dd HH:mm:ssXXXXX", "yyyy-MM-dd HH:mm:ss XXXXX",
-        "yyyy-MM-dd HH:mm:ss zzz", "EEE, d MMM yyyy HH:mm:ss Z", "EEE, d MMM yyyy HH:mm:ss zzz", "d MMM yyyy HH:mm:ss Z",
+        "yyyy-MM-dd'T'HH:mm:ssXXXXX", "yyyy-MM-dd'T'HH:mmXXXXX", "yyyy-MM-dd HH:mm:ssXXXXX",
+        "yyyy-MM-dd HH:mm:ss XXXXX",
+        "yyyy-MM-dd HH:mm:ss zzz", "EEE, d MMM yyyy HH:mm:ss Z", "EEE, d MMM yyyy HH:mm:ss zzz",
+        "d MMM yyyy HH:mm:ss Z",
         "EEE, d MMM yyyy HH:mm Z", "dd/MMM/yyyy:HH:mm:ss Z", "EEE MMM d HH:mm:ss zzz yyyy", "EEE MMM d HH:mm:ss Z yyyy",
         "yyyyMMdd'T'HHmmssXXXXX",
     ]
@@ -141,15 +151,21 @@ enum DevTime {
             let ns = text as NSString
             if let m = DevTime.fraction.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) {
                 frac = Double("0." + ns.substring(with: m.range(at: 2))) ?? 0
-                text = ns.replacingCharacters(in: NSRange(location: m.range(at: 1).upperBound,
-                                                          length: m.range(at: 2).upperBound - m.range(at: 1).upperBound), with: "")
+                text = ns.replacingCharacters(
+                    in: NSRange(
+                        location: m.range(at: 1).upperBound,
+                        length: m.range(at: 2).upperBound - m.range(at: 1).upperBound), with: "")
             }
             // "UTC" and "GMT" suffixes read as Z.
             for suffix in [" UTC", " GMT"] where text.hasSuffix(suffix) && !text.contains(",") {
                 text = String(text.dropLast(suffix.count)) + "Z"
             }
-            for f in zonedFormatters { if let d = f.date(from: text) { return Parsed(date: d + frac, assumedZone: false) } }
-            for f in unzonedFormatters { if let d = f.date(from: text) { return Parsed(date: d + frac, assumedZone: true) } }
+            for f in zonedFormatters {
+                if let d = f.date(from: text) { return Parsed(date: d + frac, assumedZone: false) }
+            }
+            for f in unzonedFormatters {
+                if let d = f.date(from: text) { return Parsed(date: d + frac, assumedZone: true) }
+            }
             // Syslog has no year: use the most recent one that isn't in the future.
             if let d = syslog.date(from: text) {
                 var cal = Calendar(identifier: .gregorian)
@@ -157,7 +173,9 @@ enum DevTime {
                 var comps = cal.dateComponents([.month, .day, .hour, .minute, .second], from: d)
                 comps.year = cal.component(.year, from: Date())
                 if let candidate = cal.date(from: comps) {
-                    let fixed = candidate > Date().addingTimeInterval(86_400) ? cal.date(byAdding: .year, value: -1, to: candidate)! : candidate
+                    let fixed =
+                        candidate > Date().addingTimeInterval(86_400)
+                        ? cal.date(byAdding: .year, value: -1, to: candidate)! : candidate
                     return Parsed(date: fixed + frac, assumedZone: true)
                 }
             }

@@ -1,5 +1,5 @@
-import AppKit
 import AVFoundation
+import AppKit
 import QuickLookThumbnailing
 import SwiftUI
 import ToolboxCore
@@ -41,7 +41,8 @@ final class InputItem: Identifiable {
     /// Loads the result's thumbnail and, for media, its duration. Called once the run has delivered the file.
     func loadOutputPreview() {
         guard case .done(let outputs) = status, outputs.count == 1, let output = outputs.first,
-              let type = UTType(filenameExtension: output.pathExtension) else { return }
+            let type = UTType(filenameExtension: output.pathExtension)
+        else { return }
         if [.image, .movie, .pdf].contains(where: type.conforms(to:)) {
             Thumbnails.load(for: output, size: 96) { image in
                 // A new run may have started meanwhile.
@@ -51,7 +52,8 @@ final class InputItem: Identifiable {
         if type.conforms(to: .movie) || type.conforms(to: .audio) {
             Task { @MainActor in
                 guard let duration = try? await AVURLAsset(url: output).load(.duration), duration.seconds.isFinite,
-                      case .done(let now) = self.status, now == outputs else { return }
+                    case .done(let now) = self.status, now == outputs
+                else { return }
                 self.outputDuration = Duration.seconds(duration.seconds.rounded())
                     .formatted(.time(pattern: duration.seconds >= 3600 ? .hourMinuteSecond : .minuteSecond))
             }
@@ -61,8 +63,10 @@ final class InputItem: Identifiable {
     /// One image in, one image out: the run can be shown as before and after.
     var comparableOutput: URL? {
         guard case .done(let outputs) = status, outputs.count == 1,
-              let a = UTType(filenameExtension: url.pathExtension), let b = UTType(filenameExtension: outputs[0].pathExtension),
-              a.conforms(to: .image), b.conforms(to: .image) else { return nil }
+            let a = UTType(filenameExtension: url.pathExtension),
+            let b = UTType(filenameExtension: outputs[0].pathExtension),
+            a.conforms(to: .image), b.conforms(to: .image)
+        else { return nil }
         return outputs[0]
     }
 
@@ -150,7 +154,10 @@ final class ToolSession {
         }.value
         // Another add may have finished while this one walked the disk.
         let present = Set(items.map { $0.url.standardizedFileURL })
-        items.append(contentsOf: found.filter { !present.contains($0.0.standardizedFileURL) }.map { InputItem(url: $0.0, size: $0.1) })
+        items.append(
+            contentsOf: found.filter { !present.contains($0.0.standardizedFileURL) }.map {
+                InputItem(url: $0.0, size: $0.1)
+            })
         updatePlan()
         return skipped
     }
@@ -191,8 +198,9 @@ final class ToolSession {
             guard fm.fileExists(atPath: url.path, isDirectory: &isDir) else { return [] }
             // Packages (.app, .bundle) are one item, not folders to walk into.
             guard isDir.boolValue, !NSWorkspace.shared.isFilePackage(atPath: url.path) else { return [url] }
-            let walker = fm.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey],
-                                       options: [.skipsHiddenFiles, .skipsPackageDescendants])
+            let walker = fm.enumerator(
+                at: url, includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles, .skipsPackageDescendants])
             var files: [URL] = []
             while let next = walker?.nextObject() as? URL {
                 if (try? next.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true { files.append(next) }
@@ -318,8 +326,10 @@ final class ToolSession {
             let pump = Task { @MainActor [weak self] in
                 for await event in stream { self?.handle(event, perFile: isPerFile) }
             }
-            let result = await ToolEngine.run(tool, inputs: inputs, text: text, options: options,
-                                              outputRoot: outputRoot) { continuation.yield($0) }
+            let result = await ToolEngine.run(
+                tool, inputs: inputs, text: text, options: options,
+                outputRoot: outputRoot
+            ) { continuation.yield($0) }
             continuation.finish()
             await pump.value
             guard let self else { return }
@@ -345,7 +355,9 @@ final class ToolSession {
             self.copyWhenDone = false
             if !result.outputs.isEmpty || !self.resultText.isEmpty {
                 History.record(tool.id)
-                if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), !self.outputsAreTemporary, let folder = result.folder {
+                if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), !self.outputsAreTemporary,
+                    let folder = result.folder
+                {
                     NSWorkspace.shared.activateFileViewerSelecting(result.outputs.isEmpty ? [folder] : result.outputs)
                 }
                 NSSound(named: "Glass")?.play()
@@ -460,7 +472,8 @@ final class ToolSession {
     private static func loadOptions(for tool: Tool) -> Options {
         var options = Options.defaults(for: tool)
         if let data = UserDefaults.standard.data(forKey: key(tool)),
-           let saved = try? JSONDecoder().decode(Options.self, from: data) {
+            let saved = try? JSONDecoder().decode(Options.self, from: data)
+        {
             for spec in tool.options {
                 // Secrets and per-file selections don't carry over between runs.
                 switch spec.kind {
@@ -498,16 +511,18 @@ final class ToolSession {
 
     /// A number option as a Double, kept within `range`.
     func numberBinding(for id: String, range: ClosedRange<Double>) -> Binding<Double> {
-        Binding(get: { Double(self.options[id]) ?? range.lowerBound },
-                set: { self.options[id] = OptionSpecFormat.number(min(max($0, range.lowerBound), range.upperBound)) })
+        Binding(
+            get: { Double(self.options[id]) ?? range.lowerBound },
+            set: { self.options[id] = OptionSpecFormat.number(min(max($0, range.lowerBound), range.upperBound)) })
     }
 }
 
 enum Thumbnails {
     static func load(for url: URL, size: CGFloat, completion: @escaping @MainActor (NSImage) -> Void) {
-        let request = QLThumbnailGenerator.Request(fileAt: url, size: CGSize(width: size, height: size),
-                                                   scale: NSScreen.main?.backingScaleFactor ?? 2,
-                                                   representationTypes: .all)
+        let request = QLThumbnailGenerator.Request(
+            fileAt: url, size: CGSize(width: size, height: size),
+            scale: NSScreen.main?.backingScaleFactor ?? 2,
+            representationTypes: .all)
         QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { rep, _ in
             let image = rep?.nsImage ?? NSWorkspace.shared.icon(forFile: url.path)
             Task { @MainActor in completion(image) }

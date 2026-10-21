@@ -62,9 +62,11 @@ struct RunBar: View {
 
     /// Total size in and out over the files whose result is the same kind (image to image, video to video).
     private var savings: (before: Int64, after: Int64)? {
-        var before: Int64 = 0, after: Int64 = 0
+        var before: Int64 = 0
+        var after: Int64 = 0
         for item in session.items {
-            guard case .done(let outputs) = item.status, outputs.count == 1, Format.sameKind(item.url, outputs[0]) else { continue }
+            guard case .done(let outputs) = item.status, outputs.count == 1, Format.sameKind(item.url, outputs[0])
+            else { continue }
             before += item.size
             after += item.outputSize
         }
@@ -149,7 +151,8 @@ struct RunBar: View {
                         .fixedSize()
                     if let folder = result.folder, !session.outputsAreTemporary {
                         Button {
-                            NSWorkspace.shared.activateFileViewerSelecting(result.outputs.isEmpty ? [folder] : result.outputs)
+                            NSWorkspace.shared.activateFileViewerSelecting(
+                                result.outputs.isEmpty ? [folder] : result.outputs)
                         } label: {
                             Text(folder.path.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
                                 .lineLimit(1)
@@ -321,10 +324,11 @@ final class Installer {
         error = nil
         Task { @MainActor in
             do {
-                try await ProcessRunner.run(brew, ["install"] + formulas,
-                                            environment: ["HOMEBREW_NO_AUTO_UPDATE": "1"],
-                                            onLine: { line in Task { @MainActor in self.lastLine = line } },
-                                            onErrorLine: { line in Task { @MainActor in self.lastLine = line } })
+                try await ProcessRunner.run(
+                    brew, ["install"] + formulas,
+                    environment: ["HOMEBREW_NO_AUTO_UPDATE": "1"],
+                    onLine: { line in Task { @MainActor in self.lastLine = line } },
+                    onErrorLine: { line in Task { @MainActor in self.lastLine = line } })
                 self.lastLine = nil
             } catch {
                 self.error = error.localizedDescription
@@ -414,7 +418,10 @@ struct SavingsBar: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.primary.opacity(0.09))
                     Capsule()
-                        .fill(LinearGradient(colors: [color.opacity(0.75), color], startPoint: .leading, endPoint: .trailing))
+                        .fill(
+                            LinearGradient(
+                                colors: [color.opacity(0.75), color], startPoint: .leading, endPoint: .trailing)
+                        )
                         .frame(width: geo.size.width * (shown ? min(ratio, 1) : 0))
                     if !smaller {
                         // Where the input ended: the part past it is growth.

@@ -33,7 +33,8 @@ struct MainView: View {
     /// Return in the search field opens the best match.
     private func openTopResult() {
         guard let first = model.searchSections.first?.entries.first,
-              let tool = ToolRegistry.tool(id: model.searchResultTool(for: first)) else { return }
+            let tool = ToolRegistry.tool(id: model.searchResultTool(for: first))
+        else { return }
         model.open(tool)
     }
 
@@ -119,11 +120,26 @@ private struct ToolSidebar: View {
             .focusable()
             .focusEffectDisabled()
             .focused($focused)
-            .onKeyPress(.downArrow) { move(1, proxy); return .handled }
-            .onKeyPress(.upArrow) { move(-1, proxy); return .handled }
-            .onKeyPress(.leftArrow) { left(proxy); return .handled }
-            .onKeyPress(.rightArrow) { right(proxy); return .handled }
-            .onKeyPress(.return) { activate(); return .handled }
+            .onKeyPress(.downArrow) {
+                move(1, proxy)
+                return .handled
+            }
+            .onKeyPress(.upArrow) {
+                move(-1, proxy)
+                return .handled
+            }
+            .onKeyPress(.leftArrow) {
+                left(proxy)
+                return .handled
+            }
+            .onKeyPress(.rightArrow) {
+                right(proxy)
+                return .handled
+            }
+            .onKeyPress(.return) {
+                activate()
+                return .handled
+            }
             .onChange(of: focused) { _, isFocused in
                 // Entering the sidebar starts at the open tool, or the first item.
                 if isFocused, cursor == nil || !visibleItems.contains(cursor!) {
@@ -180,7 +196,9 @@ private struct ToolSidebar: View {
 
     /// The open tool's row in its category (or in search results).
     private var selectedCursor: SidebarCursor? {
-        guard let id = selectedID, case .tool(let toolID) = model.route, let tool = ToolRegistry.tool(id: toolID) else { return nil }
+        guard let id = selectedID, case .tool(let toolID) = model.route, let tool = ToolRegistry.tool(id: toolID) else {
+            return nil
+        }
         let candidate: SidebarCursor = .row(section: searching ? "search" : tool.category.rawValue, entry: id)
         return visibleItems.contains(candidate) ? candidate : nil
     }
@@ -225,7 +243,8 @@ private struct ToolSidebar: View {
             withAnimation(.snappy(duration: 0.25)) { model.expansion(key).wrappedValue.toggle() }
         case .row(let section, let entryID):
             guard let entry = ToolRegistry.entry(id: entryID),
-                  let tool = ToolRegistry.tool(id: section == "search" ? model.searchResultTool(for: entry) : model.toolToOpen(for: entry))
+                let tool = ToolRegistry.tool(
+                    id: section == "search" ? model.searchResultTool(for: entry) : model.toolToOpen(for: entry))
             else { return }
             model.open(tool)
         case nil:
@@ -243,8 +262,9 @@ private struct ToolSidebar: View {
         if let favorites = model.favoriteSections.first {
             Accordion(key: "favorites", title: "Favorites", symbol: "star.fill", tint: .yellow, shortcut: "⌘9") {
                 ForEach(Array(favorites.entries.enumerated()), id: \.element.id) { index, entry in
-                    EntryRow(entry: entry, section: "favorites", selected: entry.id == selectedID, favoriteIndex: index,
-                             favoriteCount: favorites.entries.count)
+                    EntryRow(
+                        entry: entry, section: "favorites", selected: entry.id == selectedID, favoriteIndex: index,
+                        favoriteCount: favorites.entries.count)
                 }
             }
         }
@@ -282,8 +302,10 @@ private struct CategorySection: View {
 
     var body: some View {
         let sections = ToolRegistry.sections(in: category)
-        Accordion(key: category.rawValue, title: category.title, symbol: category.symbol, tint: category.tint,
-                  shortcut: "⌘\(category.shortcutIndex)", count: ToolRegistry.entryCount(in: category)) {
+        Accordion(
+            key: category.rawValue, title: category.title, symbol: category.symbol, tint: category.tint,
+            shortcut: "⌘\(category.shortcutIndex)", count: ToolRegistry.entryCount(in: category)
+        ) {
             ForEach(sections) { section in
                 if let title = section.title, sections.count > 1 { SubHeading(title: title) }
                 ForEach(section.entries) { entry in
@@ -350,7 +372,10 @@ private struct Accordion<Content: View>: View {
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 5)
-                .background(hovering ? Color.primary.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .background(
+                    hovering ? Color.primary.opacity(0.05) : .clear,
+                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                )
                 .overlay { CursorRing(active: sidebarFocused && cursor == .header(key)) }
                 .contentShape(Rectangle())
             }
@@ -363,7 +388,11 @@ private struct Accordion<Content: View>: View {
             // so they're uncovered from under the header and push what's below down.
             VStack(alignment: .leading, spacing: 1) { content }
                 .fixedSize(horizontal: false, vertical: true)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                .onGeometryChange(for: CGFloat.self) {
+                    $0.size.height
+                } action: {
+                    contentHeight = $0
+                }
                 .frame(height: open.wrappedValue ? contentHeight : 0, alignment: .top)
                 .clipped()
                 .opacity(open.wrappedValue ? 1 : 0)
@@ -429,7 +458,8 @@ private struct EntryRow: View {
                     }
                     if showGroup, let detail = searchDetail {
                         Text(detail).font(.caption).lineLimit(1)
-                            .foregroundStyle(selected && activeState == .key ? Color.white.opacity(0.8) : Color.secondary)
+                            .foregroundStyle(
+                                selected && activeState == .key ? Color.white.opacity(0.8) : Color.secondary)
                     }
                 }
                 Spacer(minLength: 0)
@@ -467,7 +497,9 @@ private struct EntryRow: View {
 
     private func open() {
         moveCursor(cursorHere)
-        guard let tool = ToolRegistry.tool(id: section == "search" ? model.searchResultTool(for: entry) : model.toolToOpen(for: entry))
+        guard
+            let tool = ToolRegistry.tool(
+                id: section == "search" ? model.searchResultTool(for: entry) : model.toolToOpen(for: entry))
         else { return }
         model.open(tool)
     }

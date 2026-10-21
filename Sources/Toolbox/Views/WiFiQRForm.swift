@@ -109,7 +109,8 @@ struct WiFiQRForm: View {
             if location.granted {
                 note = "This Mac isn't connected to a Wi-Fi network."
             } else {
-                note = "macOS only shares the network's name with apps that have Location access. Allow it, then try again."
+                note =
+                    "macOS only shares the network's name with apps that have Location access. Allow it, then try again."
                 location.undecided ? location.requestIfNeeded() : location.openSettings()
             }
             return
@@ -127,7 +128,8 @@ struct WiFiQRForm: View {
             if let password {
                 session.options["password"] = password
             } else {
-                note = "Filled the name and security. The password wasn't shared (cancelled, or not saved on this Mac), so type it in."
+                note =
+                    "Filled the name and security. The password wasn't shared (cancelled, or not saved on this Mac), so type it in."
             }
         }
     }

@@ -56,8 +56,9 @@ struct Shortcut: Equatable, Codable {
         var length = 0
         let status = data.withUnsafeBytes { raw -> OSStatus in
             let layout = raw.bindMemory(to: UCKeyboardLayout.self).baseAddress!
-            return UCKeyTranslate(layout, UInt16(code), UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
-                                  OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, 4, &length, &chars)
+            return UCKeyTranslate(
+                layout, UInt16(code), UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
+                OptionBits(kUCKeyTranslateNoDeadKeysBit), &deadKeys, 4, &length, &chars)
         }
         guard status == noErr, length > 0 else { return "?" }
         return String(utf16CodeUnits: chars, count: length).uppercased()
@@ -76,7 +77,8 @@ final class HotKey {
     var shortcut: Shortcut {
         get {
             guard let data = UserDefaults.standard.data(forKey: Self.defaultsKey),
-                  let value = try? JSONDecoder().decode(Shortcut.self, from: data) else { return .default }
+                let value = try? JSONDecoder().decode(Shortcut.self, from: data)
+            else { return .default }
             return value
         }
         set {
@@ -88,10 +90,12 @@ final class HotKey {
     func start(_ action: @escaping () -> Void) {
         self.action = action
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
-            DispatchQueue.main.async { HotKey.shared.action?() }
-            return noErr
-        }, 1, &spec, nil, &handler)
+        InstallEventHandler(
+            GetApplicationEventTarget(),
+            { _, _, _ in
+                DispatchQueue.main.async { HotKey.shared.action?() }
+                return noErr
+            }, 1, &spec, nil, &handler)
         register()
     }
 
@@ -100,7 +104,7 @@ final class HotKey {
     func register() -> Bool {
         if let ref { UnregisterEventHotKey(ref) }
         ref = nil
-        let id = EventHotKeyID(signature: OSType(0x54424F58), id: 1) // "TBOX"
+        let id = EventHotKeyID(signature: OSType(0x5442_4F58), id: 1)  // "TBOX"
         let s = shortcut
         let status = RegisterEventHotKey(s.keyCode, s.modifiers, id, GetApplicationEventTarget(), 0, &ref)
         DebugLog.log("hotkey \(s.display) status \(status)")

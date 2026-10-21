@@ -25,7 +25,8 @@ struct MediaInfo: Sendable {
         }
         let audio = streams.first { ($0["codec_type"] as? String) == "audio" }
 
-        let duration = Double(format["duration"] as? String ?? "")
+        let duration =
+            Double(format["duration"] as? String ?? "")
             ?? Double(video?["duration"] as? String ?? "")
             ?? Double(audio?["duration"] as? String ?? "") ?? 0
 
@@ -49,11 +50,12 @@ struct MediaInfo: Sendable {
         // MKV and WebM leave stream bitrates out; estimate the video share from the whole file.
         let videoRate = Int(video?["bit_rate"] as? String ?? "") ?? max(0, overall - audioRate)
 
-        return MediaInfo(duration: duration, width: width, height: height, frameRate: fps,
-                         hasVideo: video != nil, hasAudio: audio != nil,
-                         videoCodec: video?["codec_name"] as? String ?? "",
-                         audioCodec: audio?["codec_name"] as? String ?? "",
-                         videoBitrate: videoRate, overallBitrate: overall)
+        return MediaInfo(
+            duration: duration, width: width, height: height, frameRate: fps,
+            hasVideo: video != nil, hasAudio: audio != nil,
+            videoCodec: video?["codec_name"] as? String ?? "",
+            audioCodec: audio?["codec_name"] as? String ?? "",
+            videoBitrate: videoRate, overallBitrate: overall)
     }
 
     /// Absolute rotation in degrees from the display matrix or the legacy "rotate" tag.
@@ -61,8 +63,11 @@ struct MediaInfo: Sendable {
         var degrees = 0.0
         if let side = stream["side_data_list"] as? [[String: Any]] {
             for entry in side {
-                if let r = entry["rotation"] as? Double { degrees = r }
-                else if let r = entry["rotation"] as? Int { degrees = Double(r) }
+                if let r = entry["rotation"] as? Double {
+                    degrees = r
+                } else if let r = entry["rotation"] as? Int {
+                    degrees = Double(r)
+                }
             }
         }
         if degrees == 0, let tag = (stream["tags"] as? [String: Any])?["rotate"] as? String {
@@ -97,21 +102,29 @@ enum Media {
     static func videoArgs(_ codec: VideoCodec, quality: Int = 20, preset: String = "fast") -> [String] {
         switch codec {
         case .h264:
-            return ["-c:v", "libx264", "-preset", preset, "-crf", String(quality),
-                    "-pix_fmt", "yuv420p"]
+            return [
+                "-c:v", "libx264", "-preset", preset, "-crf", String(quality),
+                "-pix_fmt", "yuv420p",
+            ]
         case .hevc:
-            return ["-c:v", "libx265", "-preset", preset, "-crf", String(quality + 4),
-                    "-pix_fmt", "yuv420p", "-tag:v", "hvc1", "-x265-params", "log-level=error"]
+            return [
+                "-c:v", "libx265", "-preset", preset, "-crf", String(quality + 4),
+                "-pix_fmt", "yuv420p", "-tag:v", "hvc1", "-x265-params", "log-level=error",
+            ]
         case .vp9:
-            return ["-c:v", "libvpx-vp9", "-crf", String(quality + 12), "-b:v", "0",
-                    "-deadline", "good", "-cpu-used", "4", "-row-mt", "1", "-pix_fmt", "yuv420p"]
+            return [
+                "-c:v", "libvpx-vp9", "-crf", String(quality + 12), "-b:v", "0",
+                "-deadline", "good", "-cpu-used", "4", "-row-mt", "1", "-pix_fmt", "yuv420p",
+            ]
         }
     }
 
     /// Re-encodes the main video and audio streams through `filters`, then even dimensions.
     /// `ext` defaults to `reencodeExtension(for:)` and `encode` to `encodeArgs` for it, copying the sound when possible.
-    static func reencode(_ url: URL, filters: [String], suffix: String, ext: String? = nil, encode: [String]? = nil,
-                         info: MediaInfo, context ctx: ToolContext) async throws -> [URL] {
+    static func reencode(
+        _ url: URL, filters: [String], suffix: String, ext: String? = nil, encode: [String]? = nil,
+        info: MediaInfo, context ctx: ToolContext
+    ) async throws -> [URL] {
         let ext = ext ?? reencodeExtension(for: url)
         let out = ctx.output(for: url, suffix: suffix, ext: ext)
         try await FFmpeg.run(
@@ -129,8 +142,10 @@ enum Media {
 
     /// Video and audio encoder arguments that suit a container.
     /// Pass the source `audioCodec` to copy the sound untouched when the container takes it.
-    static func encodeArgs(forExtension ext: String, quality: Int = 20, audioBitrate: Int = 192,
-                           audioCodec: String = "") -> [String] {
+    static func encodeArgs(
+        forExtension ext: String, quality: Int = 20, audioBitrate: Int = 192,
+        audioCodec: String = ""
+    ) -> [String] {
         if ext == "webm" {
             return videoArgs(.vp9, quality: quality) + webmAudio(audioCodec, audioBitrate)
         }
@@ -144,7 +159,8 @@ enum Media {
 
     /// Opus for WebM; copies Opus and Vorbis sources.
     static func webmAudio(_ audioCodec: String, _ bitrate: Int = 192) -> [String] {
-        ["opus", "vorbis"].contains(audioCodec) ? ["-c:a", "copy"] : ["-c:a", "libopus", "-b:a", "\(min(bitrate, 160))k"]
+        ["opus", "vorbis"].contains(audioCodec)
+            ? ["-c:a", "copy"] : ["-c:a", "libopus", "-b:a", "\(min(bitrate, 160))k"]
     }
 
     /// Container flags: moov atom up front so MP4 and MOV start playing at once.

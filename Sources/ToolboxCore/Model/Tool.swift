@@ -220,10 +220,11 @@ public struct Tool: Identifiable, Sendable {
         inputSyntax: Syntax? = nil, outputSyntax: Syntax? = nil,
         transform: @escaping @Sendable (TextInput, Options) throws -> String
     ) -> Tool {
-        Tool(id: id, name: name, summary: summary, category: .developer, symbol: symbol,
-             keywords: keywords, inputKind: .text, minimumInputs: 0, options: options,
-             actionTitle: "Copy", runner: .transform(transform), traits: traits,
-             inputSyntax: inputSyntax, outputSyntax: outputSyntax)
+        Tool(
+            id: id, name: name, summary: summary, category: .developer, symbol: symbol,
+            keywords: keywords, inputKind: .text, minimumInputs: 0, options: options,
+            actionTitle: "Copy", runner: .transform(transform), traits: traits,
+            inputSyntax: inputSyntax, outputSyntax: outputSyntax)
     }
 
     /// Runs on Apple's on-device models; shown with a sparkle.

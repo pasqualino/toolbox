@@ -33,7 +33,8 @@ enum DevFormatLog {
         return nil
     }
 
-    private static func find(in line: String, requireWhole: Bool) -> (prefix: String, value: JSONValue, suffix: String)? {
+    private static func find(in line: String, requireWhole: Bool) -> (prefix: String, value: JSONValue, suffix: String)?
+    {
         let bytes = Array(line.utf8)
         var i = 0
         while i < bytes.count {
@@ -47,7 +48,10 @@ enum DevFormatLog {
                     if requireWhole, !suffix.allSatisfy(\.isWhitespace) { return nil }
                     return (String(decoding: bytes[..<i], as: UTF8.self), value, suffix)
                 }
-                if b == 34 { i = end; continue }
+                if b == 34 {
+                    i = end
+                    continue
+                }
             }
             if requireWhole, b == 123 || b == 91 { return nil }
             i += 1

@@ -8,7 +8,8 @@ import UniformTypeIdentifiers
 enum PasteboardImport {
     /// Files for `tool` from the pasteboard, or [] when there's nothing it can take.
     static func files(for tool: Tool, from pasteboard: NSPasteboard = .general) -> [URL] {
-        let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        let urls =
+            pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         if !urls.isEmpty { return urls }
         if takes(.pdf, tool), let data = pasteboard.data(forType: .pdf) {
             return write(data, ext: "pdf").map { [$0] } ?? []
@@ -28,7 +29,8 @@ enum PasteboardImport {
     private static func imagePNG(from pasteboard: NSPasteboard) -> Data? {
         if let png = pasteboard.data(forType: .png) { return png }
         guard let image = NSImage(pasteboard: pasteboard),
-              let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return nil }
+            let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff)
+        else { return nil }
         return rep.representation(using: .png, properties: [:])
     }
 
@@ -67,10 +69,11 @@ enum PasteShortcut {
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
-                  event.charactersIgnoringModifiers == "v",
-                  let window = event.window,
-                  !(window.firstResponder is NSText),
-                  let session = session(for: window) else { return event }
+                event.charactersIgnoringModifiers == "v",
+                let window = event.window,
+                !(window.firstResponder is NSText),
+                let session = session(for: window)
+            else { return event }
             return paste(into: session) ? nil : event
         }
     }
@@ -103,13 +106,16 @@ extension PasteboardImport {
     static func runOnClipboard(_ tool: Tool) {
         let files = files(for: tool)
         guard !files.isEmpty else {
-            Toast.warning("No image on the clipboard", detail: "Take a screenshot with ⌃⇧⌘4, then try again.",
-                          symbol: "photo.badge.exclamationmark")
+            Toast.warning(
+                "No image on the clipboard", detail: "Take a screenshot with ⌃⇧⌘4, then try again.",
+                symbol: "photo.badge.exclamationmark")
             return
         }
         let session = AppModel.shared.session(for: tool)
         session.clear()
-        Toast.show(tool.id == "read-qr" ? "Reading code…" : "Reading text…", symbol: tool.symbol, tint: tool.tint, duration: 15)
+        Toast.show(
+            tool.id == "read-qr" ? "Reading code…" : "Reading text…", symbol: tool.symbol, tint: tool.tint, duration: 15
+        )
         Task { @MainActor in
             await session.add(files)
             await session.runAndWait(outputRoot: Prefs.outputRoot)
@@ -152,11 +158,13 @@ enum SearchFieldKeys {
     static func install() {
         guard monitor == nil else { return }
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.keyCode == 125, // down arrow
-                  event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.numericPad, .function]).isEmpty,
-                  let window = event.window, window === WindowController.shared.mainWindow,
-                  let editor = window.firstResponder as? NSTextView, editor.delegate is NSSearchField,
-                  !AppModel.shared.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else { return event }
+            guard event.keyCode == 125,  // down arrow
+                event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.numericPad, .function])
+                    .isEmpty,
+                let window = event.window, window === WindowController.shared.mainWindow,
+                let editor = window.firstResponder as? NSTextView, editor.delegate is NSSearchField,
+                !AppModel.shared.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty
+            else { return event }
             AppModel.shared.sidebarFromSearchToken += 1
             return nil
         }

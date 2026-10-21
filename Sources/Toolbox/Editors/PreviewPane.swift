@@ -59,8 +59,10 @@ struct PreviewPane: View {
         guard let preview = session.tool.preview else { return }
         let source = source
         let options = session.options
-        guard source.url != nil || !source.text.trimmingCharacters(in: .whitespaces).isEmpty
-                || options.string("type") == "wifi" else {
+        guard
+            source.url != nil || !source.text.trimmingCharacters(in: .whitespaces).isEmpty
+                || options.string("type") == "wifi"
+        else {
             image = nil
             error = nil
             return
@@ -108,7 +110,10 @@ struct RegionEditor: View {
                         .background(Rectangle().fill((index == selected ? Color.accentColor : .red).opacity(0.12)))
                         .frame(width: r.width, height: r.height)
                         .offset(x: r.minX, y: r.minY)
-                        .onTapGesture { selected = index; focused = true }
+                        .onTapGesture {
+                            selected = index
+                            focused = true
+                        }
                 }
                 if let draft {
                     let r = denormalize(draft, in: frame)
@@ -120,16 +125,18 @@ struct RegionEditor: View {
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 4)
-                .onChanged { g in draft = normalize(from: g.startLocation, to: g.location, in: frame) }
-                .onEnded { g in
-                    let r = normalize(from: g.startLocation, to: g.location, in: frame)
-                    draft = nil
-                    guard r.width > 0.005, r.height > 0.005 else { return }
-                    value = Regions.format(rects + [r])
-                    selected = rects.count - 1
-                    focused = true
-                })
+            .gesture(
+                DragGesture(minimumDistance: 4)
+                    .onChanged { g in draft = normalize(from: g.startLocation, to: g.location, in: frame) }
+                    .onEnded { g in
+                        let r = normalize(from: g.startLocation, to: g.location, in: frame)
+                        draft = nil
+                        guard r.width > 0.005, r.height > 0.005 else { return }
+                        value = Regions.format(rects + [r])
+                        selected = rects.count - 1
+                        focused = true
+                    }
+            )
             .onTapGesture { selected = nil }
             .overlay(alignment: .bottomLeading) { hint.padding(12) }
         }
@@ -137,15 +144,24 @@ struct RegionEditor: View {
         .focusEffectDisabled()
         .focused($focused)
         .onDeleteCommand { deleteSelected() }
-        .onKeyPress(.delete) { deleteSelected(); return .handled }
+        .onKeyPress(.delete) {
+            deleteSelected()
+            return .handled
+        }
     }
 
     private var hint: some View {
         HStack(spacing: 8) {
-            Text(rects.isEmpty ? "Drag to cover anything else" : "\(rects.count) box\(rects.count == 1 ? "" : "es") · click one and press ⌫ to remove")
+            Text(
+                rects.isEmpty
+                    ? "Drag to cover anything else"
+                    : "\(rects.count) box\(rects.count == 1 ? "" : "es") · click one and press ⌫ to remove")
             if !rects.isEmpty {
-                Button("Clear") { value = ""; selected = nil }
-                    .buttonStyle(.borderless)
+                Button("Clear") {
+                    value = ""
+                    selected = nil
+                }
+                .buttonStyle(.borderless)
             }
         }
         .font(.caption)
@@ -163,9 +179,11 @@ struct RegionEditor: View {
     }
 
     private func fittedFrame(in size: CGSize) -> CGRect {
-        let iw = CGFloat(image.width), ih = CGFloat(image.height)
+        let iw = CGFloat(image.width)
+        let ih = CGFloat(image.height)
         let scale = min(size.width / iw, size.height / ih)
-        let w = iw * scale, h = ih * scale
+        let w = iw * scale
+        let h = ih * scale
         return CGRect(x: 16 + (size.width - w) / 2, y: 16 + (size.height - h) / 2, width: w, height: h)
     }
 
@@ -173,19 +191,24 @@ struct RegionEditor: View {
         func clamp(_ p: CGPoint) -> CGPoint {
             CGPoint(x: min(max(p.x, frame.minX), frame.maxX), y: min(max(p.y, frame.minY), frame.maxY))
         }
-        let p = clamp(a), q = clamp(b)
-        return CGRect(x: (min(p.x, q.x) - frame.minX) / frame.width, y: (min(p.y, q.y) - frame.minY) / frame.height,
-                      width: abs(q.x - p.x) / frame.width, height: abs(q.y - p.y) / frame.height)
+        let p = clamp(a)
+        let q = clamp(b)
+        return CGRect(
+            x: (min(p.x, q.x) - frame.minX) / frame.width, y: (min(p.y, q.y) - frame.minY) / frame.height,
+            width: abs(q.x - p.x) / frame.width, height: abs(q.y - p.y) / frame.height)
     }
 
     private func denormalize(_ r: CGRect, in frame: CGRect) -> CGRect {
-        CGRect(x: frame.minX + r.minX * frame.width, y: frame.minY + r.minY * frame.height,
-               width: r.width * frame.width, height: r.height * frame.height)
+        CGRect(
+            x: frame.minX + r.minX * frame.width, y: frame.minY + r.minY * frame.height,
+            width: r.width * frame.width, height: r.height * frame.height)
     }
 }
 
-private extension CGSize {
-    func insetBy(_ d: CGFloat) -> CGSize { CGSize(width: max(1, width - 2 * d), height: max(1, height - 2 * d)) }
+extension CGSize {
+    fileprivate func insetBy(_ d: CGFloat) -> CGSize {
+        CGSize(width: max(1, width - 2 * d), height: max(1, height - 2 * d))
+    }
 }
 
 /// Transparency grid behind previews.
@@ -195,8 +218,9 @@ struct Checkerboard: View {
             let s: CGFloat = 10
             for row in 0..<Int(size.height / s) + 1 {
                 for col in 0..<Int(size.width / s) + 1 where (row + col).isMultiple(of: 2) {
-                    context.fill(Path(CGRect(x: CGFloat(col) * s, y: CGFloat(row) * s, width: s, height: s)),
-                                 with: .color(.gray.opacity(0.18)))
+                    context.fill(
+                        Path(CGRect(x: CGFloat(col) * s, y: CGFloat(row) * s, width: s, height: s)),
+                        with: .color(.gray.opacity(0.18)))
                 }
             }
         }

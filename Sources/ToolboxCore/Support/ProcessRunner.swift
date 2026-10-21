@@ -17,7 +17,8 @@ public enum ProcessRunner {
         onLine: (@Sendable (String) -> Void)? = nil,
         onErrorLine: (@Sendable (String) -> Void)? = nil
     ) async throws -> ProcessOutput {
-        let result = try await execute(executable, arguments, environment: environment, onLine: onLine, onErrorLine: onErrorLine)
+        let result = try await execute(
+            executable, arguments, environment: environment, onLine: onLine, onErrorLine: onErrorLine)
         guard result.status == 0 else {
             throw ToolError.message(summarize(result.stderr, fallback: executable.lastPathComponent))
         }
@@ -72,8 +73,10 @@ public enum ProcessRunner {
                     if p.terminationReason == .uncaughtSignal {
                         cont.resume(throwing: CancellationError())
                     } else {
-                        cont.resume(returning: ProcessOutput(status: p.terminationStatus,
-                                                             stdout: outBuffer.text, stderr: errBuffer.text))
+                        cont.resume(
+                            returning: ProcessOutput(
+                                status: p.terminationStatus,
+                                stdout: outBuffer.text, stderr: errBuffer.text))
                     }
                 }
                 do {

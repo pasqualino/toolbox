@@ -15,7 +15,8 @@ enum QRCode {
         if !typed.isEmpty { return typed }
         guard let file = files.first else { return "" }
         guard let data = try? Data(contentsOf: file),
-              let string = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
+            let string = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
+        else {
             throw ToolError.unreadable(file)
         }
         return string.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -26,8 +27,9 @@ enum QRCode {
         if options.string("type") == "wifi" {
             let ssid = options.string("ssid")
             guard !ssid.isEmpty else { throw ToolError.message("Enter the network name.") }
-            return wifi(ssid: ssid, password: options.string("password"),
-                        security: options.string("security"), hidden: options.bool("hidden"))
+            return wifi(
+                ssid: ssid, password: options.string("password"),
+                security: options.string("security"), hidden: options.bool("hidden"))
         }
         guard !text.isEmpty else { throw ToolError.message("Enter text or a link.") }
         return text
@@ -52,15 +54,24 @@ enum QRCode {
     static func parseWifi(_ payload: String) -> [String: String]? {
         guard payload.uppercased().hasPrefix("WIFI:") else { return nil }
         var fields: [String: String] = [:]
-        var key = "", value = "", inValue = false, escaped = false
+        var key = ""
+        var value = ""
+        var inValue = false
+        var escaped = false
         for ch in payload.dropFirst(5) {
-            if escaped { value.append(ch); escaped = false; continue }
+            if escaped {
+                value.append(ch)
+                escaped = false
+                continue
+            }
             switch ch {
             case "\\" where inValue: escaped = true
             case ":" where !inValue: inValue = true
             case ";":
                 if inValue { fields[key.uppercased()] = value }
-                key = ""; value = ""; inValue = false
+                key = ""
+                value = ""
+                inValue = false
             default:
                 if inValue { value.append(ch) } else { key.append(ch) }
             }
@@ -76,7 +87,8 @@ enum QRCode {
         filter.setValue(Data(payload.utf8), forKey: "inputMessage")
         filter.setValue(["L", "M", "Q", "H"].contains(correction) ? correction : "M", forKey: "inputCorrectionLevel")
         guard let output = filter.outputImage, output.extent.width > 0 else {
-            throw ToolError.message("Too much text for a QR code (\(payload.utf8.count) bytes). Shorten it or lower the error correction.")
+            throw ToolError.message(
+                "Too much text for a QR code (\(payload.utf8.count) bytes). Shorten it or lower the error correction.")
         }
         guard let native = CIContext().createCGImage(output, from: output.extent) else {
             throw ToolError.message("Couldn't draw the QR code.")
@@ -88,16 +100,19 @@ enum QRCode {
         let scale = max(1, Int((Double(size) / Double(total)).rounded()))
         let px = total * scale
         guard let cropped = native.cropping(to: CGRect(x: 1, y: 1, width: modules, height: modules)),
-              let ctx = CGContext(data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpaceCreateDeviceGray(),
-                                  bitmapInfo: CGImageAlphaInfo.none.rawValue) else {
+            let ctx = CGContext(
+                data: nil, width: px, height: px, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceGray(),
+                bitmapInfo: CGImageAlphaInfo.none.rawValue)
+        else {
             throw ToolError.message("Couldn't draw the QR code.")
         }
         ctx.setFillColor(gray: 1, alpha: 1)
         ctx.fill(CGRect(x: 0, y: 0, width: px, height: px))
         ctx.interpolationQuality = .none
         ctx.setShouldAntialias(false)
-        let side = modules * scale, inset = quiet * scale
+        let side = modules * scale
+        let inset = quiet * scale
         ctx.draw(cropped, in: CGRect(x: inset, y: inset, width: side, height: side))
         guard let image = ctx.makeImage() else { throw ToolError.message("Couldn't draw the QR code.") }
         return image
@@ -116,8 +131,10 @@ enum QRCode {
 
     static func sanitize(_ s: String, limit: Int) -> String {
         let cleaned = s.map { "/:\\\n\r\t".contains($0) ? " " : $0 }
-        return String(String(cleaned).split(separator: " ", omittingEmptySubsequences: true)
-            .joined(separator: " ").prefix(limit)).trimmingCharacters(in: .whitespaces)
+        return String(
+            String(cleaned).split(separator: " ", omittingEmptySubsequences: true)
+                .joined(separator: " ").prefix(limit)
+        ).trimmingCharacters(in: .whitespaces)
     }
 
     // MARK: - Read

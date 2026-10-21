@@ -10,8 +10,10 @@ enum ImageEdit {
     static func canvas(width: Int, height: Int, alpha: Bool) throws -> CGContext {
         let info = alpha ? CGImageAlphaInfo.premultipliedLast : .noneSkipLast
         guard width > 0, height > 0, width * height < 400_000_000,
-              let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: sRGB, bitmapInfo: info.rawValue) else {
+            let ctx = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                space: sRGB, bitmapInfo: info.rawValue)
+        else {
             throw ToolError.message("Image is too large.")
         }
         return ctx

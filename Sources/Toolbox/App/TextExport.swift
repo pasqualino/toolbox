@@ -38,7 +38,9 @@ enum TextExport {
     /// Runs a text tool on `input` and writes the output to `pasteboard`. Used by the palette's ⌥Return and
     /// the Services menu. Records History on success; toasts an empty result or a failure and leaves the
     /// pasteboard alone.
-    static func transform(_ tool: Tool, _ input: String, options: Options, into pasteboard: NSPasteboard) -> TransformOutcome {
+    static func transform(_ tool: Tool, _ input: String, options: Options, into pasteboard: NSPasteboard)
+        -> TransformOutcome
+    {
         do {
             let output = try tool.apply(TextInput(input), options: options)
             guard !output.isEmpty else {

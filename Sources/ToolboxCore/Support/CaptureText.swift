@@ -4,7 +4,8 @@ import ImageIO
 
 /// Screen region to text: screencapture picks the area, Vision reads it.
 public enum CaptureText {
-    static let permissionMessage = "Toolbox needs Screen Recording permission. Turn it on in System Settings > Privacy & Security > Screen & System Audio Recording."
+    static let permissionMessage =
+        "Toolbox needs Screen Recording permission. Turn it on in System Settings > Privacy & Security > Screen & System Audio Recording."
 
     /// Captures the screen and returns its text. With no region the user drags a crosshair
     /// (Space picks a window); Esc throws CancellationError. A region captures that rect in points, no UI.
@@ -23,7 +24,9 @@ public enum CaptureText {
         try Task.checkCancellation()
 
         let made = FileManager.default.fileExists(atPath: png.path)
-        if result.stderr.localizedCaseInsensitiveContains("could not create image") { throw ToolError.message(permissionMessage) }
+        if result.stderr.localizedCaseInsensitiveContains("could not create image") {
+            throw ToolError.message(permissionMessage)
+        }
         // Esc leaves no file and says nothing; treat that as a cancel whatever the exit status.
         guard made else {
             if result.stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { throw CancellationError() }
@@ -41,8 +44,10 @@ public enum CaptureText {
     /// Joins lines into paragraphs: single breaks become spaces, blank lines stay.
     static func joinLines(_ text: String) -> String {
         text.components(separatedBy: "\n\n")
-            .map { $0.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }.joined(separator: " ") }
+            .map {
+                $0.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }.joined(separator: " ")
+            }
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
     }
@@ -62,15 +67,22 @@ public enum CaptureText {
     /// Other single colors (a blank white page) are real captures and get "No text found" instead.
     static func isBlank(_ url: URL) -> Bool {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-                  kCGImageSourceCreateThumbnailFromImageAlways: true,
-                  kCGImageSourceThumbnailMaxPixelSize: 32,
-              ] as CFDictionary) else { return false }
-        let w = image.width, h = image.height
+            let image = CGImageSourceCreateThumbnailAtIndex(
+                source, 0,
+                [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceThumbnailMaxPixelSize: 32,
+                ] as CFDictionary)
+        else { return false }
+        let w = image.width
+        let h = image.height
         var pixels = [UInt8](repeating: 0, count: w * h * 4)
-        guard let ctx = CGContext(data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+        guard
+            let ctx = CGContext(
+                data: &pixels, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return false }
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
         return stride(from: 0, to: pixels.count, by: 4).allSatisfy {
             pixels[$0 + 3] == 0 || (pixels[$0] < 3 && pixels[$0 + 1] < 3 && pixels[$0 + 2] < 3)

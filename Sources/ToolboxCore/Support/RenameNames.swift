@@ -19,7 +19,8 @@ public enum BatchRename {
 
             let number = String(start + index)
             let padded = String(repeating: "0", count: max(0, pad - number.count)) + number
-            var stem = pattern
+            var stem =
+                pattern
                 .replacingOccurrences(of: "{name}", with: name)
                 .replacingOccurrences(of: "{n}", with: padded)
             // Reading file dates costs a disk hit per file; only do it when the name asks for one.

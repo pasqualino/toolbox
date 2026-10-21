@@ -26,7 +26,8 @@ public enum ImageTransform {
 
     /// Applies a turn or flip to upright pixels.
     public static func apply(_ op: Turn, to image: CGImage) throws -> CGImage {
-        let w = image.width, h = image.height
+        let w = image.width
+        let h = image.height
         let swaps = op == .right || op == .left
         let ctx = try context(width: swaps ? h : w, height: swaps ? w : h, like: image)
         ctx.interpolationQuality = .none
@@ -54,15 +55,19 @@ public enum ImageTransform {
     }
 
     static func context(width: Int, height: Int, like image: CGImage) throws -> CGContext {
-        let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
+        let space =
+            image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
             ?? CGColorSpace(name: CGColorSpace.sRGB)!
         let alpha: CGImageAlphaInfo
         switch image.alphaInfo {
         case .none, .noneSkipFirst, .noneSkipLast: alpha = .noneSkipLast
         default: alpha = .premultipliedLast
         }
-        guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: space, bitmapInfo: alpha.rawValue) else {
+        guard
+            let ctx = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                space: space, bitmapInfo: alpha.rawValue)
+        else {
             throw ToolError.message("Image is too large.")
         }
         return ctx
@@ -101,9 +106,12 @@ public enum ImageTransform {
 
         /// The orientation tag that shows `current` with `turn` applied on top.
         public static func compose(_ current: Int, _ turn: Turn) -> Int {
-            let a = turn.matrix, b = table[current] ?? table[1]!
-            let m = [a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3],
-                     a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3]]
+            let a = turn.matrix
+            let b = table[current] ?? table[1]!
+            let m = [
+                a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3],
+                a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3],
+            ]
             return table.first { $0.value == m }?.key ?? 1
         }
     }

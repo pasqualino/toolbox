@@ -53,7 +53,9 @@ struct AIMark: View {
     var body: some View {
         Image(systemName: "sparkle")
             .font(.system(size: size, weight: .semibold))
-            .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .foregroundStyle(
+                LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
             .help("Runs on this Mac with Apple's on-device AI")
             .accessibilityLabel("On-device AI")
     }
@@ -87,8 +89,11 @@ struct ToolIcon: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-            .fill(LinearGradient(colors: [tint.mix(with: .white, by: 0.18), tint],
-                                 startPoint: .top, endPoint: .bottom))
+            .fill(
+                LinearGradient(
+                    colors: [tint.mix(with: .white, by: 0.18), tint],
+                    startPoint: .top, endPoint: .bottom)
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
                     .strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
@@ -136,17 +141,20 @@ struct ChipStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
-        let (font, horizontal, vertical, rest): (CGFloat, CGFloat, CGFloat, Double) = switch size {
-        case .compact: (11, 7, 2, 0.07)
-        case .regular: (12, 10, 4, 0.07)
-        case .large: (12.5, 12, 5, 0.06)
-        }
+        let (font, horizontal, vertical, rest): (CGFloat, CGFloat, CGFloat, Double) =
+            switch size {
+            case .compact: (11, 7, 2, 0.07)
+            case .regular: (12, 10, 4, 0.07)
+            case .large: (12.5, 12, 5, 0.06)
+            }
         configuration.label
             .font(.system(size: font, weight: selected ? .semibold : .regular))
             .padding(.horizontal, horizontal)
             .padding(.vertical, vertical)
             .foregroundStyle(selected ? Color.white : Color.primary)
-            .background(Capsule().fill(selected ? tint : Color.primary.opacity(configuration.isPressed ? rest * 2 : rest)))
+            .background(
+                Capsule().fill(selected ? tint : Color.primary.opacity(configuration.isPressed ? rest * 2 : rest))
+            )
             .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Capsule())
     }
@@ -187,7 +195,8 @@ enum Format {
     /// True when both files are images, videos, audio or PDFs, so a size change means something.
     static func sameKind(_ a: URL, _ b: URL) -> Bool {
         let kinds: [UTType] = [.image, .movie, .audio, .pdf]
-        guard let ta = UTType(filenameExtension: a.pathExtension), let tb = UTType(filenameExtension: b.pathExtension) else { return false }
+        guard let ta = UTType(filenameExtension: a.pathExtension), let tb = UTType(filenameExtension: b.pathExtension)
+        else { return false }
         return kinds.contains { ta.conforms(to: $0) && tb.conforms(to: $0) }
     }
 

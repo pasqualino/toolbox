@@ -28,9 +28,12 @@ public indirect enum JSONValue: Sendable, Equatable {
         switch self {
         case .array(let items): .array(items.map { $0.sortedKeys() })
         case .object(let members):
-            .object(members.enumerated()
-                .sorted { $0.element.key == $1.element.key ? $0.offset < $1.offset : $0.element.key < $1.element.key }
-                .map { JSONMember($0.element.key, $0.element.value.sortedKeys()) })
+            .object(
+                members.enumerated()
+                    .sorted {
+                        $0.element.key == $1.element.key ? $0.offset < $1.offset : $0.element.key < $1.element.key
+                    }
+                    .map { JSONMember($0.element.key, $0.element.value.sortedKeys()) })
         default: self
         }
     }
@@ -42,7 +45,8 @@ public indirect enum JSONValue: Sendable, Equatable {
         case (.number(let a), .number(let b)): a == b
         case (.string(let a), .string(let b)): a == b
         case (.array(let a), .array(let b)): a == b
-        case (.object(let a), .object(let b)): a.count == b.count && zip(a, b).allSatisfy { $0.key == $1.key && $0.value == $1.value }
+        case (.object(let a), .object(let b)):
+            a.count == b.count && zip(a, b).allSatisfy { $0.key == $1.key && $0.value == $1.value }
         default: false
         }
     }
@@ -124,7 +128,10 @@ public enum DevJSON {
         case .number(let n): out += n.utf8
         case .string(let s): writeString(s, into: &out)
         case .array(let items):
-            if items.isEmpty { out += [91, 93]; return }
+            if items.isEmpty {
+                out += [91, 93]
+                return
+            }
             out.append(91)
             for (i, item) in items.enumerated() {
                 if i > 0 { out.append(44) }
@@ -134,7 +141,10 @@ public enum DevJSON {
             newline(unit, depth, &out)
             out.append(93)
         case .object(let members):
-            if members.isEmpty { out += [123, 125]; return }
+            if members.isEmpty {
+                out += [123, 125]
+                return
+            }
             out.append(123)
             for (i, member) in members.enumerated() {
                 if i > 0 { out.append(44) }
@@ -215,12 +225,15 @@ extension JSONValue {
         switch value {
         case is NSNull: self = .null
         case let n as NSNumber:
-            if CFGetTypeID(n) == CFBooleanGetTypeID() { self = .bool(n.boolValue) }
-            else if CFNumberIsFloatType(n) {
+            if CFGetTypeID(n) == CFBooleanGetTypeID() {
+                self = .bool(n.boolValue)
+            } else if CFNumberIsFloatType(n) {
                 let d = n.doubleValue
                 guard d.isFinite else { throw ToolError.message("JSON can't hold \(d).") }
                 self = .number(d == d.rounded() && abs(d) < 1e15 ? String(Int64(d)) : "\(d)")
-            } else { self = .number(n.stringValue) }
+            } else {
+                self = .number(n.stringValue)
+            }
         case let s as String: self = .string(s)
         case let a as [Any]: self = .array(try a.map { try JSONValue(foundation: $0) })
         case let d as [String: Any]:
@@ -252,11 +265,15 @@ struct JSONParser {
     }
 
     func error(_ expected: String) -> ToolError {
-        var line = 1, lineStart = 0
+        var line = 1
+        var lineStart = 0
         let end = min(index, bytes.count)
         var i = 0
         while i < end {
-            if bytes[i] == 10 { line += 1; lineStart = i + 1 }
+            if bytes[i] == 10 {
+                line += 1
+                lineStart = i + 1
+            }
             i += 1
         }
         // Column counts characters, not bytes.
@@ -271,9 +288,15 @@ struct JSONParser {
         case 123: return try object()
         case 91: return try array()
         case 34: return .string(try string())
-        case 116: try literal("true"); return .bool(true)
-        case 102: try literal("false"); return .bool(false)
-        case 110: try literal("null"); return .null
+        case 116:
+            try literal("true")
+            return .bool(true)
+        case 102:
+            try literal("false")
+            return .bool(false)
+        case 110:
+            try literal("null")
+            return .null
         case 45, 48...57: return try number()
         default: throw error("expected a value")
         }
@@ -299,7 +322,10 @@ struct JSONParser {
         index += 1
         var members = [JSONMember]()
         skipSpace()
-        if index < bytes.count, bytes[index] == 125 { index += 1; return .object(members) }
+        if index < bytes.count, bytes[index] == 125 {
+            index += 1
+            return .object(members)
+        }
         while true {
             skipSpace()
             guard index < bytes.count, bytes[index] == 34 else {
@@ -312,8 +338,14 @@ struct JSONParser {
             members.append(JSONMember(key, try value()))
             skipSpace()
             guard index < bytes.count else { throw error("expected , or }") }
-            if bytes[index] == 44 { index += 1; continue }
-            if bytes[index] == 125 { index += 1; return .object(members) }
+            if bytes[index] == 44 {
+                index += 1
+                continue
+            }
+            if bytes[index] == 125 {
+                index += 1
+                return .object(members)
+            }
             throw error("expected , or }")
         }
     }
@@ -324,13 +356,22 @@ struct JSONParser {
         index += 1
         var items = [JSONValue]()
         skipSpace()
-        if index < bytes.count, bytes[index] == 93 { index += 1; return .array(items) }
+        if index < bytes.count, bytes[index] == 93 {
+            index += 1
+            return .array(items)
+        }
         while true {
             items.append(try value())
             skipSpace()
             guard index < bytes.count else { throw error("expected , or ]") }
-            if bytes[index] == 44 { index += 1; continue }
-            if bytes[index] == 93 { index += 1; return .array(items) }
+            if bytes[index] == 44 {
+                index += 1
+                continue
+            }
+            if bytes[index] == 93 {
+                index += 1
+                return .array(items)
+            }
             throw error("expected , or ]")
         }
     }
@@ -393,12 +434,17 @@ struct JSONParser {
                 case 116: buffer.append(9)
                 case 117:
                     var code = try hex4()
-                    if code >= 0xD800, code < 0xDC00, index + 1 < bytes.count, bytes[index] == 92, bytes[index + 1] == 117 {
+                    if code >= 0xD800, code < 0xDC00, index + 1 < bytes.count, bytes[index] == 92,
+                        bytes[index + 1] == 117
+                    {
                         let save = index
                         index += 2
                         let low = try hex4()
-                        if low >= 0xDC00, low < 0xE000 { code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00) }
-                        else { index = save }
+                        if low >= 0xDC00, low < 0xE000 {
+                            code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00)
+                        } else {
+                            index = save
+                        }
                     }
                     let scalar = Unicode.Scalar(code) ?? "\u{FFFD}"
                     buffer += Array(String(Character(scalar)).utf8)

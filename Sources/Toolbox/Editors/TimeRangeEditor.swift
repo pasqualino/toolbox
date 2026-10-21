@@ -27,8 +27,10 @@ struct TimeRangeEditor: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             if duration > 0 {
-                RangeBar(duration: duration, range: Binding(get: { range }, set: { set($0) }), playhead: playhead) { t in
-                    player?.seek(to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                RangeBar(duration: duration, range: Binding(get: { range }, set: { set($0) }), playhead: playhead) {
+                    t in
+                    player?.seek(
+                        to: CMTime(seconds: t, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
                 }
                 .frame(height: 30)
                 HStack {
@@ -117,17 +119,19 @@ private struct RangeBar: View {
                     .offset(x: x(playhead))
                     .allowsHitTesting(false)
                 handle.offset(x: x(range.lowerBound) - 5)
-                    .gesture(DragGesture().onChanged { g in
-                        let t = min(max(0, Double(g.location.x / w) * duration), range.upperBound)
-                        range = t...range.upperBound
-                        seek(t)
-                    })
+                    .gesture(
+                        DragGesture().onChanged { g in
+                            let t = min(max(0, Double(g.location.x / w) * duration), range.upperBound)
+                            range = t...range.upperBound
+                            seek(t)
+                        })
                 handle.offset(x: x(range.upperBound) - 5)
-                    .gesture(DragGesture().onChanged { g in
-                        let t = max(min(duration, Double(g.location.x / w) * duration), range.lowerBound)
-                        range = range.lowerBound...t
-                        seek(t)
-                    })
+                    .gesture(
+                        DragGesture().onChanged { g in
+                            let t = max(min(duration, Double(g.location.x / w) * duration), range.lowerBound)
+                            range = range.lowerBound...t
+                            seek(t)
+                        })
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())

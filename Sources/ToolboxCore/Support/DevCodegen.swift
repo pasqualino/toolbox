@@ -35,8 +35,10 @@ enum DevCodegen {
                 o.count += 1
                 var seen = Set<String>()
                 for m in members where seen.insert(m.key).inserted {
-                    if let i = o.index[m.key] { o.fields[i].count += 1; o.fields[i].shape.add(m.value) }
-                    else {
+                    if let i = o.index[m.key] {
+                        o.fields[i].count += 1
+                        o.fields[i].shape.add(m.value)
+                    } else {
                         let s = Shape()
                         s.add(m.value)
                         o.index[m.key] = o.fields.count
@@ -86,7 +88,10 @@ enum DevCodegen {
                 previous = nil
                 continue
             }
-            if let p = previous, c.isUppercase, p.isLowercase || p.isNumber { words.append(current); current = "" }
+            if let p = previous, c.isUppercase, p.isLowercase || p.isNumber {
+                words.append(current)
+                current = ""
+            }
             current.append(c)
             previous = c
         }
@@ -96,7 +101,8 @@ enum DevCodegen {
             let chars = Array(word)
             var parts = [String]()
             var start = 0
-            for i in 1..<max(chars.count, 1) where i + 1 < chars.count && chars[i - 1].isUppercase && chars[i].isUppercase && chars[i + 1].isLowercase {
+            for i in 1..<max(chars.count, 1)
+            where i + 1 < chars.count && chars[i - 1].isUppercase && chars[i].isUppercase && chars[i + 1].isLowercase {
                 parts.append(String(chars[start..<i]))
                 start = i
             }
@@ -116,8 +122,12 @@ enum DevCodegen {
 
     static func singular(_ name: String) -> String {
         if name.hasSuffix("ies"), name.count > 4 { return name.dropLast(3) + "y" }
-        if name.hasSuffix("sses") || name.hasSuffix("xes") || name.hasSuffix("ches") || name.hasSuffix("shes") { return String(name.dropLast(2)) }
-        if name.hasSuffix("s"), !name.hasSuffix("ss"), !name.hasSuffix("us"), name.count > 2 { return String(name.dropLast()) }
+        if name.hasSuffix("sses") || name.hasSuffix("xes") || name.hasSuffix("ches") || name.hasSuffix("shes") {
+            return String(name.dropLast(2))
+        }
+        if name.hasSuffix("s"), !name.hasSuffix("ss"), !name.hasSuffix("us"), name.count > 2 {
+            return String(name.dropLast())
+        }
         return name
     }
 
@@ -127,7 +137,10 @@ enum DevCodegen {
         func claim(_ base: String) -> String {
             var name = base
             var n = 2
-            while used.contains(name) { name = base + String(n); n += 1 }
+            while used.contains(name) {
+                name = base + String(n)
+                n += 1
+            }
             used.insert(name)
             return name
         }
@@ -168,13 +181,20 @@ enum DevCodegen {
                 var n = pascal(f.key, acronymCase: true)
                 var k = 2
                 let base = n
-                while !goNames.insert(n).inserted { n = base + String(k); k += 1 }
-                let tag = "`json:\"\(f.key.replacingOccurrences(of: "\"", with: "\\\""))\(omitempty ? ",omitempty" : "")\"`"
+                while !goNames.insert(n).inserted {
+                    n = base + String(k)
+                    k += 1
+                }
+                let tag =
+                    "`json:\"\(f.key.replacingOccurrences(of: "\"", with: "\\\""))\(omitempty ? ",omitempty" : "")\"`"
                 rows.append((n, type(f.shape, name: pascal(f.key, acronymCase: false)), tag))
             }
-            let w1 = rows.map(\.0.count).max()!, w2 = rows.map(\.1.count).max()!
-            let lines = rows.map { "\t" + $0.0.padding(toLength: w1, withPad: " ", startingAt: 0) + " "
-                + $0.1.padding(toLength: w2, withPad: " ", startingAt: 0) + " " + $0.2 }
+            let w1 = rows.map(\.0.count).max()!
+            let w2 = rows.map(\.1.count).max()!
+            let lines = rows.map {
+                "\t" + $0.0.padding(toLength: w1, withPad: " ", startingAt: 0) + " "
+                    + $0.1.padding(toLength: w2, withPad: " ", startingAt: 0) + " " + $0.2
+            }
             return "struct {\n" + lines.joined(separator: "\n") + "\n}"
         }
 
@@ -247,7 +267,8 @@ enum DevCodegen {
     }
 
     private static func isIdentifier(_ s: String) -> Bool {
-        guard let first = s.unicodeScalars.first, first == "_" || first == "$" || CharacterSet.letters.contains(first) else { return false }
+        guard let first = s.unicodeScalars.first, first == "_" || first == "$" || CharacterSet.letters.contains(first)
+        else { return false }
         return s.unicodeScalars.allSatisfy { $0 == "_" || $0 == "$" || CharacterSet.alphanumerics.contains($0) }
     }
 }

@@ -47,7 +47,8 @@ private struct PageThumb: View {
             .background(.white)
             .overlay {
                 RoundedRectangle(cornerRadius: 3)
-                    .strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.15), lineWidth: selected ? 2.5 : 1)
+                    .strokeBorder(
+                        selected ? Color.accentColor : Color.primary.opacity(0.15), lineWidth: selected ? 2.5 : 1)
             }
             .overlay(alignment: .topTrailing) {
                 if selected {
@@ -128,16 +129,31 @@ struct PageArrangementEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 4) {
-                Button { rotate(-90) } label: { Label("Rotate Left", systemImage: "rotate.left") }
-                    .help("Rotate left (selected pages, or all)")
-                Button { rotate(90) } label: { Label("Rotate Right", systemImage: "rotate.right") }
-                    .help("Rotate right (selected pages, or all)")
-                Button { removeSelected() } label: { Label("Remove", systemImage: "trash") }
-                    .help("Remove selected pages")
-                    .disabled(selection.isEmpty)
+                Button {
+                    rotate(-90)
+                } label: {
+                    Label("Rotate Left", systemImage: "rotate.left")
+                }
+                .help("Rotate left (selected pages, or all)")
+                Button {
+                    rotate(90)
+                } label: {
+                    Label("Rotate Right", systemImage: "rotate.right")
+                }
+                .help("Rotate right (selected pages, or all)")
+                Button {
+                    removeSelected()
+                } label: {
+                    Label("Remove", systemImage: "trash")
+                }
+                .help("Remove selected pages")
+                .disabled(selection.isEmpty)
                 Spacer()
-                Button("Reset") { value = ""; selection = [] }
-                    .disabled(value.isEmpty)
+                Button("Reset") {
+                    value = ""
+                    selection = []
+                }
+                .disabled(value.isEmpty)
             }
             .buttonStyle(.borderless)
             .labelStyle(DynamicLabelStyle(showTitle: large))
@@ -145,19 +161,24 @@ struct PageArrangementEditor: View {
 
             LazyVGrid(columns: pageColumns(large), spacing: large ? 16 : 10) {
                 ForEach(Array(placements.enumerated()), id: \.offset) { index, place in
-                    PageThumb(image: thumbs.images[place.page], number: place.page + 1, rotation: place.rotation,
-                              selected: selection.contains(index), dimmed: dragging == place, large: large)
-                        .onTapGesture { toggle(index) }
-                        .draggable("\(index)") {
-                            PageThumb(image: thumbs.images[place.page], number: place.page + 1, rotation: place.rotation, large: large)
-                                .onAppear { dragging = place }
-                        }
-                        .dropDestination(for: String.self) { items, _ in
-                            dragging = nil
-                            guard let from = items.first.flatMap(Int.init) else { return false }
-                            move(from: from, to: index)
-                            return true
-                        }
+                    PageThumb(
+                        image: thumbs.images[place.page], number: place.page + 1, rotation: place.rotation,
+                        selected: selection.contains(index), dimmed: dragging == place, large: large
+                    )
+                    .onTapGesture { toggle(index) }
+                    .draggable("\(index)") {
+                        PageThumb(
+                            image: thumbs.images[place.page], number: place.page + 1, rotation: place.rotation,
+                            large: large
+                        )
+                        .onAppear { dragging = place }
+                    }
+                    .dropDestination(for: String.self) { items, _ in
+                        dragging = nil
+                        guard let from = items.first.flatMap(Int.init) else { return false }
+                        move(from: from, to: index)
+                        return true
+                    }
                 }
             }
             Text(selection.isEmpty ? "Drag to reorder. Click to select." : "\(selection.count) selected")
@@ -177,9 +198,11 @@ struct PageArrangementEditor: View {
 
     private func rotate(_ degrees: Int) {
         let targets = selection.isEmpty ? Set(placements.indices) : selection
-        commit(placements.enumerated().map { i, p in
-            targets.contains(i) ? PageRanges.Placement(page: p.page, rotation: ((p.rotation + degrees) % 360 + 360) % 360) : p
-        })
+        commit(
+            placements.enumerated().map { i, p in
+                targets.contains(i)
+                    ? PageRanges.Placement(page: p.page, rotation: ((p.rotation + degrees) % 360 + 360) % 360) : p
+            })
     }
 
     private func removeSelected() {
@@ -206,7 +229,10 @@ struct DynamicLabelStyle: LabelStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         if showTitle {
-            HStack(spacing: 4) { configuration.icon; configuration.title }
+            HStack(spacing: 4) {
+                configuration.icon
+                configuration.title
+            }
         } else {
             configuration.icon
         }

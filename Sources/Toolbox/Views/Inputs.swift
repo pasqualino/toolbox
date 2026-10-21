@@ -64,9 +64,12 @@ struct DropZone: View {
                     .foregroundStyle(.secondary)
             }
             if let rejected {
-                Label("\(rejected) file\(rejected == 1 ? "" : "s") skipped: not supported here", systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
+                Label(
+                    "\(rejected) file\(rejected == 1 ? "" : "s") skipped: not supported here",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.callout)
+                .foregroundStyle(.orange)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -78,9 +81,11 @@ struct DropZone: View {
             // Marching ants while files hover over the zone; still otherwise.
             TimelineView(.animation(paused: !targeted || reduceMotion)) { context in
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(targeted ? tint : Color.primary.opacity(0.15),
-                                  style: StrokeStyle(lineWidth: targeted ? 2 : 1.5, dash: [7, 5],
-                                                     dashPhase: targeted && !reduceMotion ? dashPhase(context.date) : 0))
+                    .strokeBorder(
+                        targeted ? tint : Color.primary.opacity(0.15),
+                        style: StrokeStyle(
+                            lineWidth: targeted ? 2 : 1.5, dash: [7, 5],
+                            dashPhase: targeted && !reduceMotion ? dashPhase(context.date) : 0))
             }
         }
         .scaleEffect(targeted && !reduceMotion ? 1.015 : 1)
@@ -91,7 +96,9 @@ struct DropZone: View {
                 rejected = skipped > 0 ? skipped : nil
             }
             return true
-        } isTargeted: { targeted = $0 }
+        } isTargeted: {
+            targeted = $0
+        }
     }
 
     /// One dash and gap (12 pt) every 0.6 s.
@@ -122,7 +129,9 @@ struct DropZone: View {
     }
 
     private var typesHint: String {
-        if session.tool.minimumInputs > 1 { return "Add at least \(session.tool.minimumInputs). Drag to set the order." }
+        if session.tool.minimumInputs > 1 {
+            return "Add at least \(session.tool.minimumInputs). Drag to set the order."
+        }
         return session.tool.inputHint ?? "Or a whole folder. Originals are never changed."
     }
 }
@@ -183,15 +192,19 @@ struct FileList: View {
                 let renamed = session.plan?.names ?? []
                 List(selection: $selection) {
                     ForEach(Array(session.items.enumerated()), id: \.element.id) { index, item in
-                        FileRow(item: item, showIndex: session.tool.ordered ? index + 1 : nil,
-                                newName: renamed.indices.contains(index) ? renamed[index] : nil,
-                                compare: { session.comparing = item.id })
-                            .tag(item.id)
-                            .listRowSeparator(.hidden)
-                            .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
-                            .contextMenu { menu(for: item) }
+                        FileRow(
+                            item: item, showIndex: session.tool.ordered ? index + 1 : nil,
+                            newName: renamed.indices.contains(index) ? renamed[index] : nil,
+                            compare: { session.comparing = item.id }
+                        )
+                        .tag(item.id)
+                        .listRowSeparator(.hidden)
+                        .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                        .contextMenu { menu(for: item) }
                     }
-                    .onMove(perform: session.tool.ordered && session.phase != .running ? { session.move(from: $0, to: $1) } : nil)
+                    .onMove(
+                        perform: session.tool.ordered && session.phase != .running
+                            ? { session.move(from: $0, to: $1) } : nil)
                 }
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
@@ -201,7 +214,8 @@ struct FileList: View {
                     session.remove(selection)
                     selection = []
                 }
-                .contextMenu(forSelectionType: InputItem.ID.self) { _ in } primaryAction: { ids in
+                .contextMenu(forSelectionType: InputItem.ID.self) { _ in
+                } primaryAction: { ids in
                     open(ids)
                 }
             }
@@ -216,7 +230,9 @@ struct FileList: View {
         .dropDestination(for: URL.self) { urls, _ in
             Task { await session.add(urls) }
             return true
-        } isTargeted: { targeted = $0 }
+        } isTargeted: {
+            targeted = $0
+        }
     }
 
     private var countLabel: String {
@@ -341,9 +357,12 @@ private struct FileRow: View {
                 Text(Format.bytes(item.size))
                 Image(systemName: "arrow.right")
                     .font(.system(size: 8, weight: .bold))
-                Text(outputs.count > 1 ? "\(outputs.count) files, \(Format.bytes(item.outputSize))" : Format.bytes(item.outputSize))
+                Text(
+                    outputs.count > 1
+                        ? "\(outputs.count) files, \(Format.bytes(item.outputSize))" : Format.bytes(item.outputSize))
                 if outputs.count == 1, Format.sameKind(item.url, outputs[0]),
-                   let delta = Format.delta(from: item.size, to: item.outputSize) {
+                    let delta = Format.delta(from: item.size, to: item.outputSize)
+                {
                     Text(delta)
                         .fontWeight(.semibold)
                         .foregroundStyle(item.outputSize < item.size ? .green : .orange)
@@ -539,7 +558,9 @@ struct TextEntry: View {
         .dropDestination(for: URL.self) { urls, _ in
             Task { await session.add(urls) }
             return true
-        } isTargeted: { targeted = $0 }
+        } isTargeted: {
+            targeted = $0
+        }
         .onChange(of: model.focusToken, initial: true) { focused = true }
     }
 }
@@ -564,9 +585,10 @@ struct TextResult: View {
                 if session.phase != .running, ReportView.looksLikeReport(session.resultText) {
                     ReportView(text: session.resultText)
                 } else {
-                    CodeTextView(text: .constant(session.resultText), editable: false,
-                                 placeholder: session.phase == .running ? "Working…" : "",
-                                 font: .systemFont(ofSize: 14))
+                    CodeTextView(
+                        text: .constant(session.resultText), editable: false,
+                        placeholder: session.phase == .running ? "Working…" : "",
+                        font: .systemFont(ofSize: 14))
                 }
             }
         }

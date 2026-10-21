@@ -50,14 +50,14 @@ public final class RewriteSession: @unchecked Sendable {
         guard !latest.isEmpty else { throw ToolError.message("Rewrite the message first.") }
         // Quote the current text and ask for a visible change; a bare "less formal" otherwise yields near-copies.
         let prompt = """
-        Revise this version of the message:
-        <<<
-        \(latest)
-        >>>
-        The author's feedback: \(note)
-        Apply the feedback clearly, so the change is easy to notice. Keep everything the feedback doesn't ask to change.
-        \(Self.reminder(settings))
-        """
+            Revise this version of the message:
+            <<<
+            \(latest)
+            >>>
+            The author's feedback: \(note)
+            Apply the feedback clearly, so the change is easy to notice. Keep everything the feedback doesn't ask to change.
+            \(Self.reminder(settings))
+            """
         do {
             latest = try await stream(prompt, onPartial: onPartial)
         } catch let error as LanguageModelSession.GenerationError {
@@ -89,8 +89,9 @@ public final class RewriteSession: @unchecked Sendable {
     // MARK: Prompting
 
     private static func makeSession(_ s: Settings) -> LanguageModelSession {
-        LanguageModelSession(model: SystemLanguageModel(guardrails: .permissiveContentTransformations),
-                             instructions: instructions(s))
+        LanguageModelSession(
+            model: SystemLanguageModel(guardrails: .permissiveContentTransformations),
+            instructions: instructions(s))
     }
 
     static func instructions(_ s: Settings) -> String {
@@ -103,7 +104,9 @@ public final class RewriteSession: @unchecked Sendable {
             "Reply with only the message text.",
         ]
         if s.slack {
-            rules.append("It's a Slack message: keep it conversational, keep Slack formatting (*bold*, _italic_, `code`, bullet lists), and never add a subject line or headings.")
+            rules.append(
+                "It's a Slack message: keep it conversational, keep Slack formatting (*bold*, _italic_, `code`, bullet lists), and never add a subject line or headings."
+            )
         }
         if s.noEmDashes { rules.append("Never use em dashes; use commas, periods or parentheses instead.") }
         return rules.joined(separator: " ")
@@ -112,7 +115,9 @@ public final class RewriteSession: @unchecked Sendable {
     static func task(_ s: Settings) -> String {
         var parts: [String] = []
         if s.mode == "fix" {
-            parts.append("Fix grammar, spelling and punctuation only. Change as few words as possible and keep the author's wording and voice.")
+            parts.append(
+                "Fix grammar, spelling and punctuation only. Change as few words as possible and keep the author's wording and voice."
+            )
         } else {
             parts.append("Rewrite the draft so it reads clearly and naturally. Improve wording and flow.")
             switch s.tone {
@@ -126,7 +131,8 @@ public final class RewriteSession: @unchecked Sendable {
             }
             switch s.length {
             case "shorter": parts.append("Make it noticeably shorter: cut filler and repetition.")
-            case "longer": parts.append("Make it a bit longer: add the context a reader would need, without inventing facts.")
+            case "longer":
+                parts.append("Make it a bit longer: add the context a reader would need, without inventing facts.")
             default: parts.append("Keep about the same length.")
             }
         }
@@ -134,7 +140,8 @@ public final class RewriteSession: @unchecked Sendable {
     }
 
     static func reminder(_ s: Settings) -> String {
-        "Keep the rules from before" + (s.noEmDashes ? ", including no em dashes" : "") + ". Reply with only the revised message."
+        "Keep the rules from before" + (s.noEmDashes ? ", including no em dashes" : "")
+            + ". Reply with only the revised message."
     }
 
     /// Strips wrappers the model sometimes adds: fences, quotes, "Here's the rewritten message:".
@@ -144,17 +151,21 @@ public final class RewriteSession: @unchecked Sendable {
         // Opening line like "Sure! Here's a revised version:" and closing notes like "Let me know if…".
         var lines = text.components(separatedBy: "\n")
         if lines.count > 1, let first = lines.first?.trimmingCharacters(in: .whitespaces).lowercased(),
-           first.hasSuffix(":"), ["here", "version", "rewrit", "revis", "sure", "certainly", "of course"].contains(where: first.contains) {
+            first.hasSuffix(":"),
+            ["here", "version", "rewrit", "revis", "sure", "certainly", "of course"].contains(where: first.contains)
+        {
             lines.removeFirst()
         }
         while lines.count > 1, let last = lines.last?.trimmingCharacters(in: .whitespaces).lowercased(),
-              last.isEmpty || ["note:", "let me know", "i hope", "feel free", "(note"].contains(where: last.hasPrefix) {
+            last.isEmpty || ["note:", "let me know", "i hope", "feel free", "(note"].contains(where: last.hasPrefix)
+        {
             lines.removeLast()
         }
         text = lines.joined(separator: "\n")
         text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.count > 1, let open = text.first, let close = text.last,
-           (open == "\"" && close == "\"") || (open == "“" && close == "”") {
+            (open == "\"" && close == "\"") || (open == "“" && close == "”")
+        {
             text = String(text.dropFirst().dropLast())
         }
         if s.noEmDashes {

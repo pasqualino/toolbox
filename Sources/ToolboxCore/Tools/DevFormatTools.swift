@@ -8,7 +8,8 @@ enum DevFormatTools {
     ]
 
     private static let indentOption = OptionSpec(
-        "indent", "Indent", .choice([Choice("2", "2 spaces"), Choice("4", "4 spaces"), Choice("tab", "Tab")], default: "2"))
+        "indent", "Indent",
+        .choice([Choice("2", "2 spaces"), Choice("4", "4 spaces"), Choice("tab", "Tab")], default: "2"))
 
     private static func blank(_ input: TextInput) -> Bool {
         input.text.allSatisfy(\.isWhitespace)
@@ -40,7 +41,8 @@ enum DevFormatTools {
 
     static let sortJSON = Tool.text(
         id: "sort-json", name: "Sort JSON", summary: "Sort object keys at every level",
-        symbol: "arrow.up.arrow.down", keywords: ["json", "sort", "keys", "alphabetical", "order", "normalize", "diff"],
+        symbol: "arrow.up.arrow.down",
+        keywords: ["json", "sort", "keys", "alphabetical", "order", "normalize", "diff"],
         options: [indentOption],
         inputSyntax: .json, outputSyntax: .json
     ) { input, options in
@@ -69,7 +71,9 @@ enum DevFormatTools {
         return DevJSON.write(docs.count == 1 ? docs[0] : .array(docs), indent: options.string("indent"))
     }
 
-    private static let delimiterChoices = [Choice("comma", "Comma"), Choice("tab", "Tab"), Choice("semicolon", "Semicolon")]
+    private static let delimiterChoices = [
+        Choice("comma", "Comma"), Choice("tab", "Tab"), Choice("semicolon", "Semicolon"),
+    ]
 
     static let jsonToCSV = Tool.text(
         id: "json-to-csv", name: "JSON to CSV", summary: "Array of objects to CSV with a header row",
@@ -78,11 +82,12 @@ enum DevFormatTools {
         inputSyntax: .json
     ) { input, options in
         if blank(input) { return "" }
-        let d = switch options.string("delimiter") {
-        case "tab": "\t"
-        case "semicolon": ";"
-        default: ","
-        }
+        let d =
+            switch options.string("delimiter") {
+            case "tab": "\t"
+            case "semicolon": ";"
+            default: ","
+            }
         return try DevFormatData.csv(from: DevJSON.parseValue(input.text), delimiter: d)
     }
 
@@ -97,12 +102,15 @@ enum DevFormatTools {
         outputSyntax: .json
     ) { input, options in
         if blank(input) { return "" }
-        return DevJSON.write(try DevFormatData.json(fromCSV: input.text, delimiter: options.string("delimiter"),
-                                                    header: options.bool("header"), numbers: options.bool("numbers")))
+        return DevJSON.write(
+            try DevFormatData.json(
+                fromCSV: input.text, delimiter: options.string("delimiter"),
+                header: options.bool("header"), numbers: options.bool("numbers")))
     }
 
     static let queryToJSON = Tool.text(
-        id: "query-to-json", name: "Query String to JSON", summary: "URL or query string to JSON; repeated keys become arrays",
+        id: "query-to-json", name: "Query String to JSON",
+        summary: "URL or query string to JSON; repeated keys become arrays",
         symbol: "link", keywords: ["query", "querystring", "url", "params", "search", "json", "decode", "parse"],
         outputSyntax: .json
     ) { input, _ in
@@ -123,8 +131,11 @@ enum DevFormatTools {
 
     static let formatXML = Tool.text(
         id: "format-xml", name: "Format XML", summary: "Pretty-print XML",
-        symbol: "chevron.left.forwardslash.chevron.right", keywords: ["xml", "pretty", "beautify", "indent", "svg", "plist", "soap"],
-        options: [OptionSpec("indent", "Indent", .choice([Choice("2", "2 spaces"), Choice("4", "4 spaces")], default: "2"))],
+        symbol: "chevron.left.forwardslash.chevron.right",
+        keywords: ["xml", "pretty", "beautify", "indent", "svg", "plist", "soap"],
+        options: [
+            OptionSpec("indent", "Indent", .choice([Choice("2", "2 spaces"), Choice("4", "4 spaces")], default: "2"))
+        ],
         inputSyntax: .xml, outputSyntax: .xml
     ) { input, options in
         if blank(input) { return "" }
@@ -183,7 +194,8 @@ enum DevFormatTools {
     }
 
     static let graphQLVariables = Tool.text(
-        id: "graphql-variables", name: "Extract GraphQL Variables", summary: "JSON skeleton of an operation's variables",
+        id: "graphql-variables", name: "Extract GraphQL Variables",
+        summary: "JSON skeleton of an operation's variables",
         symbol: "point.3.connected.trianglepath.dotted",
         keywords: ["graphql", "gql", "hygraph", "variables", "vars", "skeleton", "json", "playground"],
         traits: .report,
@@ -201,13 +213,15 @@ enum DevFormatTools {
         options: [
             OptionSpec("root", "Root type", .text(default: "Root", placeholder: "Root")),
             OptionSpec("omitempty", "omitempty", .toggle(default: false)),
-            OptionSpec("time", "time.Time for dates", .toggle(default: false), help: "RFC 3339 strings become time.Time."),
+            OptionSpec(
+                "time", "time.Time for dates", .toggle(default: false), help: "RFC 3339 strings become time.Time."),
         ],
         inputSyntax: .json, outputSyntax: .go
     ) { input, options in
         if blank(input) { return "" }
-        return DevCodegen.go(try DevJSON.parseValue(input.text), root: options.string("root"),
-                             omitempty: options.bool("omitempty"), times: options.bool("time"))
+        return DevCodegen.go(
+            try DevJSON.parseValue(input.text), root: options.string("root"),
+            omitempty: options.bool("omitempty"), times: options.bool("time"))
     }
 
     static let jsonToTypeScript = Tool.text(
@@ -216,21 +230,27 @@ enum DevFormatTools {
         keywords: ["json", "typescript", "ts", "interface", "type", "codegen", "generate", "node"],
         options: [
             OptionSpec("root", "Root type", .text(default: "Root", placeholder: "Root")),
-            OptionSpec("style", "Declare as", .choice([Choice("interface", "interface"), Choice("type", "type")], default: "interface")),
+            OptionSpec(
+                "style", "Declare as",
+                .choice([Choice("interface", "interface"), Choice("type", "type")], default: "interface")),
         ],
         inputSyntax: .json, outputSyntax: .typescript
     ) { input, options in
         if blank(input) { return "" }
-        return DevCodegen.typescript(try DevJSON.parseValue(input.text), root: options.string("root"),
-                                     useType: options.string("style") == "type")
+        return DevCodegen.typescript(
+            try DevJSON.parseValue(input.text), root: options.string("root"),
+            useType: options.string("style") == "type")
     }
 
     // MARK: Logs and scripts
 
     static let unwrapLogJSON = Tool.text(
-        id: "unwrap-log-json", name: "Unwrap Log JSON", summary: "Find JSON in log lines, unescape nested strings, pretty-print",
+        id: "unwrap-log-json", name: "Unwrap Log JSON",
+        summary: "Find JSON in log lines, unescape nested strings, pretty-print",
         symbol: "text.magnifyingglass",
-        keywords: ["log", "logs", "json", "cloudwatch", "newrelic", "lambda", "unescape", "nested", "stringified", "pretty"],
+        keywords: [
+            "log", "logs", "json", "cloudwatch", "newrelic", "lambda", "unescape", "nested", "stringified", "pretty",
+        ],
         options: [indentOption],
         outputSyntax: .json
     ) { input, options in

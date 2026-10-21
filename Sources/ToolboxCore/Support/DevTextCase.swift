@@ -20,34 +20,64 @@ enum DevTextCase: String, CaseIterable {
             // ASCII fast path; Unicode properties are slow on large input.
             if s.isASCII {
                 let v = s.value
-                if v >= 65 && v <= 90 { kind = 2 }
-                else if v >= 97 && v <= 122 { kind = 1 }
-                else if v >= 48 && v <= 57 { kind = 3 }
-                else if v == 39, prev != 0, i + 1 < scalars.count, scalars[i + 1].properties.isAlphabetic { continue }
-                else { kind = 0 }
-                if kind == 0 { flush(); prev = 0; continue }
+                if v >= 65 && v <= 90 {
+                    kind = 2
+                } else if v >= 97 && v <= 122 {
+                    kind = 1
+                } else if v >= 48 && v <= 57 {
+                    kind = 3
+                } else if v == 39, prev != 0, i + 1 < scalars.count, scalars[i + 1].properties.isAlphabetic {
+                    continue
+                } else {
+                    kind = 0
+                }
+                if kind == 0 {
+                    flush()
+                    prev = 0
+                    continue
+                }
                 if kind == 2 {
-                    if prev == 1 || prev == 3 { flush() }
-                    else if prev == 2, i + 1 < scalars.count, scalars[i + 1].properties.isLowercase { flush() }
+                    if prev == 1 || prev == 3 {
+                        flush()
+                    } else if prev == 2, i + 1 < scalars.count, scalars[i + 1].properties.isLowercase {
+                        flush()
+                    }
                 }
                 current.append(s)
                 prev = kind
                 continue
             }
             let p = s.properties
-            if p.isUppercase { kind = 2 }
-            else if p.isLowercase || (p.isAlphabetic && !p.isUppercase) { kind = 1 }
-            else if p.numericType != nil { kind = 3 }
-            else if p.generalCategory == .nonspacingMark, !current.isEmpty { current.append(s); continue }
-            else if (s == "'" || s == "\u{2019}"), prev != 0, i + 1 < scalars.count, scalars[i + 1].properties.isAlphabetic {
+            if p.isUppercase {
+                kind = 2
+            } else if p.isLowercase || (p.isAlphabetic && !p.isUppercase) {
+                kind = 1
+            } else if p.numericType != nil {
+                kind = 3
+            } else if p.generalCategory == .nonspacingMark, !current.isEmpty {
+                current.append(s)
                 continue
-            } else { kind = 0 }
+            } else if s == "'" || s == "\u{2019}", prev != 0, i + 1 < scalars.count,
+                scalars[i + 1].properties.isAlphabetic
+            {
+                continue
+            } else {
+                kind = 0
+            }
 
-            if kind == 0 { flush(); prev = 0; continue }
+            if kind == 0 {
+                flush()
+                prev = 0
+                continue
+            }
             if kind == 2 {
-                if prev == 1 || prev == 3 { flush() }
+                if prev == 1 || prev == 3 {
+                    flush()
+                }
                 // Last capital of an acronym starts the next word: HTTPServer -> HTTP, Server.
-                else if prev == 2, i + 1 < scalars.count, scalars[i + 1].properties.isLowercase { flush() }
+                else if prev == 2, i + 1 < scalars.count, scalars[i + 1].properties.isLowercase {
+                    flush()
+                }
             }
             current.append(s)
             prev = kind

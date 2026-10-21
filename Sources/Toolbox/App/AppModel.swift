@@ -25,13 +25,16 @@ final class AppModel {
     // MARK: Sidebar sections
 
     /// Sidebar sections that are open ("favorites", "recent", or a category's rawValue). Remembered across launches.
-    var expandedSections: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "sidebar.expanded") ?? ["favorites", "recent"]) {
+    var expandedSections: Set<String> = Set(
+        UserDefaults.standard.stringArray(forKey: "sidebar.expanded") ?? ["favorites", "recent"])
+    {
         didSet { UserDefaults.standard.set(Array(expandedSections), forKey: "sidebar.expanded") }
     }
 
     func expansion(_ key: String) -> Binding<Bool> {
-        Binding(get: { self.expandedSections.contains(key) },
-                set: { open in if open { self.expandedSections.insert(key) } else { self.expandedSections.remove(key) } })
+        Binding(
+            get: { self.expandedSections.contains(key) },
+            set: { open in if open { self.expandedSections.insert(key) } else { self.expandedSections.remove(key) } })
     }
     let rewrite = RewriteModel()
     /// Text in the window's search field. Non-empty replaces the middle column with results.
@@ -50,7 +53,9 @@ final class AppModel {
 
     private init() {
         // Requirements can change while Toolbox is in the background (Apple Intelligence turned on, FFmpeg installed).
-        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { _ in
             Task { @MainActor in AppModel.shared.sessions.values.forEach { $0.refreshRequirements() } }
         }
     }
@@ -125,7 +130,8 @@ final class AppModel {
         let next = self.session(for: tool)
         let files = session.items.map(\.url)
         if !files.isEmpty, next.acceptsFiles, next.phase != .running, files.allSatisfy({ tool.accepts($0) }),
-           next.items.map(\.url) != files {
+            next.items.map(\.url) != files
+        {
             next.clear()
             Task { await next.add(files) }
         }
@@ -144,7 +150,11 @@ final class AppModel {
     func isFavorite(_ entry: ToolEntry) -> Bool { favoriteIDs.contains(entry.id) }
 
     func toggleFavorite(_ entry: ToolEntry) {
-        if let i = favoriteIDs.firstIndex(of: entry.id) { favoriteIDs.remove(at: i) } else { favoriteIDs.append(entry.id) }
+        if let i = favoriteIDs.firstIndex(of: entry.id) {
+            favoriteIDs.remove(at: i)
+        } else {
+            favoriteIDs.append(entry.id)
+        }
     }
 
     var favoriteSections: [ToolSection] {
@@ -178,7 +188,8 @@ final class AppModel {
     /// group ("case") or no member in particular.
     func searchedMember(of entry: ToolEntry) -> ToolGroup.Member? {
         guard case .group(let group) = entry else { return nil }
-        let hits = ToolSearch.rank(group.members.compactMap { ToolRegistry.tool(id: $0.toolID) }, query: searchQuery, files: [])
+        let hits = ToolSearch.rank(
+            group.members.compactMap { ToolRegistry.tool(id: $0.toolID) }, query: searchQuery, files: [])
         guard let best = hits.first, hits.count < group.members.count else { return nil }
         return group.members.first { $0.toolID == best.id }
     }
@@ -188,7 +199,9 @@ final class AppModel {
         _ = historyVersion
         var seen = Set<String>()
         let entries: [ToolEntry] = History.ids.compactMap { id in
-            guard let entry = ToolRegistry.tool(id: id).map(ToolEntry.init), seen.insert(entry.id).inserted else { return nil }
+            guard let entry = ToolRegistry.tool(id: id).map(ToolEntry.init), seen.insert(entry.id).inserted else {
+                return nil
+            }
             return entry
         }
         return entries.isEmpty ? [] : [ToolSection(title: nil, entries: entries)]
@@ -230,7 +243,8 @@ final class AppModel {
 
     func revealResults() {
         guard let session = currentSession, !session.outputsAreTemporary,
-              let result = session.result, !result.outputs.isEmpty else { return }
+            let result = session.result, !result.outputs.isEmpty
+        else { return }
         NSWorkspace.shared.activateFileViewerSelecting(result.outputs)
     }
 }

@@ -13,23 +13,29 @@ final class ServiceProvider: NSObject {
         rewriteSelection(pboard, mode: "rewrite", error: error)
     }
 
-    @objc func fixGrammar(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+    @objc func fixGrammar(
+        _ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>
+    ) {
         rewriteSelection(pboard, mode: "fix", error: error)
     }
 
-    @objc func formatJSON(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+    @objc func formatJSON(
+        _ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>
+    ) {
         transform(pboard, toolID: "format-json", error: error)
     }
 
     // MARK: Hand over to Toolbox
 
-    @objc func decodeJWT(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+    @objc func decodeJWT(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>)
+    {
         guard let text = pboard.string(forType: .string), let tool = ToolRegistry.tool(id: "decode-jwt") else { return }
         DispatchQueue.main.async { AppModel.shared.open(tool, text: text) }
     }
 
     /// Selected text → palette, filtered to text tools, with the text ready to go.
-    @objc func openText(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+    @objc func openText(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>)
+    {
         guard let text = pboard.string(forType: .string), !text.isEmpty else { return }
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
@@ -38,8 +44,10 @@ final class ServiceProvider: NSObject {
     }
 
     /// Selected Finder files → palette, filtered to the tools that take them.
-    @objc func openFiles(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
-        let urls = pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+    @objc func openFiles(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>)
+    {
+        let urls =
+            pboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         guard !urls.isEmpty else { return }
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
@@ -50,7 +58,8 @@ final class ServiceProvider: NSObject {
     // MARK: Helpers
 
     /// An empty result leaves the selection as it was.
-    private func transform(_ pboard: NSPasteboard, toolID: String, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+    private func transform(_ pboard: NSPasteboard, toolID: String, error: AutoreleasingUnsafeMutablePointer<NSString?>)
+    {
         guard let text = pboard.string(forType: .string), let tool = ToolRegistry.tool(id: toolID) else { return }
         let outcome = MainActor.assumeIsolated {
             TextExport.transform(tool, text, options: AppModel.shared.session(for: tool).options, into: pboard)
@@ -60,9 +69,12 @@ final class ServiceProvider: NSObject {
 
     /// The calling app waits for the service to return, so the model runs on a background task while this
     /// thread waits with a timeout. Past the timeout, the result lands on the clipboard with a toast.
-    private func rewriteSelection(_ pboard: NSPasteboard, mode: String, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+    private func rewriteSelection(
+        _ pboard: NSPasteboard, mode: String, error: AutoreleasingUnsafeMutablePointer<NSString?>
+    ) {
         guard let text = pboard.string(forType: .string), !text.isEmpty,
-              let tool = ToolRegistry.tool(id: "rewrite") else { return }
+            let tool = ToolRegistry.tool(id: "rewrite")
+        else { return }
         var options = MainActor.assumeIsolated { AppModel.shared.session(for: tool).options }
         options["mode"] = mode
         let settings = RewriteSession.Settings(options)
@@ -70,8 +82,9 @@ final class ServiceProvider: NSObject {
         let box = ResultBox()
         let done = DispatchSemaphore(value: 0)
         MainActor.assumeIsolated {
-            Toast.show(mode == "fix" ? "Fixing grammar…" : "Rewriting…", detail: RewriteModel.describe(options),
-                       symbol: "sparkles", tint: tool.tint, duration: Self.inPlaceTimeout)
+            Toast.show(
+                mode == "fix" ? "Fixing grammar…" : "Rewriting…", detail: RewriteModel.describe(options),
+                symbol: "sparkles", tint: tool.tint, duration: Self.inPlaceTimeout)
         }
         let work = Task.detached {
             defer { done.signal() }

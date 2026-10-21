@@ -20,16 +20,21 @@ enum DevID {
         private let lock = NSLock()
         private var value = Int.random(in: 0..<1_679_616)
         func next() -> Int {
-            lock.lock(); defer { lock.unlock() }
-            value = (value + 1) % 1_679_616 // 36^4
+            lock.lock()
+            defer { lock.unlock() }
+            value = (value + 1) % 1_679_616  // 36^4
             return value
         }
     }
     static let counter = Counter()
 
     static func toBase36(_ n: UInt64, pad: Int) -> String {
-        var n = n, out: [Character] = []
-        repeat { out.append(base36[Int(n % 36)]); n /= 36 } while n > 0
+        var n = n
+        var out: [Character] = []
+        repeat {
+            out.append(base36[Int(n % 36)])
+            n /= 36
+        } while n > 0
         let s = String(out.reversed())
         return s.count >= pad ? String(s.suffix(pad)) : String(repeating: "0", count: pad - s.count) + s
     }
@@ -149,43 +154,63 @@ enum DevID {
         if id.count == 26, let r = ulidReport(id.uppercased(), now: now) { return r }
         if id.count == 25, id.first == "c", id.allSatisfy({ base36.contains($0) }) { return cuidReport(id, now: now) }
         if id.count == 27, let r = ksuid(id, now: now) { return r }
-        if (20...32).contains(id.count), id.first.map({ $0.isLowercase && $0.isLetter }) == true, id.allSatisfy({ base36.contains($0) }) {
-            return DevTextReport.table([("Type", "cuid2 (probably)"), ("Length", "\(id.count)"),
-                                        ("Note", "cuid2 is a hash; it has no timestamp to decode.")])
+        if (20...32).contains(id.count), id.first.map({ $0.isLowercase && $0.isLetter }) == true,
+            id.allSatisfy({ base36.contains($0) })
+        {
+            return DevTextReport.table([
+                ("Type", "cuid2 (probably)"), ("Length", "\(id.count)"),
+                ("Note", "cuid2 is a hash; it has no timestamp to decode."),
+            ])
         }
         if id.count == 21, id.allSatisfy({ nanoAlphabet.contains($0) }) {
-            return DevTextReport.table([("Type", "nanoid (probably)"), ("Note", "nanoid is random; nothing to decode.")])
+            return DevTextReport.table([
+                ("Type", "nanoid (probably)"), ("Note", "nanoid is random; nothing to decode."),
+            ])
         }
         throw ToolError.message("Not a recognized ID. Try a UUID, ULID, cuid, ObjectId or KSUID.")
     }
 
     static func time(_ ms: Double, now: Date) -> [(String, String)] {
         let d = Date(timeIntervalSince1970: ms / 1000)
-        return [("Timestamp", DevTime.iso(d)), ("Local", DevTime.local(d)), ("Relative", DevTime.relative(d, now: now))]
+        return [
+            ("Timestamp", DevTime.iso(d)), ("Local", DevTime.local(d)), ("Relative", DevTime.relative(d, now: now)),
+        ]
     }
 
     static func uuid(_ id: String) -> ((Date) -> String)? {
         let hex = id.replacingOccurrences(of: "-", with: "").lowercased()
         guard hex.count == 32, hex.allSatisfy(\.isHexDigit),
-              id.count == 32 || (id.count == 36 && [8, 13, 18, 23].allSatisfy { Array(id)[$0] == "-" }) else { return nil }
+            id.count == 32 || (id.count == 36 && [8, 13, 18, 23].allSatisfy { Array(id)[$0] == "-" })
+        else { return nil }
         let b = stride(from: 0, to: 32, by: 2).map { i -> UInt8 in
             let start = hex.index(hex.startIndex, offsetBy: i)
             return UInt8(hex[start..<hex.index(start, offsetBy: 2)], radix: 16)!
         }
         return { now in
-            if b.allSatisfy({ $0 == 0 }) { return DevTextReport.table([("Type", "Nil UUID"), ("Canonical", hexUUID(b))]) }
-            if b.allSatisfy({ $0 == 0xFF }) { return DevTextReport.table([("Type", "Max UUID"), ("Canonical", hexUUID(b))]) }
+            if b.allSatisfy({ $0 == 0 }) {
+                return DevTextReport.table([("Type", "Nil UUID"), ("Canonical", hexUUID(b))])
+            }
+            if b.allSatisfy({ $0 == 0xFF }) {
+                return DevTextReport.table([("Type", "Max UUID"), ("Canonical", hexUUID(b))])
+            }
             let version = Int(b[6] >> 4)
-            let variant = b[8] >> 6 == 2 ? "RFC 9562" : b[8] >> 5 == 6 ? "Microsoft (legacy)" : b[8] >> 7 == 0 ? "NCS (legacy)" : "reserved"
-            let names = [1: "time-based", 2: "DCE security", 3: "MD5 name-based", 4: "random", 5: "SHA-1 name-based",
-                         6: "reordered time", 7: "Unix time + random", 8: "custom"]
-            var rows: [(String, String)] = [("Type", "UUID v\(version) (\(names[version] ?? "unknown version"))"),
-                                            ("Variant", variant), ("Canonical", hexUUID(b))]
+            let variant =
+                b[8] >> 6 == 2
+                ? "RFC 9562" : b[8] >> 5 == 6 ? "Microsoft (legacy)" : b[8] >> 7 == 0 ? "NCS (legacy)" : "reserved"
+            let names = [
+                1: "time-based", 2: "DCE security", 3: "MD5 name-based", 4: "random", 5: "SHA-1 name-based",
+                6: "reordered time", 7: "Unix time + random", 8: "custom",
+            ]
+            var rows: [(String, String)] = [
+                ("Type", "UUID v\(version) (\(names[version] ?? "unknown version"))"),
+                ("Variant", variant), ("Canonical", hexUUID(b)),
+            ]
             func be(_ r: Range<Int>) -> UInt64 { r.reduce(UInt64(0)) { $0 << 8 | UInt64(b[$1]) } }
             switch version {
             case 1, 6:
                 // 100 ns ticks since 1582-10-15.
-                let ticks: UInt64 = version == 1
+                let ticks: UInt64 =
+                    version == 1
                     ? (be(6..<8) & 0x0FFF) << 48 | be(4..<6) << 32 | be(0..<4)
                     : be(0..<6) << 12 | (be(6..<8) & 0x0FFF)
                 rows += time(Double(ticks) / 10_000 - 12_219_292_800_000, now: now)
@@ -209,7 +234,9 @@ enum DevID {
     }
 
     static func ulidReport(_ id: String, now: Date) -> String? {
-        guard let first = id.first, "01234567".contains(first), id.allSatisfy({ crockford.contains($0) }) else { return nil }
+        guard let first = id.first, "01234567".contains(first), id.allSatisfy({ crockford.contains($0) }) else {
+            return nil
+        }
         var ms: UInt64 = 0
         for c in id.prefix(10) { ms = ms << 5 | UInt64(crockford.firstIndex(of: c)!) }
         var rows: [(String, String)] = [("Type", "ULID")]
@@ -223,8 +250,10 @@ enum DevID {
         let ms = UInt64(String(c[1..<9]), radix: 36) ?? 0
         var rows: [(String, String)] = [("Type", "cuid (v1)")]
         rows += time(Double(ms), now: now)
-        rows += [("Counter", "\(String(c[9..<13])) (\(UInt64(String(c[9..<13]), radix: 36) ?? 0))"),
-                 ("Fingerprint", String(c[13..<17])), ("Random", String(c[17..<25]))]
+        rows += [
+            ("Counter", "\(String(c[9..<13])) (\(UInt64(String(c[9..<13]), radix: 36) ?? 0))"),
+            ("Fingerprint", String(c[13..<17])), ("Random", String(c[17..<25])),
+        ]
         return DevTextReport.table(rows)
     }
 

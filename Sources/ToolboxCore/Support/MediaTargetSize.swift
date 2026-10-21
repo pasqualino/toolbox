@@ -3,9 +3,10 @@ import Foundation
 extension ToolContext {
     /// A context whose progress fills `range` of this one. Only for progress: claim output names from `self`.
     func progressSlice(_ range: ClosedRange<Double>) -> ToolContext {
-        ToolContext(options: options, outputDirectory: outputDirectory, names: NameBook(),
-                    onProgress: { self.progress(range.lowerBound + $0 * (range.upperBound - range.lowerBound)) },
-                    onText: { self.showText($0) })
+        ToolContext(
+            options: options, outputDirectory: outputDirectory, names: NameBook(),
+            onProgress: { self.progress(range.lowerBound + $0 * (range.upperBound - range.lowerBound)) },
+            onText: { self.showText($0) })
     }
 }
 
@@ -27,7 +28,9 @@ enum MediaTargetSize {
         guard info.duration > 0 else { throw ToolError.message("Couldn't tell how long this video is.") }
         let totalKbps = Double(bytes) * 8 / 1000 * 0.97 / info.duration
         guard totalKbps >= minimumTotalKbps else {
-            throw ToolError.message("\(label(bytes)) is too small for \(clock(info.duration)) of video. Pick a bigger target or trim it first.")
+            throw ToolError.message(
+                "\(label(bytes)) is too small for \(clock(info.duration)) of video. Pick a bigger target or trim it first."
+            )
         }
         var audio = 0
         if info.hasAudio {
@@ -40,12 +43,13 @@ enum MediaTargetSize {
         video = max(video, 50)
 
         let short = min(info.width, info.height)
-        let wanted: Int? = switch video {
-        case ..<400: 360
-        case ..<1000: 480
-        case ..<2500: 720
-        default: nil
-        }
+        let wanted: Int? =
+            switch video {
+            case ..<400: 360
+            case ..<1000: 480
+            case ..<2500: 720
+            default: nil
+            }
         let side = wanted.flatMap { $0 < short ? $0 : nil }
         return Plan(videoKbps: Int(video), audioKbps: audio, shortSide: side)
     }
@@ -67,17 +71,24 @@ enum MediaTargetSize {
         let log = logDir.appendingPathComponent("pass").path
 
         func video(_ kbps: Int, pass: Int) -> [String] {
-            ["-c:v", "libx264", "-preset", "medium", "-b:v", "\(kbps)k",
-             "-maxrate", "\(kbps * 3 / 2)k", "-bufsize", "\(kbps * 2)k",
-             "-pix_fmt", "yuv420p", "-pass", String(pass), "-passlogfile", log]
+            [
+                "-c:v", "libx264", "-preset", "medium", "-b:v", "\(kbps)k",
+                "-maxrate", "\(kbps * 3 / 2)k", "-bufsize", "\(kbps * 2)k",
+                "-pix_fmt", "yuv420p", "-pass", String(pass), "-passlogfile", log,
+            ]
         }
 
-        try await FFmpeg.run(input + video(plan.videoKbps, pass: 1) + ["-an", "-sn", "-f", "null", "/dev/null"],
-                             duration: info.duration, context: ctx.progressSlice(0...0.45))
+        try await FFmpeg.run(
+            input + video(plan.videoKbps, pass: 1) + ["-an", "-sn", "-f", "null", "/dev/null"],
+            duration: info.duration, context: ctx.progressSlice(0...0.45))
         // Pass 1 stats don't depend on the bitrate, so a retry only redoes pass 2.
         func secondPass(_ kbps: Int, _ slice: ClosedRange<Double>) async throws {
             var args = input
-            if plan.audioKbps > 0 { args += ["-map", "0:a:0"] + Media.aacArgs(plan.audioKbps) } else { args += ["-an"] }
+            if plan.audioKbps > 0 {
+                args += ["-map", "0:a:0"] + Media.aacArgs(plan.audioKbps)
+            } else {
+                args += ["-an"]
+            }
             args += video(kbps, pass: 2) + ["-sn"] + Media.containerArgs("mp4") + [out.path]
             try await FFmpeg.run(args, duration: info.duration, context: ctx.progressSlice(slice))
         }
@@ -100,7 +111,8 @@ enum MediaTargetSize {
     /// "1:05", "1:02:03".
     static func clock(_ seconds: Double) -> String {
         let s = Int(seconds.rounded())
-        return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
+        return s >= 3600
+            ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
             : String(format: "%d:%02d", s / 60, s % 60)
     }
 }

@@ -15,8 +15,10 @@ public struct SpeedTestResult: Codable, Sendable, Equatable {
     /// The network the test ran on. Nil for results saved before networks were recorded.
     public var network: NetworkIdentity?
 
-    public init(downloadMbps: Double, uploadMbps: Double, responsivenessRPM: Double?, idleLatencyMs: Double?,
-                interface: String, interfaceType: String, date: Date, network: NetworkIdentity? = nil) {
+    public init(
+        downloadMbps: Double, uploadMbps: Double, responsivenessRPM: Double?, idleLatencyMs: Double?,
+        interface: String, interfaceType: String, date: Date, network: NetworkIdentity? = nil
+    ) {
         self.downloadMbps = downloadMbps
         self.uploadMbps = uploadMbps
         self.responsivenessRPM = responsivenessRPM
@@ -119,7 +121,8 @@ public enum SpeedTest {
         return endDateFormatters.lazy.compactMap { $0.date(from: string) }.first
     }
 
-    private static let endDateFormatters: [DateFormatter] = ["yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss"].map { format in
+    private static let endDateFormatters: [DateFormatter] = ["yyyy-MM-dd HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss"].map {
+        format in
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = format

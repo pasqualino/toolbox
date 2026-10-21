@@ -38,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ModifierKeys.install()
         }
         #if TOOLBOX_DEBUG_HOOKS
-        if MainActor.assumeIsolated({ Snapshot.runIfRequested() }) { return }
+            if MainActor.assumeIsolated({ Snapshot.runIfRequested() }) { return }
         #endif
         NSApp.servicesProvider = ServiceProvider()
         NSUpdateDynamicServices()

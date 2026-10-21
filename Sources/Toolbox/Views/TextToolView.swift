@@ -98,9 +98,10 @@ struct TextToolView: View {
                     .keyboardShortcut("v", modifiers: [.command, .shift])
                 }
                 Divider()
-                CodeTextView(text: $session.text, placeholder: "Type, paste, or drop a file",
-                             language: tool.inputSyntax,
-                             focusToken: model.focusToken, onDropFiles: load)
+                CodeTextView(
+                    text: $session.text, placeholder: "Type, paste, or drop a file",
+                    language: tool.inputSyntax,
+                    focusToken: model.focusToken, onDropFiles: load)
                 if twoInputs {
                     Divider()
                     PaneHeader(title: "Changed", symbol: "text.cursor") {
@@ -129,11 +130,13 @@ struct TextToolView: View {
                 }
                 Divider()
                 ZStack(alignment: .bottom) {
-                    CodeTextView(text: .constant(output), editable: false, wraps: false,
-                                 placeholder: isGenerator ? "" : "Output appears as you type",
-                                 language: tool.outputSyntax)
-                        // Stale while the input has an error.
-                        .opacity(error == nil ? 1 : 0.35)
+                    CodeTextView(
+                        text: .constant(output), editable: false, wraps: false,
+                        placeholder: isGenerator ? "" : "Output appears as you type",
+                        language: tool.outputSyntax
+                    )
+                    // Stale while the input has an error.
+                    .opacity(error == nil ? 1 : 0.35)
                     if let error {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(.callout)
@@ -160,11 +163,13 @@ struct TextToolView: View {
                     .contentTransition(.numericText())
                     .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: stats)
                 Spacer()
-                CopyButton(text: error == nil ? output : "", title: "Copy Output", prominent: tool.tint,
-                           showsReturn: true, minWidth: 130) { History.record(tool.id) }
-                    .controlSize(.large)
-                    .disabled(output.isEmpty || error != nil)
-                    .keyboardShortcut(.return, modifiers: .command)
+                CopyButton(
+                    text: error == nil ? output : "", title: "Copy Output", prominent: tool.tint,
+                    showsReturn: true, minWidth: 130
+                ) { History.record(tool.id) }
+                .controlSize(.large)
+                .disabled(output.isEmpty || error != nil)
+                .keyboardShortcut(.return, modifiers: .command)
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
@@ -199,8 +204,12 @@ struct TextToolView: View {
             if Task.isCancelled { return }
         }
         computing = true
-        let (result, inputStats) = await Task.detached(priority: .userInitiated) { () -> (Result<String, Error>, String?) in
-            (Result { try tool.apply(input, options: options) }, isGenerator ? nil : Self.stats(input.text, generator: false))
+        let (result, inputStats) = await Task.detached(priority: .userInitiated) {
+            () -> (Result<String, Error>, String?) in
+            (
+                Result { try tool.apply(input, options: options) },
+                isGenerator ? nil : Self.stats(input.text, generator: false)
+            )
         }.value
         guard !Task.isCancelled else { return }
         computing = false

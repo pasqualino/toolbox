@@ -59,8 +59,14 @@ enum DevTextLines {
     // MARK: Count
 
     static func count(_ text: String) -> String {
-        var chars = 0, nonSpace = 0, words = 0, lines = 1, paragraphs = 0
-        var inWord = false, lineHasText = false, inParagraph = false
+        var chars = 0
+        var nonSpace = 0
+        var words = 0
+        var lines = 1
+        var paragraphs = 0
+        var inWord = false
+        var lineHasText = false
+        var inParagraph = false
         for c in text {
             chars += 1
             if c.isNewline {
@@ -75,10 +81,16 @@ enum DevTextLines {
                 continue
             }
             nonSpace += 1
-            if !inWord { words += 1; inWord = true }
+            if !inWord {
+                words += 1
+                inWord = true
+            }
             if !lineHasText {
                 lineHasText = true
-                if !inParagraph { paragraphs += 1; inParagraph = true }
+                if !inParagraph {
+                    paragraphs += 1
+                    inParagraph = true
+                }
             }
         }
         if text.hasSuffix("\n") || text.hasSuffix("\r\n") { lines -= 1 }
@@ -101,7 +113,8 @@ enum DevTextLines {
     /// or at the start, so ABC-5472 and 2026-10-21 don't produce negatives.
     static func numbers(in text: String) -> [Decimal] {
         var result: [Decimal] = []
-        let bytes = Array((text.contains("\u{2212}") ? text.replacingOccurrences(of: "\u{2212}", with: "-") : text).utf8)
+        let bytes = Array(
+            (text.contains("\u{2212}") ? text.replacingOccurrences(of: "\u{2212}", with: "-") : text).utf8)
         let n = bytes.count
         func isDigit(_ b: UInt8) -> Bool { b >= 48 && b <= 57 }
         var i = 0
@@ -111,7 +124,9 @@ enum DevTextLines {
             var negative = false
             if b == 45 /* - */, i + 1 < n, isDigit(bytes[i + 1]) {
                 let before: UInt8 = i > 0 ? bytes[i - 1] : 32
-                if before == 32 || before == 9 || before == 10 || before == 13 || before == 40 || before == 61 || before == 58 {
+                if before == 32 || before == 9 || before == 10 || before == 13 || before == 40 || before == 61
+                    || before == 58
+                {
                     negative = true
                     start = i + 1
                 } else {
@@ -129,18 +144,25 @@ enum DevTextLines {
             }
             var j = start
             var digits = ""
-            while j < n, isDigit(bytes[j]) { digits.append(Character(UnicodeScalar(bytes[j]))); j += 1 }
+            while j < n, isDigit(bytes[j]) {
+                digits.append(Character(UnicodeScalar(bytes[j])))
+                j += 1
+            }
             // Thousands groups: a comma followed by exactly three digits.
             while j + 3 < n, bytes[j] == 44,
-                  isDigit(bytes[j + 1]), isDigit(bytes[j + 2]), isDigit(bytes[j + 3]),
-                  j + 4 == n || !isDigit(bytes[j + 4]) {
+                isDigit(bytes[j + 1]), isDigit(bytes[j + 2]), isDigit(bytes[j + 3]),
+                j + 4 == n || !isDigit(bytes[j + 4])
+            {
                 for k in 1...3 { digits.append(Character(UnicodeScalar(bytes[j + k]))) }
                 j += 4
             }
             if j + 1 < n, bytes[j] == 46, isDigit(bytes[j + 1]) {
                 digits.append(".")
                 j += 1
-                while j < n, isDigit(bytes[j]) { digits.append(Character(UnicodeScalar(bytes[j]))); j += 1 }
+                while j < n, isDigit(bytes[j]) {
+                    digits.append(Character(UnicodeScalar(bytes[j])))
+                    j += 1
+                }
             }
             if let d = Decimal(string: digits, locale: Locale(identifier: "en_US_POSIX")) {
                 result.append(negative ? -d : d)
@@ -178,24 +200,28 @@ enum DevTextLines {
     // MARK: Lorem ipsum
 
     static let loremWords = """
-    lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore \
-    magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat \
-    duis aute irure in reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat \
-    cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum curabitur pretium tincidunt \
-    lacus nulla gravida orci a odio nullam varius turpis morbi luctus mauris vitae ornare mi integer pellentesque \
-    vestibulum ante primis faucibus ultrices posuere cubilia aenean massa cras dapibus vivamus elementum semper nisi
-    """.split(separator: " ").map(String.init)
+        lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore \
+        magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat \
+        duis aute irure in reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat \
+        cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum curabitur pretium tincidunt \
+        lacus nulla gravida orci a odio nullam varius turpis morbi luctus mauris vitae ornare mi integer pellentesque \
+        vestibulum ante primis faucibus ultrices posuere cubilia aenean massa cras dapibus vivamus elementum semper nisi
+        """.split(separator: " ").map(String.init)
 
     static func lorem(unit: String, count: Int) -> String {
         let count = max(1, count)
         var rng = SystemRandomNumberGenerator()
         func randomWords(_ n: Int) -> [String] { (0..<n).map { _ in loremWords.randomElement(using: &rng)! } }
         func sentence(first: Bool) -> String {
-            var w = first ? ["lorem", "ipsum", "dolor", "sit", "amet"] + randomWords(Int.random(in: 3...9, using: &rng))
-                          : randomWords(Int.random(in: 6...14, using: &rng))
+            var w =
+                first
+                ? ["lorem", "ipsum", "dolor", "sit", "amet"] + randomWords(Int.random(in: 3...9, using: &rng))
+                : randomWords(Int.random(in: 6...14, using: &rng))
             // An optional comma, never inside the opening "lorem ipsum dolor sit amet".
             let low = first ? 5 : 2
-            if w.count - 3 >= low, Bool.random(using: &rng) { w[Int.random(in: low...(w.count - 3), using: &rng)] += "," }
+            if w.count - 3 >= low, Bool.random(using: &rng) {
+                w[Int.random(in: low...(w.count - 3), using: &rng)] += ","
+            }
             return DevTextCase.capitalize(w[0]) + " " + w.dropFirst().joined(separator: " ") + "."
         }
         switch unit {
@@ -206,7 +232,8 @@ enum DevTextLines {
             return (0..<count).map { sentence(first: $0 == 0) }.joined(separator: " ")
         default:
             return (0..<count).map { p in
-                (0..<Int.random(in: 4...7, using: &rng)).map { sentence(first: p == 0 && $0 == 0) }.joined(separator: " ")
+                (0..<Int.random(in: 4...7, using: &rng)).map { sentence(first: p == 0 && $0 == 0) }.joined(
+                    separator: " ")
             }.joined(separator: "\n\n")
         }
     }
@@ -217,7 +244,8 @@ enum DevTextLines {
         "\u{2018}": "'", "\u{2019}": "'", "\u{201A}": "'", "\u{201B}": "'", "\u{2032}": "'",
         "\u{201C}": "\"", "\u{201D}": "\"", "\u{201E}": "\"", "\u{201F}": "\"", "\u{2033}": "\"",
         "\u{00AB}": "\"", "\u{00BB}": "\"",
-        "\u{2010}": "-", "\u{2011}": "-", "\u{2012}": "-", "\u{2013}": "-", "\u{2014}": "--", "\u{2015}": "--", "\u{2212}": "-",
+        "\u{2010}": "-", "\u{2011}": "-", "\u{2012}": "-", "\u{2013}": "-", "\u{2014}": "--", "\u{2015}": "--",
+        "\u{2212}": "-",
         "\u{2026}": "...", "\u{00A0}": " ", "\u{202F}": " ", "\u{2009}": " ",
     ]
 

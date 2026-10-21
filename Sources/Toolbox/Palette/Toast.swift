@@ -8,32 +8,39 @@ enum Toast {
     private static var panel: NSPanel?
     private static var hideTask: Task<Void, Never>?
 
-    static func show(_ title: String, detail: String? = nil, symbol: String = "checkmark.circle.fill",
-                     tint: Color = .green, duration: Double = 1.6) {
+    static func show(
+        _ title: String, detail: String? = nil, symbol: String = "checkmark.circle.fill",
+        tint: Color = .green, duration: Double = 1.6
+    ) {
         let view = ToastView(title: title, detail: detail, symbol: symbol, tint: tint)
         let host = NSHostingView(rootView: view)
         host.layoutSubtreeIfNeeded()
         let size = host.fittingSize
 
-        let panel = self.panel ?? {
-            let p = NSPanel(contentRect: .zero, styleMask: [.nonactivatingPanel, .borderless],
-                            backing: .buffered, defer: false)
-            p.level = .statusBar
-            p.backgroundColor = .clear
-            p.isOpaque = false
-            p.hasShadow = false
-            p.ignoresMouseEvents = true
-            p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-            return p
-        }()
+        let panel =
+            self.panel
+            ?? {
+                let p = NSPanel(
+                    contentRect: .zero, styleMask: [.nonactivatingPanel, .borderless],
+                    backing: .buffered, defer: false)
+                p.level = .statusBar
+                p.backgroundColor = .clear
+                p.isOpaque = false
+                p.hasShadow = false
+                p.ignoresMouseEvents = true
+                p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+                return p
+            }()
         self.panel = panel
         panel.contentView = host
 
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
         if let frame = screen?.visibleFrame {
-            panel.setFrame(NSRect(x: frame.midX - size.width / 2, y: frame.minY + frame.height * 0.18,
-                                  width: size.width, height: size.height), display: true)
+            panel.setFrame(
+                NSRect(
+                    x: frame.midX - size.width / 2, y: frame.minY + frame.height * 0.18,
+                    width: size.width, height: size.height), display: true)
         }
         // Fade in when it wasn't already showing; a replacement toast swaps in place.
         let wasVisible = panel.isVisible && panel.alphaValue > 0.5
@@ -109,20 +116,24 @@ private struct ToastView: View {
 @MainActor
 enum ClipboardAction {
     static func supports(_ tool: Tool) -> Bool {
-        tool.isTransform || (tool.flow != .standard && tool.flow != .speedTest && tool.flow != .networkHealth) || tool.traits.contains(.copiesTextResult)
+        tool.isTransform || (tool.flow != .standard && tool.flow != .speedTest && tool.flow != .networkHealth)
+            || tool.traits.contains(.copiesTextResult)
     }
 
     /// Rewrite takes a few seconds, so it shows a progress toast and replaces the clipboard when done.
     static func rewriteClipboard(_ tool: Tool) {
         let pasteboard = NSPasteboard.general
         guard let input = pasteboard.string(forType: .string),
-              !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            Toast.warning("Clipboard is empty", detail: "Copy your message, then try again.", symbol: "doc.on.clipboard")
+            !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            Toast.warning(
+                "Clipboard is empty", detail: "Copy your message, then try again.", symbol: "doc.on.clipboard")
             return
         }
         let options = AppModel.shared.session(for: tool).options
         let change = pasteboard.changeCount
-        Toast.show("Rewriting…", detail: RewriteModel.describe(options), symbol: "sparkles", tint: tool.tint, duration: 30)
+        Toast.show(
+            "Rewriting…", detail: RewriteModel.describe(options), symbol: "sparkles", tint: tool.tint, duration: 30)
         Task { @MainActor in
             do {
                 let output = try await RewriteSession(settings: .init(options)).rewrite(input) { _ in }
@@ -156,7 +167,8 @@ enum ClipboardAction {
                 Toast.show("Keep Awake off", symbol: "cup.and.saucer", tint: .secondary)
             } else {
                 model.start(AppModel.shared.session(for: tool).options)
-                Toast.show("Keeping your Mac awake", detail: model.statusLine, symbol: "cup.and.saucer.fill", tint: tool.tint)
+                Toast.show(
+                    "Keeping your Mac awake", detail: model.statusLine, symbol: "cup.and.saucer.fill", tint: tool.tint)
             }
             return
         case .rewrite:

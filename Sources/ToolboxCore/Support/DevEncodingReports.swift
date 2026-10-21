@@ -28,16 +28,33 @@ enum DevEncodingReports {
     static func parseNumber(_ raw: String) throws -> UInt64 {
         var s = raw.replacingOccurrences(of: "_", with: "").replacingOccurrences(of: ",", with: "")
         var negative = false
-        if s.hasPrefix("-") { negative = true; s.removeFirst() } else if s.hasPrefix("+") { s.removeFirst() }
+        if s.hasPrefix("-") {
+            negative = true
+            s.removeFirst()
+        } else if s.hasPrefix("+") {
+            s.removeFirst()
+        }
         var radix = 10
         let lower = s.lowercased()
-        if lower.hasPrefix("0x") { radix = 16; s.removeFirst(2) }
-        else if lower.hasPrefix("0b") { radix = 2; s.removeFirst(2) }
-        else if lower.hasPrefix("0o") { radix = 8; s.removeFirst(2) }
-        else if lower.hasPrefix("#") { radix = 16; s.removeFirst() }
-        else if !s.isEmpty, s.allSatisfy(\.isHexDigit), !s.allSatisfy(\.isNumber) { radix = 16 }
+        if lower.hasPrefix("0x") {
+            radix = 16
+            s.removeFirst(2)
+        } else if lower.hasPrefix("0b") {
+            radix = 2
+            s.removeFirst(2)
+        } else if lower.hasPrefix("0o") {
+            radix = 8
+            s.removeFirst(2)
+        } else if lower.hasPrefix("#") {
+            radix = 16
+            s.removeFirst()
+        } else if !s.isEmpty, s.allSatisfy(\.isHexDigit), !s.allSatisfy(\.isNumber) {
+            radix = 16
+        }
         guard !s.isEmpty, s.allSatisfy({ $0.isASCII && $0.isHexDigit }), let magnitude = UInt64(s, radix: radix) else {
-            if !s.isEmpty, s.allSatisfy({ $0.isASCII && $0.isHexDigit }), s.allSatisfy({ Int(String($0), radix: radix) != nil }) {
+            if !s.isEmpty, s.allSatisfy({ $0.isASCII && $0.isHexDigit }),
+                s.allSatisfy({ Int(String($0), radix: radix) != nil })
+            {
                 throw ToolError.message("\(raw) is larger than 64 bits.")
             }
             throw ToolError.message("Couldn't read \"\(raw)\" as a number.")
@@ -64,7 +81,9 @@ enum DevEncodingReports {
 
     static func colorReport(_ text: String) throws -> String {
         let c = try parseColor(text.trimmingCharacters(in: .whitespacesAndNewlines))
-        let r = byte(c.r), g = byte(c.g), b = byte(c.b)
+        let r = byte(c.r)
+        let g = byte(c.g)
+        let b = byte(c.b)
         let opaque = c.a >= 0.9995
         var hex = "#" + DevEncoding.hex([r, g, b], separator: "")
         if !opaque { hex += DevEncoding.hex([byte(c.a)], separator: "") }
@@ -96,13 +115,15 @@ enum DevEncodingReports {
             let alpha = args.count == 4 ? try fraction(args[3], scale: 1) : 1
             switch fn {
             case "rgb", "rgba":
-                return RGBA(r: try fraction(args[0], scale: 255), g: try fraction(args[1], scale: 255),
-                            b: try fraction(args[2], scale: 255), a: alpha)
+                return RGBA(
+                    r: try fraction(args[0], scale: 255), g: try fraction(args[1], scale: 255),
+                    b: try fraction(args[2], scale: 255), a: alpha)
             case "hsl", "hsla":
                 guard let hue = Double(args[0].replacingOccurrences(of: "deg", with: "")) else {
                     throw ToolError.message("Couldn't read the hue \"\(args[0])\".")
                 }
-                return fromHSL(h: hue, s: try fraction(args[1], scale: 100), l: try fraction(args[2], scale: 100), a: alpha)
+                return fromHSL(
+                    h: hue, s: try fraction(args[1], scale: 100), l: try fraction(args[2], scale: 100), a: alpha)
             default:
                 throw ToolError.message("Use hex, rgb(), rgba(), hsl() or hsla().")
             }
@@ -146,7 +167,8 @@ enum DevEncodingReports {
     }
 
     static func hsl(_ c: RGBA) -> (Int, Int, Int) {
-        let mx = max(c.r, c.g, c.b), mn = min(c.r, c.g, c.b)
+        let mx = max(c.r, c.g, c.b)
+        let mn = min(c.r, c.g, c.b)
         let l = (mx + mn) / 2
         let d = mx - mn
         guard d > 0 else { return (0, 0, Int((l * 100).rounded())) }

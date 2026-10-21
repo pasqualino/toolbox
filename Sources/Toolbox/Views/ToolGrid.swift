@@ -34,7 +34,9 @@ struct ToolGrid: View {
             if targeted {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
-                    .background(Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .background(
+                        Color.accentColor.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
                     .overlay {
                         Label("Drop to see matching tools", systemImage: "arrow.down.doc")
                             .font(.title3.weight(.medium))
@@ -47,7 +49,9 @@ struct ToolGrid: View {
         .dropDestination(for: URL.self) { urls, _ in
             dropped = urls
             return true
-        } isTargeted: { targeted = $0 }
+        } isTargeted: {
+            targeted = $0
+        }
         .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: targeted)
         .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: dropped)
         .navigationTitle(title)
@@ -61,8 +65,12 @@ struct ToolGrid: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 28, weight: .bold))
-                Text(categories.count > 1 ? "Drop files anywhere, or press \(HotKey.shared.shortcut.display) from any app." : "\(ToolRegistry.entryCount(in: categories[0])) tools")
-                    .foregroundStyle(.secondary)
+                Text(
+                    categories.count > 1
+                        ? "Drop files anywhere, or press \(HotKey.shared.shortcut.display) from any app."
+                        : "\(ToolRegistry.entryCount(in: categories[0])) tools"
+                )
+                .foregroundStyle(.secondary)
             }
             Spacer()
             if categories.count > 1 {
@@ -89,8 +97,11 @@ struct ToolGrid: View {
         .background {
             // A faint wash of the page's colors.
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(LinearGradient(colors: categories.map { $0.tint.opacity(0.11) } + (categories.count == 1 ? [categories[0].tint.opacity(0.03)] : []),
-                                     startPoint: .leading, endPoint: .trailing))
+                .fill(
+                    LinearGradient(
+                        colors: categories.map { $0.tint.opacity(0.11) }
+                            + (categories.count == 1 ? [categories[0].tint.opacity(0.03)] : []),
+                        startPoint: .leading, endPoint: .trailing))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -134,8 +145,10 @@ struct ToolGrid: View {
         let tools = ToolRegistry.tools(accepting: dropped)
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
-                SectionTitle(text: dropped.count == 1 ? "Tools for \(dropped[0].lastPathComponent)" : "Tools for \(dropped.count) files",
-                             symbol: "sparkle.magnifyingglass")
+                SectionTitle(
+                    text: dropped.count == 1
+                        ? "Tools for \(dropped[0].lastPathComponent)" : "Tools for \(dropped.count) files",
+                    symbol: "sparkle.magnifyingglass")
                 Spacer()
                 Button("Show All Tools") { dropped = [] }
                     .buttonStyle(.link)
@@ -146,7 +159,10 @@ struct ToolGrid: View {
             }
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(tools) { tool in
-                    ToolCard(tool: tool) { model.open(tool, files: dropped); dropped = [] }
+                    ToolCard(tool: tool) {
+                        model.open(tool, files: dropped)
+                        dropped = []
+                    }
                 }
             }
         }
@@ -218,7 +234,8 @@ struct ToolCard: View {
             .background {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(.background.secondary)
-                    .shadow(color: .black.opacity(hovering ? 0.10 : 0.04), radius: hovering ? 8 : 2, y: hovering ? 3 : 1)
+                    .shadow(
+                        color: .black.opacity(hovering ? 0.10 : 0.04), radius: hovering ? 8 : 2, y: hovering ? 3 : 1)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)

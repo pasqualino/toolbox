@@ -74,7 +74,9 @@ struct PaletteView: View {
             state.files = urls
             state.selection = 0
             return true
-        } isTargeted: { dropTargeted = $0 }
+        } isTargeted: {
+            dropTargeted = $0
+        }
         .shadow(color: .black.opacity(0.28), radius: 30, y: 12)
     }
 
@@ -84,24 +86,34 @@ struct PaletteView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(.secondary)
-            TextField(state.text != nil ? "What do you want to do with this text?"
-                      : state.files.isEmpty ? "Search tools, or drop files" : "What do you want to do with \(fileSummary)?",
-                      text: $state.query)
-                .textFieldStyle(.plain)
-                .font(.system(size: 22, weight: .regular))
-                .focused($fieldFocused)
-                .onKeyPress(.downArrow) { move(1, count: results.count); return .handled }
-                .onKeyPress(.upArrow) { move(-1, count: results.count); return .handled }
-                .onKeyPress(.escape) {
-                    if !state.query.isEmpty { state.query = "" } else { WindowController.shared.hidePalette() }
-                    return .handled
-                }
-                .onKeyPress(.return, phases: .down) { press in
-                    guard press.modifiers.contains(.option) else { return .ignored }
-                    applyToClipboard(results)
-                    return .handled
-                }
-                .onSubmit { open(results) }
+            TextField(
+                state.text != nil
+                    ? "What do you want to do with this text?"
+                    : state.files.isEmpty
+                        ? "Search tools, or drop files" : "What do you want to do with \(fileSummary)?",
+                text: $state.query
+            )
+            .textFieldStyle(.plain)
+            .font(.system(size: 22, weight: .regular))
+            .focused($fieldFocused)
+            .onKeyPress(.downArrow) {
+                move(1, count: results.count)
+                return .handled
+            }
+            .onKeyPress(.upArrow) {
+                move(-1, count: results.count)
+                return .handled
+            }
+            .onKeyPress(.escape) {
+                if !state.query.isEmpty { state.query = "" } else { WindowController.shared.hidePalette() }
+                return .handled
+            }
+            .onKeyPress(.return, phases: .down) { press in
+                guard press.modifiers.contains(.option) else { return .ignored }
+                applyToClipboard(results)
+                return .handled
+            }
+            .onSubmit { open(results) }
             if !state.files.isEmpty || !state.query.isEmpty {
                 Button {
                     state.query = ""
@@ -163,7 +175,10 @@ struct PaletteView: View {
                         ForEach(Array(results.enumerated()), id: \.element.id) { index, tool in
                             PaletteRow(tool: tool, selected: index == state.selection)
                                 .id(tool.id)
-                                .onTapGesture { state.selection = index; open(results) }
+                                .onTapGesture {
+                                    state.selection = index
+                                    open(results)
+                                }
                                 .onHover { if $0 { state.selection = index } }
                         }
                     }
@@ -185,12 +200,24 @@ struct PaletteView: View {
                 .foregroundStyle(.tertiary)
             Text("Toolbox").foregroundStyle(.tertiary)
             Spacer()
-            HStack(spacing: 4) { KeyCap(text: "↑↓"); Text("Move") }
-            HStack(spacing: 4) { KeyCap(text: "↩"); Text("Open") }
-            if results.indices.contains(state.selection) && ClipboardAction.supports(results[state.selection]) {
-                HStack(spacing: 4) { KeyCap(text: "⌥↩"); Text("Apply to clipboard") }
+            HStack(spacing: 4) {
+                KeyCap(text: "↑↓")
+                Text("Move")
             }
-            HStack(spacing: 4) { KeyCap(text: "esc"); Text("Close") }
+            HStack(spacing: 4) {
+                KeyCap(text: "↩")
+                Text("Open")
+            }
+            if results.indices.contains(state.selection) && ClipboardAction.supports(results[state.selection]) {
+                HStack(spacing: 4) {
+                    KeyCap(text: "⌥↩")
+                    Text("Apply to clipboard")
+                }
+            }
+            HStack(spacing: 4) {
+                KeyCap(text: "esc")
+                Text("Close")
+            }
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -231,7 +258,8 @@ struct PaletteView: View {
         let rewrite = tool.flow == .rewrite
         let takesClipboard = (tool.isTransform && !tool.traits.contains(.generator)) || rewrite
         if takesClipboard, AppModel.shared.session(for: tool).text.isEmpty || rewrite,
-           let clip = NSPasteboard.general.string(forType: .string), clip.utf8.count < 5_000_000 {
+            let clip = NSPasteboard.general.string(forType: .string), clip.utf8.count < 5_000_000
+        {
             text = clip
         }
         tool.flow.willOpen(withText: text)
@@ -241,7 +269,8 @@ struct PaletteView: View {
         var files = tool.isTransform ? [] : state.files
         // Screenshot tools start from the image on the clipboard, the way text tools start from copied text.
         if files.isEmpty, tool.traits.contains(.takesClipboardImage),
-           AppModel.shared.session(for: tool).items.isEmpty {
+            AppModel.shared.session(for: tool).items.isEmpty
+        {
             files = PasteboardImport.files(for: tool)
         }
         AppModel.shared.open(tool, files: files, text: text)

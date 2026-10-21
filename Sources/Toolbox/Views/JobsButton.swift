@@ -8,7 +8,9 @@ struct JobsButton: View {
     @State private var showing = false
 
     private var running: [ToolSession] {
-        model.sessions.values.filter { $0.phase == .running }.sorted { ($0.startedAt ?? .distantPast) < ($1.startedAt ?? .distantPast) }
+        model.sessions.values.filter { $0.phase == .running }.sorted {
+            ($0.startedAt ?? .distantPast) < ($1.startedAt ?? .distantPast)
+        }
     }
 
     private var recent: [ToolSession] {
@@ -53,23 +55,31 @@ private struct JobsList: View {
             Text("Jobs").font(.headline).padding(.horizontal, 14).padding(.vertical, 10)
             Divider()
             if running.isEmpty && recent.isEmpty && background.isEmpty {
-                Text("Nothing running. Long runs, like compressing a video, show up here so you can keep working in other tools.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 300, alignment: .leading)
-                    .padding(14)
+                Text(
+                    "Nothing running. Long runs, like compressing a video, show up here so you can keep working in other tools."
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(width: 300, alignment: .leading)
+                .padding(14)
             } else {
                 ScrollView {
                     VStack(spacing: 2) {
                         ForEach(background, id: \.tool.id) { job in
                             JobRow(tool: job.tool, status: job.status, progress: nil) {
                                 Button("Stop") { job.stop() }
-                            } open: { model.open(job.tool); dismiss() }
+                            } open: {
+                                model.open(job.tool)
+                                dismiss()
+                            }
                         }
                         ForEach(running, id: \.tool.id) { session in
                             JobRow(tool: session.tool, status: runningStatus(session), progress: session.progress) {
                                 Button("Stop") { session.cancel() }
-                            } open: { model.open(session.tool); dismiss() }
+                            } open: {
+                                model.open(session.tool)
+                                dismiss()
+                            }
                         }
                         if !recent.isEmpty {
                             Text("Finished").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
@@ -81,7 +91,10 @@ private struct JobsList: View {
                                 if let outputs = session.result?.outputs, !outputs.isEmpty {
                                     Button("Show") { NSWorkspace.shared.activateFileViewerSelecting(outputs) }
                                 }
-                            } open: { model.open(session.tool); dismiss() }
+                            } open: {
+                                model.open(session.tool)
+                                dismiss()
+                            }
                         }
                     }
                     .padding(6)
@@ -101,7 +114,8 @@ private struct JobsList: View {
     private func finishedStatus(_ s: ToolSession) -> String {
         let ago = s.finishedAt.map { $0.formatted(.relative(presentation: .named)) } ?? ""
         if let r = s.result, !r.outputs.isEmpty {
-            return "\(r.outputs.count) file\(r.outputs.count == 1 ? "" : "s")\(r.failures > 0 ? ", \(r.failures) failed" : "") · \(ago)"
+            return
+                "\(r.outputs.count) file\(r.outputs.count == 1 ? "" : "s")\(r.failures > 0 ? ", \(r.failures) failed" : "") · \(ago)"
         }
         return (s.runError ?? "Done") + " · " + ago
     }

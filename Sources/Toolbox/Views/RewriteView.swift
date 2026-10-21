@@ -83,8 +83,11 @@ final class RewriteModel {
 
     static func describe(_ options: Options) -> String {
         if options.string("mode") == "fix" { return "Grammar fix" }
-        let tone = ["keep": "Your tone", "friendly": "Friendly", "professional": "Professional", "casual": "Casual",
-                    "direct": "Direct", "diplomatic": "Diplomatic", "confident": "Confident"][options.string("tone")] ?? "Rewrite"
+        let tone =
+            [
+                "keep": "Your tone", "friendly": "Friendly", "professional": "Professional", "casual": "Casual",
+                "direct": "Direct", "diplomatic": "Diplomatic", "confident": "Confident",
+            ][options.string("tone")] ?? "Rewrite"
         let length = ["shorter": ", shorter", "longer": ", longer"][options.string("length")] ?? ""
         return tone + length
     }
@@ -99,7 +102,9 @@ struct RewriteView: View {
     private var rewrite: RewriteModel { model.rewrite }
     private var tool: Tool { session.tool }
 
-    private static let quickFeedback = ["Shorter", "Less formal", "More direct", "Warmer", "Clearer ask", "Fewer words like “just”"]
+    private static let quickFeedback = [
+        "Shorter", "Less formal", "More direct", "Warmer", "Clearer ask", "Fewer words like “just”",
+    ]
 
     var body: some View {
         @Bindable var session = session
@@ -161,8 +166,9 @@ struct RewriteView: View {
                     }
                 }
                 Divider()
-                CodeTextView(text: $session.text, placeholder: "Paste the message you're about to send",
-                             font: .systemFont(ofSize: 14), focusToken: model.focusToken)
+                CodeTextView(
+                    text: $session.text, placeholder: "Paste the message you're about to send",
+                    font: .systemFont(ofSize: 14), focusToken: model.focusToken)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -177,10 +183,12 @@ struct RewriteView: View {
                 }
                 Divider()
                 ZStack(alignment: .bottom) {
-                    CodeTextView(text: resultBinding, editable: !rewrite.isRunning,
-                                 placeholder: rewrite.isRunning ? "Writing…" : "Press Rewrite (⌘↩) to get a better version",
-                                 font: .systemFont(ofSize: 14))
-                        .opacity(rewrite.error == nil ? 1 : 0.35)
+                    CodeTextView(
+                        text: resultBinding, editable: !rewrite.isRunning,
+                        placeholder: rewrite.isRunning ? "Writing…" : "Press Rewrite (⌘↩) to get a better version",
+                        font: .systemFont(ofSize: 14)
+                    )
+                    .opacity(rewrite.error == nil ? 1 : 0.35)
                     if let error = rewrite.error {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(.callout)
@@ -200,10 +208,12 @@ struct RewriteView: View {
 
     /// Edits in the result pane update the selected version, so Copy takes the tweaked text.
     private var resultBinding: Binding<String> {
-        Binding(get: { rewrite.current }, set: { text in
-            guard rewrite.streaming == nil, rewrite.versions.indices.contains(rewrite.selected) else { return }
-            rewrite.versions[rewrite.selected] = text
-        })
+        Binding(
+            get: { rewrite.current },
+            set: { text in
+                guard rewrite.streaming == nil, rewrite.versions.indices.contains(rewrite.selected) else { return }
+                rewrite.versions[rewrite.selected] = text
+            })
     }
 
     private var feedbackBox: some View {
@@ -288,7 +298,8 @@ struct RewriteView: View {
             return session.trimmedText.isEmpty ? "Paste a draft to start. Nothing leaves this Mac." : "Ready."
         }
         let note = rewrite.notes.indices.contains(rewrite.selected) ? rewrite.notes[rewrite.selected] : ""
-        return "Version \(rewrite.selected + 1) of \(rewrite.versions.count) · \(note) · \(rewrite.current.count) characters"
+        return
+            "Version \(rewrite.selected + 1) of \(rewrite.versions.count) · \(note) · \(rewrite.current.count) characters"
     }
 
     private func autoStartIfRequested() {

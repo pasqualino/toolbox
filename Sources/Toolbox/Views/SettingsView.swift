@@ -17,9 +17,11 @@ struct SettingsView: View {
                 LabeledContent("Open the palette") {
                     ShortcutRecorder()
                 }
-                Text("Press it from any app to search tools. If ⌃⌥Space switches your keyboard input source, pick another shortcut.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Press it from any app to search tools. If ⌃⌥Space switches your keyboard input source, pick another shortcut."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 Toggle("Use the Finder selection", isOn: $useFinderSelection)
                 Text("With files selected in Finder, the shortcut opens straight to the tools for them.")
                     .font(.caption)
@@ -122,7 +124,7 @@ struct ShortcutRecorder: View {
         recording = true
         HotKey.shared.suspend()
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            if event.keyCode == 53 { // esc
+            if event.keyCode == 53 {  // esc
                 stop()
                 return nil
             }

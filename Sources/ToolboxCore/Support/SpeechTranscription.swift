@@ -38,8 +38,9 @@ enum SpeechTranscription {
             throw ToolError.message("Transcription doesn't support \(Self.name(of: requested)).")
         }
 
-        let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [],
-                                            attributeOptions: [.audioTimeRange])
+        let transcriber = SpeechTranscriber(
+            locale: locale, transcriptionOptions: [], reportingOptions: [],
+            attributeOptions: [.audioTimeRange])
         try await Self.installAssets(for: transcriber, locale: locale, context: context)
 
         let (file, cleanup) = try await Self.openAudio(url)
@@ -57,7 +58,9 @@ enum SpeechTranscription {
                     guard let range = run.audioTimeRange else { continue }
                     let word = String(result.text[run.range].characters).trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !word.isEmpty else { continue }
-                    words.append(SpeechWord(text: word, phrase: phrases.count, start: range.start.seconds, end: range.end.seconds))
+                    words.append(
+                        SpeechWord(
+                            text: word, phrase: phrases.count, start: range.start.seconds, end: range.end.seconds))
                 }
                 phrases.append(text)
                 if duration > 0 { context.progress(0.05 + 0.95 * result.range.end.seconds / duration) }
@@ -86,7 +89,9 @@ enum SpeechTranscription {
     }
 
     /// Downloads the speech model for `locale` when it isn't on this Mac yet, showing download progress.
-    private static func installAssets(for transcriber: SpeechTranscriber, locale: Locale, context: ToolContext) async throws {
+    private static func installAssets(for transcriber: SpeechTranscriber, locale: Locale, context: ToolContext)
+        async throws
+    {
         let status = await AssetInventory.status(forModules: [transcriber])
         switch status {
         case .installed:
@@ -97,7 +102,9 @@ enum SpeechTranscription {
             break
         }
         do {
-            guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else { return }
+            guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else {
+                return
+            }
             let progress = request.progress
             let poll = Task {
                 while !Task.isCancelled {
@@ -111,7 +118,8 @@ enum SpeechTranscription {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            throw ToolError.message("Couldn't download the \(name(of: locale)) speech model. Check your internet connection.")
+            throw ToolError.message(
+                "Couldn't download the \(name(of: locale)) speech model. Check your internet connection.")
         }
     }
 
@@ -149,7 +157,8 @@ enum SpeechTranscription {
     private static func exportAudio(_ url: URL, to output: URL) async -> Bool {
         let asset = AVURLAsset(url: url)
         guard let tracks = try? await asset.loadTracks(withMediaType: .audio), !tracks.isEmpty,
-              let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A)
+        else {
             return false
         }
         do {
@@ -193,14 +202,17 @@ enum SpeechCaptions {
         for segment in segments {
             let length = segment.reduce(0) { $0 + $1.text.count + 1 } - 1
             let span = (segment.last?.end ?? 0) - (segment.first?.start ?? 0)
-            let count = max(Int((Double(length) / Double(maxCharacters)).rounded(.up)),
-                            Int((span / maxDuration).rounded(.up)), 1)
+            let count = max(
+                Int((Double(length) / Double(maxCharacters)).rounded(.up)),
+                Int((span / maxDuration).rounded(.up)), 1)
             let target = Double(length) / Double(count)
             var current: [SpeechWord] = []
             var currentLength = 0
             for (index, word) in segment.enumerated() {
                 let added = currentLength + (current.isEmpty ? 0 : 1) + word.text.count
-                if !current.isEmpty, added > maxCharacters || Double(currentLength) >= target - Double(word.text.count) / 2 {
+                if !current.isEmpty,
+                    added > maxCharacters || Double(currentLength) >= target - Double(word.text.count) / 2
+                {
                     cues.append(cue(current))
                     current = []
                     currentLength = 0
@@ -224,15 +236,17 @@ enum SpeechCaptions {
     }
 
     static func vtt(_ words: [SpeechWord]) -> String {
-        "WEBVTT\n\n" + cues(words).map { cue in
-            "\(timestamp(cue.start, separator: ".")) --> \(timestamp(cue.end, separator: "."))\n\(cue.text)\n"
-        }.joined(separator: "\n")
+        "WEBVTT\n\n"
+            + cues(words).map { cue in
+                "\(timestamp(cue.start, separator: ".")) --> \(timestamp(cue.end, separator: "."))\n\(cue.text)\n"
+            }.joined(separator: "\n")
     }
 
     /// 3725.5 → "01:02:05,500".
     static func timestamp(_ seconds: Double, separator: String) -> String {
         let ms = Int((max(0, seconds) * 1000).rounded())
-        return String(format: "%02d:%02d:%02d%@%03d", ms / 3_600_000, ms / 60_000 % 60, ms / 1000 % 60, separator, ms % 1000)
+        return String(
+            format: "%02d:%02d:%02d%@%03d", ms / 3_600_000, ms / 60_000 % 60, ms / 1000 % 60, separator, ms % 1000)
     }
 }
 

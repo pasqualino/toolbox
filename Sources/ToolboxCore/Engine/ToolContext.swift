@@ -9,9 +9,11 @@ public final class ToolContext: @unchecked Sendable {
     private let onText: @Sendable (String) -> Void
     private let names: NameBook
 
-    init(options: Options, outputDirectory: URL, names: NameBook,
-         onProgress: @escaping @Sendable (Double) -> Void,
-         onText: @escaping @Sendable (String) -> Void) {
+    init(
+        options: Options, outputDirectory: URL, names: NameBook,
+        onProgress: @escaping @Sendable (Double) -> Void,
+        onText: @escaping @Sendable (String) -> Void
+    ) {
         self.options = options
         self.names = names
         self.outputDirectory = outputDirectory
@@ -31,8 +33,9 @@ public final class ToolContext: @unchecked Sendable {
 
     /// A unique output path: "<input name><suffix>.<ext>" inside the staging folder.
     public func output(for input: URL, suffix: String = "", ext: String? = nil) -> URL {
-        output(named: input.deletingPathExtension().lastPathComponent + suffix,
-               ext: ext ?? input.pathExtension)
+        output(
+            named: input.deletingPathExtension().lastPathComponent + suffix,
+            ext: ext ?? input.pathExtension)
     }
 
     /// A unique output path with an explicit base name.

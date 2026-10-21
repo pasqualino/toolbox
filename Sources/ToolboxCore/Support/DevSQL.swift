@@ -3,7 +3,10 @@ import Foundation
 /// Keyword-driven formatter for Postgres-style SQL. Strings, quoted identifiers, dollar-quoted bodies
 /// and comments are copied byte for byte; only whitespace and keyword case change.
 enum DevSQL {
-    enum Kind { case word, quoted, string, number, param, op, open, close, openBracket, closeBracket, comma, semicolon, dot, cast, lineComment, blockComment }
+    enum Kind {
+        case word, quoted, string, number, param, op, open, close, openBracket, closeBracket, comma, semicolon, dot,
+            cast, lineComment, blockComment
+    }
 
     struct Token {
         var kind: Kind
@@ -21,26 +24,38 @@ enum DevSQL {
         var tokens = [Token]()
         var i = 0
         func text(_ s: Int, _ e: Int) -> String { String(decoding: b[s..<e], as: UTF8.self) }
-        func isWord(_ c: UInt8) -> Bool { c == 95 || c >= 0x80 || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c == 36 }
+        func isWord(_ c: UInt8) -> Bool {
+            c == 95 || c >= 0x80 || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c == 36
+        }
         func isDigit(_ c: UInt8) -> Bool { c >= 48 && c <= 57 }
         func line(_ at: Int) -> Int { b[..<at].reduce(1) { $1 == 10 ? $0 + 1 : $0 } }
 
         func quotedEnd(from start: Int, quote: UInt8, backslash: Bool) throws -> Int {
             var j = start + 1
             while j < n {
-                if backslash, b[j] == 92 { j += 2; continue }
+                if backslash, b[j] == 92 {
+                    j += 2
+                    continue
+                }
                 if b[j] == quote {
-                    if j + 1 < n, b[j + 1] == quote { j += 2; continue }
+                    if j + 1 < n, b[j + 1] == quote {
+                        j += 2
+                        continue
+                    }
                     return j + 1
                 }
                 j += 1
             }
-            throw ToolError.message("Unclosed \(quote == 39 ? "string" : "quoted name") starting on line \(line(start)).")
+            throw ToolError.message(
+                "Unclosed \(quote == 39 ? "string" : "quoted name") starting on line \(line(start)).")
         }
 
         while i < n {
             let c = b[i]
-            if c == 32 || c == 9 || c == 10 || c == 13 || c == 12 { i += 1; continue }
+            if c == 32 || c == 9 || c == 10 || c == 13 || c == 12 {
+                i += 1
+                continue
+            }
             let s = i
             if c == 45, i + 1 < n, b[i + 1] == 45 {
                 while i < n, b[i] != 10 { i += 1 }
@@ -51,8 +66,17 @@ enum DevSQL {
                 // Postgres block comments nest.
                 var depth = 0
                 while i < n {
-                    if b[i] == 47, i + 1 < n, b[i + 1] == 42 { depth += 1; i += 2; continue }
-                    if b[i] == 42, i + 1 < n, b[i + 1] == 47 { depth -= 1; i += 2; if depth == 0 { break }; continue }
+                    if b[i] == 47, i + 1 < n, b[i + 1] == 42 {
+                        depth += 1
+                        i += 2
+                        continue
+                    }
+                    if b[i] == 42, i + 1 < n, b[i + 1] == 47 {
+                        depth -= 1
+                        i += 2
+                        if depth == 0 { break }
+                        continue
+                    }
                     i += 1
                 }
                 if depth > 0 { throw ToolError.message("Unclosed /* comment starting on line \(line(s)).") }
@@ -84,10 +108,16 @@ enum DevSQL {
                     var k = j + 1
                     var end = -1
                     while k + tag.count <= n {
-                        if b[k] == 36, Array(b[k..<(k + tag.count)]) == tag { end = k + tag.count; break }
+                        if b[k] == 36, Array(b[k..<(k + tag.count)]) == tag {
+                            end = k + tag.count
+                            break
+                        }
                         k += 1
                     }
-                    if end < 0 { throw ToolError.message("Unclosed \(String(decoding: tag, as: UTF8.self)) string starting on line \(line(s)).") }
+                    if end < 0 {
+                        throw ToolError.message(
+                            "Unclosed \(String(decoding: tag, as: UTF8.self)) string starting on line \(line(s)).")
+                    }
                     i = end
                     tokens.append(Token(kind: .string, text: text(s, i)))
                     continue
@@ -98,7 +128,10 @@ enum DevSQL {
                 if i < n, b[i] == 101 || b[i] == 69 {
                     var j = i + 1
                     if j < n, b[j] == 43 || b[j] == 45 { j += 1 }
-                    if j < n, isDigit(b[j]) { i = j; while i < n, isDigit(b[i]) { i += 1 } }
+                    if j < n, isDigit(b[j]) {
+                        i = j
+                        while i < n, isDigit(b[i]) { i += 1 }
+                    }
                 }
                 tokens.append(Token(kind: .number, text: text(s, i)))
                 continue
@@ -121,15 +154,30 @@ enum DevSQL {
                 continue
             }
             switch c {
-            case 40: tokens.append(Token(kind: .open, text: "(")); i += 1
-            case 41: tokens.append(Token(kind: .close, text: ")")); i += 1
-            case 91: tokens.append(Token(kind: .openBracket, text: "[")); i += 1
-            case 93: tokens.append(Token(kind: .closeBracket, text: "]")); i += 1
-            case 44: tokens.append(Token(kind: .comma, text: ",")); i += 1
-            case 59: tokens.append(Token(kind: .semicolon, text: ";")); i += 1
-            case 46: tokens.append(Token(kind: .dot, text: ".")); i += 1
+            case 40:
+                tokens.append(Token(kind: .open, text: "("))
+                i += 1
+            case 41:
+                tokens.append(Token(kind: .close, text: ")"))
+                i += 1
+            case 91:
+                tokens.append(Token(kind: .openBracket, text: "["))
+                i += 1
+            case 93:
+                tokens.append(Token(kind: .closeBracket, text: "]"))
+                i += 1
+            case 44:
+                tokens.append(Token(kind: .comma, text: ","))
+                i += 1
+            case 59:
+                tokens.append(Token(kind: .semicolon, text: ";"))
+                i += 1
+            case 46:
+                tokens.append(Token(kind: .dot, text: "."))
+                i += 1
             case 58 where i + 1 < n && b[i + 1] == 58:
-                tokens.append(Token(kind: .cast, text: "::")); i += 2
+                tokens.append(Token(kind: .cast, text: "::"))
+                i += 2
             case 58 where i + 1 < n && isWord(b[i + 1]) && !isDigit(b[i + 1]):
                 i += 1
                 while i < n, isWord(b[i]) { i += 1 }
@@ -137,7 +185,10 @@ enum DevSQL {
             default:
                 let ops: Set<UInt8> = Set("+-*/<>=~!@#%^&|`?:".utf8)
                 while i < n, ops.contains(b[i]) {
-                    if i > s, (b[i] == 45 && i + 1 < n && b[i + 1] == 45) || (b[i] == 47 && i + 1 < n && b[i + 1] == 42) { break }
+                    if i > s, (b[i] == 45 && i + 1 < n && b[i + 1] == 45) || (b[i] == 47 && i + 1 < n && b[i + 1] == 42)
+                    {
+                        break
+                    }
                     i += 1
                 }
                 if i == s { i += 1 }
@@ -181,7 +232,9 @@ enum DevSQL {
             var t = tokens[i]
             if t.kind == .word {
                 for words in compounds where i + words.count <= tokens.count {
-                    if (0..<words.count).allSatisfy({ tokens[i + $0].kind == .word && tokens[i + $0].upper == words[$0] }) {
+                    if (0..<words.count).allSatisfy({
+                        tokens[i + $0].kind == .word && tokens[i + $0].upper == words[$0]
+                    }) {
                         t.text = (0..<words.count).map { tokens[i + $0].text }.joined(separator: " ")
                         t.upper = words.joined(separator: " ")
                         i += words.count - 1
@@ -255,7 +308,9 @@ enum DevSQL {
                 }
                 return true
             case .openBracket:
-                return !(p.kind == .word || p.kind == .quoted || p.kind == .close || p.kind == .closeBracket || p.kind == .param)
+                return
+                    !(p.kind == .word || p.kind == .quoted || p.kind == .close || p.kind == .closeBracket
+                    || p.kind == .param)
             default: break
             }
             switch p.kind {
@@ -271,7 +326,10 @@ enum DevSQL {
             let upper = t.upper
             if t.kind == .word, t.keyword, uppercase { token.text = upper }
             defer {
-                if t.kind != .lineComment && t.kind != .blockComment { prevPrev = prev; prev = t }
+                if t.kind != .lineComment && t.kind != .blockComment {
+                    prevPrev = prev
+                    prev = t
+                }
             }
             if forceNewline, t.kind != .semicolon {
                 forceNewline = false
@@ -292,7 +350,12 @@ enum DevSQL {
                 if index < tokens.count - 1 {
                     out += "\n"
                     newline(0)
-                    level = 0; clause = ""; frames = []; caseDepth = 0; between = false; pendingList = false
+                    level = 0
+                    clause = ""
+                    frames = []
+                    caseDepth = 0
+                    between = false
+                    pendingList = false
                 }
                 continue
             default: break
@@ -313,7 +376,11 @@ enum DevSQL {
                 if upper == "FROM", prev?.upper == "DISTINCT" { isClause = false }
                 // Row locks: FOR UPDATE, FOR NO KEY UPDATE.
                 if upper == "UPDATE", prev?.upper == "FOR" || prev?.upper == "KEY" { isClause = false }
-                if upper == "WITH", index + 1 < tokens.count, ["TIME", "ORDINALITY", "LOCAL"].contains(tokens[index + 1].upper) { isClause = false }
+                if upper == "WITH", index + 1 < tokens.count,
+                    ["TIME", "ORDINALITY", "LOCAL"].contains(tokens[index + 1].upper)
+                {
+                    isClause = false
+                }
                 if upper == "SET", clause == "UPDATE" || clause == "DO UPDATE" || clause.isEmpty { isClause = true }
                 if upper == "DO UPDATE" || upper == "DO NOTHING" { clause = upper }
                 if isClause {
@@ -342,8 +409,11 @@ enum DevSQL {
             switch t.kind {
             case .open:
                 var next = index + 1
-                while next < tokens.count, tokens[next].kind == .lineComment || tokens[next].kind == .blockComment { next += 1 }
-                let sub = next < tokens.count && ["SELECT", "WITH", "WITH RECURSIVE", "VALUES"].contains(tokens[next].upper)
+                while next < tokens.count, tokens[next].kind == .lineComment || tokens[next].kind == .blockComment {
+                    next += 1
+                }
+                let sub =
+                    next < tokens.count && ["SELECT", "WITH", "WITH RECURSIVE", "VALUES"].contains(tokens[next].upper)
                 emit("(", space: spaced(t))
                 frames.append(Frame(subquery: sub, level: level, clause: clause, lineIndent: lineIndent))
                 if sub {
@@ -387,7 +457,8 @@ enum DevSQL {
     private static func needsSpace(_ p: Token, _ t: Token) -> Bool {
         if [.close, .comma, .semicolon, .dot, .cast, .closeBracket].contains(t.kind) { return false }
         if [.open, .dot, .cast, .openBracket, .comma].contains(p.kind) { return false }
-        let callee = p.kind == .quoted || p.kind == .close || p.kind == .closeBracket
+        let callee =
+            p.kind == .quoted || p.kind == .close || p.kind == .closeBracket
             || (p.kind == .word && (!p.keyword || functions.contains(p.upper)))
         if t.kind == .openBracket, callee || p.kind == .param { return false }
         if t.kind == .open, callee, p.kind != .close { return false }

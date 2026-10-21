@@ -33,7 +33,9 @@ enum MediaFrames {
 
     /// Times for "At times": "0:01, 5.5, 1:02", sorted, duplicates dropped.
     static func listedTimes(_ text: String, duration: Double) throws -> [Double] {
-        let parts = text.split { $0 == "," || $0 == ";" || $0.isNewline || $0 == " " }.map(String.init).filter { !$0.isEmpty }
+        let parts = text.split { $0 == "," || $0 == ";" || $0.isNewline || $0 == " " }.map(String.init).filter {
+            !$0.isEmpty
+        }
         guard !parts.isEmpty else { throw ToolError.message("Enter the times to grab, like 0:01, 5.5, 1:02.") }
         var times: [Double] = []
         for part in parts {
@@ -52,13 +54,16 @@ enum MediaFrames {
 
     static func checkCount(_ count: Int) throws {
         guard count <= maxFrames else {
-            throw ToolError.message("That's \(count) frames, more than the \(maxFrames) limit. Pick fewer or a shorter part.")
+            throw ToolError.message(
+                "That's \(count) frames, more than the \(maxFrames) limit. Pick fewer or a shorter part.")
         }
     }
 
     /// Grabs one frame per time, a few at once.
-    static func grab(_ url: URL, times: [Double], format: Format, name: String,
-                     into folder: URL, context ctx: ToolContext) async throws -> [URL] {
+    static func grab(
+        _ url: URL, times: [Double], format: Format, name: String,
+        into folder: URL, context ctx: ToolContext
+    ) async throws -> [URL] {
         let work = try scratch()
         defer { try? FileManager.default.removeItem(at: work) }
         let quality = format == .jpeg ? ["-q:v", "2"] : []
@@ -71,9 +76,12 @@ enum MediaFrames {
                 let raw = work.appendingPathComponent(String(format: "%04d.%@", index + 1, format.ffmpegExt))
                 group.addTask {
                     func run(_ seek: [String]) async throws {
-                        try await FFmpeg.run(seek + ["-i", url.path, "-map", "0:v:0", "-vf", squarePixels,
-                                                     "-frames:v", "1", "-update", "1"] + quality + [raw.path],
-                                             duration: 0, context: ctx)
+                        try await FFmpeg.run(
+                            seek + [
+                                "-i", url.path, "-map", "0:v:0", "-vf", squarePixels,
+                                "-frames:v", "1", "-update", "1",
+                            ] + quality + [raw.path],
+                            duration: 0, context: ctx)
                     }
                     try await run(["-ss", Media.time(t)])
                     // A time after the final frame makes ffmpeg write nothing; take the last frame instead.
@@ -82,26 +90,36 @@ enum MediaFrames {
                     return (index, FileManager.default.fileExists(atPath: raw.path) ? raw : nil)
                 }
             }
-            while next < min(4, times.count) { add(next); next += 1 }
+            while next < min(4, times.count) {
+                add(next)
+                next += 1
+            }
             while let result = try await group.next() {
                 results.append(result)
-                if next < times.count { add(next); next += 1 }
+                if next < times.count {
+                    add(next)
+                    next += 1
+                }
             }
             return results.sorted { $0.0 < $1.0 }
         }
         var outputs: [URL] = []
         for (index, raw) in grabbed {
             guard let raw else { continue }
-            outputs.append(try await deliver(raw, number: outputs.count + 1, time: times[index],
-                                             format: format, name: name, folder: folder))
+            outputs.append(
+                try await deliver(
+                    raw, number: outputs.count + 1, time: times[index],
+                    format: format, name: name, folder: folder))
         }
         guard !outputs.isEmpty else { throw ToolError.message("Couldn't grab any frames at those times.") }
         return outputs
     }
 
     /// One pass that keeps the first frame and every frame whose scene score passes `threshold`.
-    static func scenes(_ url: URL, range: ClosedRange<Double>, threshold: Double, format: Format,
-                       name: String, into folder: URL, context ctx: ToolContext) async throws -> [URL] {
+    static func scenes(
+        _ url: URL, range: ClosedRange<Double>, threshold: Double, format: Format,
+        name: String, into folder: URL, context ctx: ToolContext
+    ) async throws -> [URL] {
         let work = try scratch()
         defer { try? FileManager.default.removeItem(at: work) }
         let log = work.appendingPathComponent("scenes.txt")
@@ -109,12 +127,15 @@ enum MediaFrames {
         let t = String(format: "%.3f", min(max(threshold, 0.01), 0.99))
         let quality = format == .jpeg ? ["-q:v", "2"] : []
         try await FFmpeg.run(
-            ["-ss", Media.time(range.lowerBound), "-t", Media.time(length), "-i", url.path, "-map", "0:v:0",
-             "-vf", "select='eq(n\\,0)+gt(scene\\,\(t))',metadata=print:file=\(log.path),\(squarePixels)",
-             "-fps_mode", "vfr", "-frames:v", String(maxFrames + 1)] + quality
+            [
+                "-ss", Media.time(range.lowerBound), "-t", Media.time(length), "-i", url.path, "-map", "0:v:0",
+                "-vf", "select='eq(n\\,0)+gt(scene\\,\(t))',metadata=print:file=\(log.path),\(squarePixels)",
+                "-fps_mode", "vfr", "-frames:v", String(maxFrames + 1),
+            ] + quality
                 + [work.appendingPathComponent("%04d.\(format.ffmpegExt)").path],
             duration: length, context: ctx)
-        let times = (try? String(contentsOf: log, encoding: .utf8))?
+        let times =
+            (try? String(contentsOf: log, encoding: .utf8))?
             .split(whereSeparator: \.isNewline)
             .compactMap { line -> Double? in
                 guard let r = line.range(of: "pts_time:") else { return nil }
@@ -124,21 +145,26 @@ enum MediaFrames {
             .filter { $0.pathExtension == format.ffmpegExt }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         guard raws.count <= maxFrames else {
-            throw ToolError.message("More than \(maxFrames) scene changes. Raise the sensitivity threshold or pick a shorter part.")
+            throw ToolError.message(
+                "More than \(maxFrames) scene changes. Raise the sensitivity threshold or pick a shorter part.")
         }
         guard !raws.isEmpty else { throw ToolError.message("Couldn't grab any frames from this video.") }
         var outputs: [URL] = []
         for (i, raw) in raws.enumerated() {
             let time = range.lowerBound + (i < times.count ? times[i] : 0)
-            outputs.append(try await deliver(raw, number: i + 1, time: time, format: format, name: name, folder: folder))
+            outputs.append(
+                try await deliver(raw, number: i + 1, time: time, format: format, name: name, folder: folder))
         }
         return outputs
     }
 
     /// Moves a grabbed frame into the output folder under its readable name, converting to HEIC when asked.
-    private static func deliver(_ raw: URL, number: Int, time: Double, format: Format,
-                                name: String, folder: URL) async throws -> URL {
-        let out = folder.appendingPathComponent("\(name) \(String(format: "%04d", number)) (\(stamp(time))).\(format.ext)")
+    private static func deliver(
+        _ raw: URL, number: Int, time: Double, format: Format,
+        name: String, folder: URL
+    ) async throws -> URL {
+        let out = folder.appendingPathComponent(
+            "\(name) \(String(format: "%04d", number)) (\(stamp(time))).\(format.ext)")
         if format == .heic {
             let image = try ImageIOHelpers.image(try ImageIOHelpers.source(raw))
             try await ImageIOHelpers.write(image, to: out, format: .heic, quality: 0.9)

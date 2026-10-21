@@ -10,16 +10,22 @@ enum DownloadTools {
         summary: "Save videos from YouTube and 1,000+ sites",
         category: .media,
         symbol: "arrow.down.circle",
-        keywords: ["youtube", "yt-dlp", "save", "link", "url", "vimeo", "twitter", "x", "instagram", "tiktok",
-                   "reddit", "mp4", "m4a", "audio", "music", "playlist", "grab"],
+        keywords: [
+            "youtube", "yt-dlp", "save", "link", "url", "vimeo", "twitter", "x", "instagram", "tiktok",
+            "reddit", "mp4", "m4a", "audio", "music", "playlist", "grab",
+        ],
         inputKind: .url,
         minimumInputs: 0,
         options: [
-            OptionSpec("quality", "Quality", .choice([
-                Choice("best", "Best"), Choice("720p", "720p max"), Choice("audio", "Audio only (M4A)"),
-            ], default: "best")),
-            OptionSpec("playlist", "Whole playlist", .toggle(default: false),
-                       help: "When a link points into a playlist, download every video in it."),
+            OptionSpec(
+                "quality", "Quality",
+                .choice(
+                    [
+                        Choice("best", "Best"), Choice("720p", "720p max"), Choice("audio", "Audio only (M4A)"),
+                    ], default: "best")),
+            OptionSpec(
+                "playlist", "Whole playlist", .toggle(default: false),
+                help: "When a link points into a playlist, download every video in it."),
         ],
         requirements: [.ytdlp, .ffmpeg],
         actionTitle: "Download",
@@ -31,8 +37,10 @@ enum DownloadTools {
             for (index, link) in links.enumerated() {
                 try Task.checkCancellation()
                 do {
-                    let found = try await YTDLP.download(link, executable: ytdlp, options: ctx.options,
-                                                         into: ctx.outputDirectory) { fraction in
+                    let found = try await YTDLP.download(
+                        link, executable: ytdlp, options: ctx.options,
+                        into: ctx.outputDirectory
+                    ) { fraction in
                         ctx.progress((Double(index) + fraction) / Double(links.count))
                     }
                     outputs += found.filter { url in !outputs.contains(url) }
@@ -40,8 +48,10 @@ enum DownloadTools {
                     throw CancellationError()
                 } catch {
                     // Keep going so one dead link doesn't lose the others.
-                    failures.append(links.count > 1 ? "\(link.absoluteString): \(error.localizedDescription)"
-                                                    : error.localizedDescription)
+                    failures.append(
+                        links.count > 1
+                            ? "\(link.absoluteString): \(error.localizedDescription)"
+                            : error.localizedDescription)
                 }
             }
             guard !outputs.isEmpty else {
@@ -63,7 +73,8 @@ enum YTDLP {
             var candidate = word
             if !candidate.contains("://") { candidate = "https://" + candidate }
             guard let url = URL(string: candidate), let scheme = url.scheme?.lowercased(),
-                  ["http", "https"].contains(scheme), let host = url.host, host.contains(".") else {
+                ["http", "https"].contains(scheme), let host = url.host, host.contains(".")
+            else {
                 throw ToolError.message("That doesn't look like a link: \(word)")
             }
             return url
@@ -72,8 +83,10 @@ enum YTDLP {
 
     static func arguments(for url: URL, options: Options, outputDirectory: URL) -> [String] {
         // --print implies --quiet; --no-quiet keeps the progress lines coming.
-        var args = ["--newline", "--no-quiet", "--no-colors", "--no-mtime",
-                    options.bool("playlist") ? "--yes-playlist" : "--no-playlist"]
+        var args = [
+            "--newline", "--no-quiet", "--no-colors", "--no-mtime",
+            options.bool("playlist") ? "--yes-playlist" : "--no-playlist",
+        ]
         if let ffmpeg = Toolchain.ffmpeg {
             args += ["--ffmpeg-location", ffmpeg.deletingLastPathComponent().path]
         }
@@ -81,38 +94,46 @@ enum YTDLP {
         case "audio":
             args += ["-f", "ba[ext=m4a]/ba/b", "-x", "--audio-format", "m4a"]
         case "720p":
-            args += ["-f", "bv*[height<=720][ext=mp4]+ba[ext=m4a]/bv*[height<=720]+ba/b[height<=720]/b",
-                     "--merge-output-format", "mp4"]
+            args += [
+                "-f", "bv*[height<=720][ext=mp4]+ba[ext=m4a]/bv*[height<=720]+ba/b[height<=720]/b",
+                "--merge-output-format", "mp4",
+            ]
         default:
             args += ["-f", "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b", "--merge-output-format", "mp4"]
         }
-        args += ["-o", outputDirectory.appendingPathComponent("%(title).150B.%(ext)s").path,
-                 "--print", "after_move:filepath", url.absoluteString]
+        args += [
+            "-o", outputDirectory.appendingPathComponent("%(title).150B.%(ext)s").path,
+            "--print", "after_move:filepath", url.absoluteString,
+        ]
         return args
     }
 
     /// Downloads one link into `directory`. Returns the finished files.
-    static func download(_ url: URL, executable: URL, options: Options, into directory: URL,
-                         progress: @escaping @Sendable (Double) -> Void) async throws -> [URL] {
+    static func download(
+        _ url: URL, executable: URL, options: Options, into directory: URL,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> [URL] {
         let errors = LastError()
         let printed = PrintedPaths()
         let parts = PartCounter()
         do {
-            try await ProcessRunner.run(executable, arguments(for: url, options: options, outputDirectory: directory),
-                                        onLine: { line in
-                if let fraction = percent(line) {
-                    progress(parts.overall(fraction))
-                } else if line.hasPrefix("[download] Destination:") {
-                    parts.nextPart()
-                } else if line.hasPrefix("[info]"), let range = line.range(of: "Downloading 1 format(s): ") {
-                    // "137+140" means video and audio download separately, then merge.
-                    parts.setCount(line[range.upperBound...].split(separator: "+").count)
-                } else if line.hasPrefix("/") {
-                    printed.add(line.trimmingCharacters(in: .whitespacesAndNewlines))
-                }
-            }, onErrorLine: { line in
-                if line.hasPrefix("ERROR:") { errors.set(line) }
-            })
+            try await ProcessRunner.run(
+                executable, arguments(for: url, options: options, outputDirectory: directory),
+                onLine: { line in
+                    if let fraction = percent(line) {
+                        progress(parts.overall(fraction))
+                    } else if line.hasPrefix("[download] Destination:") {
+                        parts.nextPart()
+                    } else if line.hasPrefix("[info]"), let range = line.range(of: "Downloading 1 format(s): ") {
+                        // "137+140" means video and audio download separately, then merge.
+                        parts.setCount(line[range.upperBound...].split(separator: "+").count)
+                    } else if line.hasPrefix("/") {
+                        printed.add(line.trimmingCharacters(in: .whitespacesAndNewlines))
+                    }
+                },
+                onErrorLine: { line in
+                    if line.hasPrefix("ERROR:") { errors.set(line) }
+                })
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -169,15 +190,31 @@ enum YTDLP {
 private final class LastError: @unchecked Sendable {
     private let lock = NSLock()
     private var line: String?
-    func set(_ value: String) { lock.lock(); line = value; lock.unlock() }
-    var value: String? { lock.lock(); defer { lock.unlock() }; return line }
+    func set(_ value: String) {
+        lock.lock()
+        line = value
+        lock.unlock()
+    }
+    var value: String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return line
+    }
 }
 
 private final class PrintedPaths: @unchecked Sendable {
     private let lock = NSLock()
     private var paths: [String] = []
-    func add(_ path: String) { lock.lock(); if !paths.contains(path) { paths.append(path) }; lock.unlock() }
-    var all: [String] { lock.lock(); defer { lock.unlock() }; return paths }
+    func add(_ path: String) {
+        lock.lock()
+        if !paths.contains(path) { paths.append(path) }
+        lock.unlock()
+    }
+    var all: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return paths
+    }
 }
 
 /// Tracks which part (video, then audio) is downloading so progress doesn't jump back to 0 between them.
@@ -187,7 +224,13 @@ private final class PartCounter: @unchecked Sendable {
     private var part = 0
     private var started = false
 
-    func setCount(_ value: Int) { lock.lock(); count = max(1, value); part = 0; started = false; lock.unlock() }
+    func setCount(_ value: Int) {
+        lock.lock()
+        count = max(1, value)
+        part = 0
+        started = false
+        lock.unlock()
+    }
 
     func nextPart() {
         lock.lock()

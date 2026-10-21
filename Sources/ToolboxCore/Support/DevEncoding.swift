@@ -7,14 +7,15 @@ enum DevEncoding {
     static func base64Encode(_ text: String, urlSafe: Bool) -> String {
         let encoded = Data(text.utf8).base64EncodedString()
         guard urlSafe else { return encoded }
-        return String(encoded.compactMap { c -> Character? in
-            switch c {
-            case "+": "-"
-            case "/": "_"
-            case "=": nil
-            default: c
-            }
-        })
+        return String(
+            encoded.compactMap { c -> Character? in
+                switch c {
+                case "+": "-"
+                case "/": "_"
+                case "=": nil
+                default: c
+                }
+            })
     }
 
     /// Accepts standard and URL-safe alphabets, missing padding, whitespace and a data: URL prefix.
@@ -35,7 +36,9 @@ enum DevEncoding {
         }
         while chars.last == "=" { chars.removeLast() }
         if chars.contains("=") { throw ToolError.message("That isn't valid Base64: padding in the middle.") }
-        if chars.count % 4 == 1 { throw ToolError.message("That isn't valid Base64: the length is off by one character.") }
+        if chars.count % 4 == 1 {
+            throw ToolError.message("That isn't valid Base64: the length is off by one character.")
+        }
         chars.append(contentsOf: repeatElement("=", count: (4 - chars.count % 4) % 4))
         guard let data = Data(base64Encoded: String(chars)) else {
             throw ToolError.message("That isn't valid Base64.")
@@ -101,7 +104,8 @@ enum DevEncoding {
 
     // MARK: URL
 
-    static let unreserved = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+    static let unreserved = CharacterSet(
+        charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
     /// Same set as JavaScript's encodeURI, plus existing % so already-encoded parts survive.
     static let urlKeep = unreserved.union(CharacterSet(charactersIn: ";,/?:@&=+$!*'()#[]%"))
 
@@ -118,7 +122,8 @@ enum DevEncoding {
         while i < bytes.count {
             let b = bytes[i]
             if b == UInt8(ascii: "%"), i + 2 < bytes.count,
-               let hi = hexValue(Unicode.Scalar(bytes[i + 1])), let lo = hexValue(Unicode.Scalar(bytes[i + 2])) {
+                let hi = hexValue(Unicode.Scalar(bytes[i + 1])), let lo = hexValue(Unicode.Scalar(bytes[i + 2]))
+            {
                 out.append(hi << 4 | lo)
                 i += 3
                 continue
@@ -197,7 +202,8 @@ enum DevEncoding {
     static func entity(_ name: Substring) -> String? {
         if name.hasPrefix("#") {
             let digits = name.dropFirst()
-            let value: UInt32? = digits.first == "x" || digits.first == "X"
+            let value: UInt32? =
+                digits.first == "x" || digits.first == "X"
                 ? UInt32(digits.dropFirst(), radix: 16) : UInt32(digits, radix: 10)
             guard let value, let scalar = Unicode.Scalar(value) else { return nil }
             return String(Character(scalar))
@@ -250,22 +256,27 @@ enum DevEncoding {
         var i = 0
         while i < input.count {
             let u = input[i]
-            guard u == 0x5C, i + 1 < input.count else { units.append(u); i += 1; continue }
+            guard u == 0x5C, i + 1 < input.count else {
+                units.append(u)
+                i += 1
+                continue
+            }
             let e = input[i + 1]
             i += 2
             switch e {
-            case 0x22: units.append(0x22)        // "
-            case 0x5C: units.append(0x5C)        // \
-            case 0x2F: units.append(0x2F)        // /
-            case 0x27: units.append(0x27)        // '
-            case 0x6E: units.append(0x0A)        // n
-            case 0x72: units.append(0x0D)        // r
-            case 0x74: units.append(0x09)        // t
-            case 0x62: units.append(0x08)        // b
-            case 0x66: units.append(0x0C)        // f
-            case 0x75:                           // u
+            case 0x22: units.append(0x22)  // "
+            case 0x5C: units.append(0x5C)  // \
+            case 0x2F: units.append(0x2F)  // /
+            case 0x27: units.append(0x27)  // '
+            case 0x6E: units.append(0x0A)  // n
+            case 0x72: units.append(0x0D)  // r
+            case 0x74: units.append(0x09)  // t
+            case 0x62: units.append(0x08)  // b
+            case 0x66: units.append(0x0C)  // f
+            case 0x75:  // u
                 guard i + 4 <= input.count,
-                      let v = UInt16(String(decoding: input[i..<i + 4], as: UTF16.self), radix: 16) else {
+                    let v = UInt16(String(decoding: input[i..<i + 4], as: UTF16.self), radix: 16)
+                else {
                     throw ToolError.message("Bad \\u escape: it needs four hex digits.")
                 }
                 units.append(v)
@@ -281,13 +292,15 @@ enum DevEncoding {
     // MARK: ROT13
 
     static func rot13(_ text: String) -> String {
-        String(String.UnicodeScalarView(text.unicodeScalars.map { s in
-            switch s {
-            case "a"..."z": Unicode.Scalar((s.value - 97 + 13) % 26 + 97)!
-            case "A"..."Z": Unicode.Scalar((s.value - 65 + 13) % 26 + 65)!
-            default: s
-            }
-        }))
+        String(
+            String.UnicodeScalarView(
+                text.unicodeScalars.map { s in
+                    switch s {
+                    case "a"..."z": Unicode.Scalar((s.value - 97 + 13) % 26 + 97)!
+                    case "A"..."Z": Unicode.Scalar((s.value - 65 + 13) % 26 + 65)!
+                    default: s
+                    }
+                }))
     }
 
     // MARK: Defang
@@ -297,10 +310,18 @@ enum DevEncoding {
         var out = ""
         var token = ""
         func flush() {
-            if !token.isEmpty { out += defangToken(token); token = "" }
+            if !token.isEmpty {
+                out += defangToken(token)
+                token = ""
+            }
         }
         for c in text {
-            if c.isWhitespace { flush(); out.append(c) } else { token.append(c) }
+            if c.isWhitespace {
+                flush()
+                out.append(c)
+            } else {
+                token.append(c)
+            }
         }
         flush()
         return out
@@ -364,6 +385,7 @@ enum DevEncoding {
     /// "label  value" lines with values aligned.
     static func aligned(_ rows: [(String, String)]) -> String {
         let width = rows.map(\.0.count).max() ?? 0
-        return rows.map { $0.0.padding(toLength: width + 2, withPad: " ", startingAt: 0) + $0.1 }.joined(separator: "\n")
+        return rows.map { $0.0.padding(toLength: width + 2, withPad: " ", startingAt: 0) + $0.1 }.joined(
+            separator: "\n")
     }
 }

@@ -46,7 +46,10 @@ enum DevGraphQL {
         func isNameStart(_ c: UInt8) -> Bool { c == 95 || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) }
         func isDigit(_ c: UInt8) -> Bool { c >= 48 && c <= 57 }
         func add(_ kind: Kind, _ s: Int, _ e: Int, line l: Int, column ls: Int) {
-            tokens.append(Token(kind: kind, text: String(decoding: b[s..<e], as: UTF8.self), line: l, offset: s, lineStart: ls, comments: pending))
+            tokens.append(
+                Token(
+                    kind: kind, text: String(decoding: b[s..<e], as: UTF8.self), line: l, offset: s, lineStart: ls,
+                    comments: pending))
             pending = []
             sawNewline = false
         }
@@ -54,12 +57,21 @@ enum DevGraphQL {
         while i < n {
             let c = b[i]
             switch c {
-            case 32, 9, 44: i += 1; continue
-            case 10: i += 1; line += 1; lineStart = i; sawNewline = true; continue
+            case 32, 9, 44:
+                i += 1
+                continue
+            case 10:
+                i += 1
+                line += 1
+                lineStart = i
+                sawNewline = true
+                continue
             case 13:
                 i += 1
                 if i < n, b[i] == 10 { i += 1 }
-                line += 1; lineStart = i; sawNewline = true
+                line += 1
+                lineStart = i
+                sawNewline = true
                 continue
             case 35:
                 let s = i
@@ -70,7 +82,8 @@ enum DevGraphQL {
             default: break
             }
             let s = i
-            let l = line, col = lineStart
+            let l = line
+            let col = lineStart
             if c == 46 {
                 guard i + 2 < n, b[i + 1] == 46, b[i + 2] == 46 else { throw fail("expected ...", at: i) }
                 i += 3
@@ -115,24 +128,49 @@ enum DevGraphQL {
                     i += 3
                     var closed = false
                     while i < n {
-                        if b[i] == 92, i + 3 < n, b[i + 1] == 34, b[i + 2] == 34, b[i + 3] == 34 { i += 4; continue }
-                        if b[i] == 34, i + 2 < n, b[i + 1] == 34, b[i + 2] == 34 { i += 3; closed = true; break }
-                        if b[i] == 10 { line += 1; lineStart = i + 1 }
+                        if b[i] == 92, i + 3 < n, b[i + 1] == 34, b[i + 2] == 34, b[i + 3] == 34 {
+                            i += 4
+                            continue
+                        }
+                        if b[i] == 34, i + 2 < n, b[i + 1] == 34, b[i + 2] == 34 {
+                            i += 3
+                            closed = true
+                            break
+                        }
+                        if b[i] == 10 {
+                            line += 1
+                            lineStart = i + 1
+                        }
                         i += 1
                     }
-                    if !closed { throw ToolError.message("GraphQL syntax error at line \(l), column \(DevGraphQL.column(b, col, s)): unterminated block string.") }
+                    if !closed {
+                        throw ToolError.message(
+                            "GraphQL syntax error at line \(l), column \(DevGraphQL.column(b, col, s)): unterminated block string."
+                        )
+                    }
                     add(.block, s, i, line: l, column: col)
                     continue
                 }
                 i += 1
                 var closed = false
                 while i < n {
-                    if b[i] == 92 { i += 2; continue }
-                    if b[i] == 34 { i += 1; closed = true; break }
+                    if b[i] == 92 {
+                        i += 2
+                        continue
+                    }
+                    if b[i] == 34 {
+                        i += 1
+                        closed = true
+                        break
+                    }
                     if b[i] == 10 || b[i] == 13 { break }
                     i += 1
                 }
-                if !closed { throw ToolError.message("GraphQL syntax error at line \(l), column \(DevGraphQL.column(b, col, s)): unterminated string.") }
+                if !closed {
+                    throw ToolError.message(
+                        "GraphQL syntax error at line \(l), column \(DevGraphQL.column(b, col, s)): unterminated string."
+                    )
+                }
                 add(.string, s, i, line: l, column: col)
                 continue
             }
@@ -246,7 +284,8 @@ enum DevGraphQL {
             let t = peek
             let found = t.kind == .eof ? "end of input" : "\"\(t.text)\""
             let col = DevGraphQL.column(source, t.lineStart, t.offset)
-            return .message("GraphQL syntax error at line \(t.line), column \(col): expected \(expected), found \(found).")
+            return .message(
+                "GraphQL syntax error at line \(t.line), column \(col): expected \(expected), found \(found).")
         }
 
         @discardableResult
@@ -306,7 +345,10 @@ enum DevGraphQL {
             var description: String?
             if peek.kind == .string || peek.kind == .block { description = advance().text }
             var extend = false
-            if description == nil, atName("extend") { advance(); extend = true }
+            if description == nil, atName("extend") {
+                advance()
+                extend = true
+            }
             if at("{") {
                 guard description == nil, !extend else { throw fail("a definition") }
                 return Definition(kind: .operation, keyword: "", set: try selectionSet())
@@ -351,7 +393,10 @@ enum DevGraphQL {
                     advance()
                     if at("|") { advance() }
                     var types = [try name()]
-                    while at("|") { advance(); types.append(try name()) }
+                    while at("|") {
+                        advance()
+                        types.append(try name())
+                    }
                     d.unionTypes = types
                 }
                 if at("{"), ["schema", "type", "interface", "enum", "input"].contains(keyword) {
@@ -372,12 +417,18 @@ enum DevGraphQL {
                 try expect("@")
                 d.name = try name()
                 if at("(") { d.args = try argumentDefs(variables: false) }
-                if atName("repeatable") { advance(); d.repeatable = true }
+                if atName("repeatable") {
+                    advance()
+                    d.repeatable = true
+                }
                 guard atName("on") else { throw fail("on") }
                 advance()
                 if at("|") { advance() }
                 d.locations.append(try name())
-                while at("|") { advance(); d.locations.append(try name()) }
+                while at("|") {
+                    advance()
+                    d.locations.append(try name())
+                }
                 return d
             default:
                 throw fail("a definition")
@@ -398,7 +449,10 @@ enum DevGraphQL {
                 if keyword != "input", at("(") { m.args = try argumentDefs(variables: false) }
                 try expect(":")
                 m.type = try typeRef()
-                if keyword == "input", at("=") { advance(); m.value = try value() }
+                if keyword == "input", at("=") {
+                    advance()
+                    m.value = try value()
+                }
                 m.directives = try directives(const: true)
             }
             return m
@@ -409,17 +463,24 @@ enum DevGraphQL {
             var args = [Argument]()
             while !at(")") {
                 guard peek.kind != .eof else { throw fail(")") }
-                args.append(try node({ p in
-                    var description: String?
-                    if !variables, p.peek.kind == .string || p.peek.kind == .block { description = p.advance().text }
-                    if variables { try p.expect("$") }
-                    var a = Argument(description: description, name: try p.name())
-                    try p.expect(":")
-                    a.type = try p.typeRef()
-                    if p.at("=") { p.advance(); a.value = try p.value() }
-                    a.directives = try p.directives(const: true)
-                    return a
-                }, notes: { $0.notes = $1 }))
+                args.append(
+                    try node(
+                        { p in
+                            var description: String?
+                            if !variables, p.peek.kind == .string || p.peek.kind == .block {
+                                description = p.advance().text
+                            }
+                            if variables { try p.expect("$") }
+                            var a = Argument(description: description, name: try p.name())
+                            try p.expect(":")
+                            a.type = try p.typeRef()
+                            if p.at("=") {
+                                p.advance()
+                                a.value = try p.value()
+                            }
+                            a.directives = try p.directives(const: true)
+                            return a
+                        }, notes: { $0.notes = $1 }))
             }
             advance()
             if args.isEmpty { throw fail("an argument") }
@@ -435,7 +496,10 @@ enum DevGraphQL {
             } else {
                 t = try name()
             }
-            if at("!") { advance(); t += "!" }
+            if at("!") {
+                advance()
+                t += "!"
+            }
             return t
         }
 
@@ -454,11 +518,13 @@ enum DevGraphQL {
             var args = [Argument]()
             while !at(")") {
                 guard peek.kind != .eof else { throw fail(")") }
-                args.append(try node({ p in
-                    let n = try p.name()
-                    try p.expect(":")
-                    return Argument(name: n, value: try p.value())
-                }, notes: { $0.notes = $1 }))
+                args.append(
+                    try node(
+                        { p in
+                            let n = try p.name()
+                            try p.expect(":")
+                            return Argument(name: n, value: try p.value())
+                        }, notes: { $0.notes = $1 }))
             }
             advance()
             if args.isEmpty { throw fail("an argument") }
@@ -521,14 +587,21 @@ enum DevGraphQL {
                     return s
                 }
                 var s = Selection(kind: .inline)
-                if atName("on") { advance(); s.name = try name() }
+                if atName("on") {
+                    advance()
+                    s.name = try name()
+                }
                 s.directives = try directives()
                 s.set = try selectionSet()
                 return s
             }
             var first = try name()
             var alias: String?
-            if at(":") { advance(); alias = first; first = try name() }
+            if at(":") {
+                advance()
+                alias = first
+                first = try name()
+            }
             var s = Selection(kind: .field, alias: alias, name: first)
             if at("(") { s.args = try arguments() }
             s.directives = try directives()
@@ -566,7 +639,10 @@ enum DevGraphQL {
 
         mutating func description(_ raw: String?, _ indent: Int) {
             guard let raw else { return }
-            if !raw.hasPrefix("\"\"\"") { line(indent, raw); return }
+            if !raw.hasPrefix("\"\"\"") {
+                line(indent, raw)
+                return
+            }
             let lines = DevGraphQL.blockStringLines(raw)
             if lines.count == 1, !lines[0].contains("\"") {
                 line(indent, "\"\"\"\(lines[0])\"\"\"")
@@ -585,13 +661,17 @@ enum DevGraphQL {
             case .raw(let s): s
             case .variable(let n): "$" + n
             case .list(let items): "[" + items.map(Self.value).joined(separator: ", ") + "]"
-            case .object(let fields): fields.isEmpty ? "{}" : "{ " + fields.map { "\($0.0): \(Self.value($0.1))" }.joined(separator: ", ") + " }"
+            case .object(let fields):
+                fields.isEmpty
+                    ? "{}" : "{ " + fields.map { "\($0.0): \(Self.value($0.1))" }.joined(separator: ", ") + " }"
             }
         }
 
         static func directives(_ list: [Directive]) -> String {
-            list.map { d in "@" + d.name + (d.args.isEmpty ? "" : "(" + d.args.map(Self.argument).joined(separator: ", ") + ")") }
-                .map { " " + $0 }.joined()
+            list.map { d in
+                "@" + d.name + (d.args.isEmpty ? "" : "(" + d.args.map(Self.argument).joined(separator: ", ") + ")")
+            }
+            .map { " " + $0 }.joined()
         }
 
         static func argument(_ a: Argument) -> String {
@@ -603,10 +683,15 @@ enum DevGraphQL {
 
         /// Prints `head(args)tail` inline, or with one argument per line when too long or commented.
         mutating func withArgs(_ indent: Int, head: String, args: [Argument]?, variables: Bool = false, tail: String) {
-            guard let args, !args.isEmpty else { line(indent, head + tail); return }
+            guard let args, !args.isEmpty else {
+                line(indent, head + tail)
+                return
+            }
             let render = { (a: Argument) in (variables ? "$" : "") + Self.argument(a) }
             let inline = head + "(" + args.map(render).joined(separator: ", ") + ")" + tail
-            let multiline = args.contains { !$0.notes.above.isEmpty || $0.notes.trailing != nil || $0.description != nil }
+            let multiline = args.contains {
+                !$0.notes.above.isEmpty || $0.notes.trailing != nil || $0.description != nil
+            }
             if !multiline, indent * 2 + inline.count <= DevGraphQL.width {
                 line(indent, inline)
                 return
@@ -630,7 +715,10 @@ enum DevGraphQL {
             comments(set.closing, indent)
         }
 
-        mutating func block(_ indent: Int, head: String, args: [Argument]? = nil, variables: Bool = false, tail: String, set: SelectionSet?) {
+        mutating func block(
+            _ indent: Int, head: String, args: [Argument]? = nil, variables: Bool = false, tail: String,
+            set: SelectionSet?
+        ) {
             guard let set else {
                 withArgs(indent, head: head, args: args, variables: variables, tail: tail)
                 return
@@ -663,10 +751,14 @@ enum DevGraphQL {
                     line(0, "}")
                 } else {
                     let head = d.keyword + (d.name.map { " " + $0 } ?? "")
-                    block(0, head: head, args: d.variables, variables: true, tail: Self.directives(d.directives), set: d.set)
+                    block(
+                        0, head: head, args: d.variables, variables: true, tail: Self.directives(d.directives),
+                        set: d.set)
                 }
             case .fragment:
-                block(0, head: "fragment \(d.name ?? "") on \(d.typeCondition ?? "")", tail: Self.directives(d.directives), set: d.set)
+                block(
+                    0, head: "fragment \(d.name ?? "") on \(d.typeCondition ?? "")",
+                    tail: Self.directives(d.directives), set: d.set)
             case .directiveDef:
                 description(d.description, 0)
                 let tail = (d.repeatable ? " repeatable" : "") + " on " + d.locations.joined(separator: " | ")
@@ -732,7 +824,8 @@ enum DevGraphQL {
                 let strings: Set<Kind> = [.string, .block]
                 if (wordy.contains(p.kind) && wordy.contains(t.kind))
                     || (strings.contains(p.kind) && strings.contains(t.kind))
-                    || ((p.kind == .int || p.kind == .float) && t.text == "...") {
+                    || ((p.kind == .int || p.kind == .float) && t.text == "...")
+                {
                     out += " "
                 }
             }
@@ -775,7 +868,8 @@ enum DevGraphQL {
         // Several operations: one entry per operation that takes variables.
         let named = ops.enumerated().filter { !($0.element.variables ?? []).isEmpty }
         if named.count == 1 { return DevJSON.write(skeleton(named[0].element)) }
-        return DevJSON.write(.object(named.map { JSONMember($0.element.name ?? "operation\($0.offset + 1)", skeleton($0.element)) }))
+        return DevJSON.write(
+            .object(named.map { JSONMember($0.element.name ?? "operation\($0.offset + 1)", skeleton($0.element)) }))
     }
 
     static func placeholder(_ type: String) -> JSONValue {

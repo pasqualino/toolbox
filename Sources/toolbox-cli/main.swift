@@ -30,7 +30,9 @@ if first == "layout" {
             for entry in section.entries {
                 if case .group(let g) = entry {
                     let missing = g.members.filter { ToolRegistry.tool(id: $0.toolID) == nil }.map(\.toolID)
-                    print("    \(g.name): \(g.members.map(\.label).joined(separator: " | "))\(missing.isEmpty ? "" : "  MISSING \(missing)")")
+                    print(
+                        "    \(g.name): \(g.members.map(\.label).joined(separator: " | "))\(missing.isEmpty ? "" : "  MISSING \(missing)")"
+                    )
                 } else {
                     print("    \(entry.name)")
                 }
@@ -47,7 +49,9 @@ guard let tool = ToolRegistry.tool(id: first) else {
 
 var options = Options.defaults(for: tool)
 // TOOLBOX_MEDIAINFO_AVFOUNDATION=1 makes Media Info use its AVFoundation fallback, for testing without uninstalling FFmpeg.
-if ProcessInfo.processInfo.environment["TOOLBOX_MEDIAINFO_AVFOUNDATION"] == "1", tool.options.contains(where: { $0.id == "avfoundation" }) {
+if ProcessInfo.processInfo.environment["TOOLBOX_MEDIAINFO_AVFOUNDATION"] == "1",
+    tool.options.contains(where: { $0.id == "avfoundation" })
+{
     options["avfoundation"] = "true"
 }
 var files: [URL] = []
@@ -104,7 +108,8 @@ let run = Task {
         switch event {
         case .itemFailed(let i, let message): print("FAIL [\(i)] \(message)")
         case .itemFinished(let i, let outputs):
-            print("ok   [\(i)] \(outputs.isEmpty ? "(text)" : outputs.map(\.lastPathComponent).joined(separator: ", "))")
+            print(
+                "ok   [\(i)] \(outputs.isEmpty ? "(text)" : outputs.map(\.lastPathComponent).joined(separator: ", "))")
         case .text(_, let t):
             gotText.seen = true
             print("text: \(t)")

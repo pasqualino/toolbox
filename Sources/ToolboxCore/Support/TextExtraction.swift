@@ -19,8 +19,10 @@ enum TextExtraction {
         if type?.conforms(to: .pdf) == true {
             text = try await pdf(url) { _ in }
         } else if type?.conforms(to: .plainText) == true || ["srt", "vtt"].contains(url.pathExtension.lowercased()) {
-            guard let plain = (try? String(contentsOf: url, encoding: .utf8))
-                ?? (try? String(contentsOf: url, encoding: .isoLatin1)) else { throw ToolError.unreadable(url) }
+            guard
+                let plain = (try? String(contentsOf: url, encoding: .utf8))
+                    ?? (try? String(contentsOf: url, encoding: .isoLatin1))
+            else { throw ToolError.unreadable(url) }
             text = plain
         } else {
             // RTF, Word and HTML. The HTML importer uses WebKit and must run on the main thread.
@@ -39,11 +41,19 @@ enum TextExtraction {
 
     /// Recognized text of an image, with wrapped lines joined into paragraphs.
     static func recognize(_ image: CGImage) async throws -> String {
-        try await recognize { try await $0.perform(on: image) } fallback: { try await $0.perform(on: image) }
+        try await recognize {
+            try await $0.perform(on: image)
+        } fallback: {
+            try await $0.perform(on: image)
+        }
     }
 
     static func recognize(_ url: URL) async throws -> String {
-        try await recognize { try await $0.perform(on: url) } fallback: { try await $0.perform(on: url) }
+        try await recognize {
+            try await $0.perform(on: url)
+        } fallback: {
+            try await $0.perform(on: url)
+        }
     }
 
     private static func recognize(
@@ -101,9 +111,11 @@ enum TextExtraction {
         let width = Int(((rotated ? bounds.height : bounds.width) * scale).rounded())
         let height = Int(((rotated ? bounds.width : bounds.height) * scale).rounded())
         guard width > 0, height > 0, width * height < 200_000_000,
-              let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+            let ctx = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+        else { return nil }
         ctx.setFillColor(.white)
         ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
         ctx.scaleBy(x: scale, y: scale)

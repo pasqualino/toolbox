@@ -52,24 +52,28 @@ final class WindowController: NSObject, NSWindowDelegate {
             existing.makeKeyAndOrderFront(nil)
             return
         }
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
-                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                              backing: .buffered, defer: false)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered, defer: false)
         window.identifier = NSUserInterfaceItemIdentifier(tool.id)
         window.title = tool.name
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 640, height: 480)
-        let host = NSHostingController(rootView: ToolView(session: session)
-            .frame(minWidth: 640, minHeight: 480)
-            .environment(AppModel.shared))
+        let host = NSHostingController(
+            rootView: ToolView(session: session)
+                .frame(minWidth: 640, minHeight: 480)
+                .environment(AppModel.shared))
         host.sizingOptions = []
         window.contentViewController = host
         window.setContentSize(NSSize(width: 900, height: 640))
         window.setFrameAutosaveName("ToolWindow-\(tool.id)")
         window.delegate = self
         // Cascade from the main window so it doesn't land exactly on top.
-        if let main = mainWindow { window.setFrameTopLeftPoint(NSPoint(x: main.frame.minX + 40, y: main.frame.maxY - 40)) }
+        if let main = mainWindow {
+            window.setFrameTopLeftPoint(NSPoint(x: main.frame.minX + 40, y: main.frame.maxY - 40))
+        }
         toolWindows.append(window)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)

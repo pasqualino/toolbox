@@ -101,115 +101,220 @@ extension ToolRegistry {
     /// A tool's category comes from here. Tools not listed land in an "Other" section of their declared
     /// category, and `toolbox-cli layout` flags them.
     static let layout: [(ToolCategory, [(String?, [Any])])] = [
-        (.writing, [
-            ("On-device AI", ["rewrite", "summarize", "translate"]),
-            ("Text", [
-            ToolGroup("case", "Change Case", "camelCase, snake_case, kebab-case…", symbol: "textformat",
-                      [("camel-case", "camelCase"), ("pascal-case", "PascalCase"), ("snake-case", "snake_case"),
-                       ("kebab-case", "kebab-case"), ("constant-case", "CONSTANT_CASE"), ("title-case", "Title Case"),
-                       ("upper-case", "UPPER"), ("lower-case", "lower"), ("sponge-case", "sPoNgE")]),
-            ToolGroup("lines", "Lines", "Sort, dedupe, trim, shuffle…", symbol: "list.bullet",
-                      [("sort-lines", "Sort"), ("dedupe-lines", "Remove Duplicates"), ("trim-lines", "Trim"),
-                       ("reverse-lines", "Reverse"), ("shuffle-lines", "Shuffle"), ("collapse-lines", "Join"),
-                       ("number-lines", "Number"), ("markdown-quote", "Quote")]),
-            ToolGroup("cleanup", "Clean Up Text", "Straight quotes, no accents, reversed", symbol: "wand.and.stars",
-                      [("straight-quotes", "Straight Quotes"), ("remove-diacritics", "Remove Accents"),
-                       ("reverse-text", "Reverse")]),
-            ToolGroup("count", "Count & Sum", "Characters, words, lines, totals", symbol: "sum",
-                      [("count-text", "Count"), ("sum-all", "Sum Numbers")]),
-                "text-diff",
-                "lorem-ipsum",
-            ]),
-        ]),
-        (.developer, [
-        ("Encode & Decode", [
-            ToolGroup("base64", "Base64", "Encode or decode, base64url too", symbol: "number.square",
-                      [("base64-encode", "Encode"), ("base64-decode", "Decode")]),
-            ToolGroup("url-coding", "URL Encoding", "Percent-encode or decode", symbol: "link",
-                      [("url-encode", "Encode"), ("url-decode", "Decode")]),
-            ToolGroup("html-entities", "HTML Entities", "Escape or unescape &, <, >", symbol: "chevron.left.forwardslash.chevron.right",
-                      [("html-encode", "Encode"), ("html-decode", "Decode")]),
-            ToolGroup("string-escape", "String Escaping", "JSON-style \\n, \\\", \\u escapes", symbol: "quote.opening",
-                      [("escape-string", "Escape"), ("unescape-string", "Unescape")]),
-            ToolGroup("hex", "Hex", "Text to hex bytes and back", symbol: "number",
-                      [("ascii-to-hex", "Text to Hex"), ("hex-to-ascii", "Hex to Text")]),
-            ToolGroup("defang", "Defang URLs", "Make links safe to share, or restore them", symbol: "link.badge.plus",
-                      [("defang-url", "Defang"), ("refang-url", "Refang")]),
-            "rot13",
-        ]),
-        ("Hash & Sign", [
-            ToolGroup("hashing", "Hash & HMAC", "Digests and webhook signatures", symbol: "lock.shield",
-                      [("hash", "Hash"), ("hmac", "HMAC")]),
-        ]),
-        ("Format", [
-            ToolGroup("json", "JSON", "Format, minify or sort keys", symbol: "curlybraces",
-                      [("format-json", "Format"), ("minify-json", "Minify"), ("sort-json", "Sort Keys")]),
-            ToolGroup("graphql", "GraphQL", "Format, minify, extract variables", symbol: "point.3.connected.trianglepath.dotted",
-                      [("format-graphql", "Format"), ("minify-graphql", "Minify"), ("graphql-variables", "Variables")]),
-            ToolGroup("sql", "SQL", "Format or minify queries", symbol: "cylinder.split.1x2",
-                      [("format-sql", "Format"), ("minify-sql", "Minify")]),
-            ToolGroup("xml", "XML", "Format or minify", symbol: "chevron.left.slash.chevron.right",
-                      [("format-xml", "Format"), ("minify-xml", "Minify")]),
-        ]),
-        ("Convert", [
-            ToolGroup("yaml", "JSON ⇄ YAML", "Convert either way", symbol: "arrow.left.arrow.right",
-                      [("json-to-yaml", "JSON to YAML"), ("yaml-to-json", "YAML to JSON")]),
-            ToolGroup("csv", "JSON ⇄ CSV", "Convert either way", symbol: "tablecells",
-                      [("json-to-csv", "JSON to CSV"), ("csv-to-json", "CSV to JSON")]),
-            ToolGroup("query", "Query String ⇄ JSON", "Convert either way", symbol: "questionmark.square",
-                      [("query-to-json", "Query to JSON"), ("json-to-query", "JSON to Query")]),
-            ToolGroup("codegen", "JSON to Code", "Go structs and TypeScript types", symbol: "curlybraces.square",
-                      [("json-to-go", "Go"), ("json-to-typescript", "TypeScript")]),
-            "number-base",
-            "color-convert",
-        ]),
-        ("Inspect & Debug", [
-            "decode-jwt", "epoch-converter", "explain-cron", "parse-url", "unwrap-log-json", "evaluate-js",
-        ]),
-        ("Generate", [
-            ToolGroup("ids", "IDs", "Generate or decode cuid, UUID, ULID", symbol: "barcode",
-                      [("generate-id", "Generate"), ("inspect-id", "Inspect")]),
-            "branch-name",
-        ]),
-        ]),
-        (.screen, [
-            ("Capture", ["capture-text", "extract-text"]),
-            ("Screenshots", ["beautify-screenshot", "redact-image"]),
-            ("QR Codes", [
-                ToolGroup("qr", "QR Code", "Make one, or read the one in an image", symbol: "qrcode",
-                          [("make-qr", "Make"), ("read-qr", "Read")]),
-            ]),
-        ]),
-        (.images, [
-            (nil, ["convert-images", "compress-images", "resize-images", "rotate-images",
-                   "remove-background", "remove-metadata"]),
-        ]),
-        (.pdf, [
-            ("Combine & Split", ["merge-pdf", "split-pdf", "organize-pdf", "delete-pdf-pages", "extract-pdf-pages"]),
-            ("Protect & Convert", [
-                ToolGroup("pdf-password", "PDF Password", "Add or remove a password", symbol: "lock.doc",
-                          [("protect-pdf", "Add"), ("unlock-pdf", "Remove")]),
-                ToolGroup("pdf-images", "PDF ⇄ Images", "Convert either way", symbol: "photo.on.rectangle",
-                          [("images-to-pdf", "Images to PDF"), ("pdf-to-images", "PDF to Images")]),
-            ]),
-        ]),
-        (.media, [
-            ("Edit Video", ["trim-video", "crop-rotate-video", "change-video-speed", "merge-videos",
-                            "mute-video", "replace-audio"]),
-            ("Convert & Compress", ["compress-video", "convert-video", "resize-video", "video-to-gif"]),
-            ("Audio", ["trim-audio", "extract-audio", "convert-audio"]),
-            ("Get & Inspect", ["download-video", "transcribe", "media-info", "extract-frames"]),
-        ]),
-        (.network, [
-            (nil, ["speed-test", "network-health"]),
-        ]),
-        (.mac, [
-            (nil, ["keep-awake", "fix-app", "batch-rename"]),
-        ]),
+        (
+            .writing,
+            [
+                ("On-device AI", ["rewrite", "summarize", "translate"]),
+                (
+                    "Text",
+                    [
+                        ToolGroup(
+                            "case", "Change Case", "camelCase, snake_case, kebab-case…", symbol: "textformat",
+                            [
+                                ("camel-case", "camelCase"), ("pascal-case", "PascalCase"),
+                                ("snake-case", "snake_case"),
+                                ("kebab-case", "kebab-case"), ("constant-case", "CONSTANT_CASE"),
+                                ("title-case", "Title Case"),
+                                ("upper-case", "UPPER"), ("lower-case", "lower"), ("sponge-case", "sPoNgE"),
+                            ]),
+                        ToolGroup(
+                            "lines", "Lines", "Sort, dedupe, trim, shuffle…", symbol: "list.bullet",
+                            [
+                                ("sort-lines", "Sort"), ("dedupe-lines", "Remove Duplicates"), ("trim-lines", "Trim"),
+                                ("reverse-lines", "Reverse"), ("shuffle-lines", "Shuffle"), ("collapse-lines", "Join"),
+                                ("number-lines", "Number"), ("markdown-quote", "Quote"),
+                            ]),
+                        ToolGroup(
+                            "cleanup", "Clean Up Text", "Straight quotes, no accents, reversed",
+                            symbol: "wand.and.stars",
+                            [
+                                ("straight-quotes", "Straight Quotes"), ("remove-diacritics", "Remove Accents"),
+                                ("reverse-text", "Reverse"),
+                            ]),
+                        ToolGroup(
+                            "count", "Count & Sum", "Characters, words, lines, totals", symbol: "sum",
+                            [("count-text", "Count"), ("sum-all", "Sum Numbers")]),
+                        "text-diff",
+                        "lorem-ipsum",
+                    ]
+                ),
+            ]
+        ),
+        (
+            .developer,
+            [
+                (
+                    "Encode & Decode",
+                    [
+                        ToolGroup(
+                            "base64", "Base64", "Encode or decode, base64url too", symbol: "number.square",
+                            [("base64-encode", "Encode"), ("base64-decode", "Decode")]),
+                        ToolGroup(
+                            "url-coding", "URL Encoding", "Percent-encode or decode", symbol: "link",
+                            [("url-encode", "Encode"), ("url-decode", "Decode")]),
+                        ToolGroup(
+                            "html-entities", "HTML Entities", "Escape or unescape &, <, >",
+                            symbol: "chevron.left.forwardslash.chevron.right",
+                            [("html-encode", "Encode"), ("html-decode", "Decode")]),
+                        ToolGroup(
+                            "string-escape", "String Escaping", "JSON-style \\n, \\\", \\u escapes",
+                            symbol: "quote.opening",
+                            [("escape-string", "Escape"), ("unescape-string", "Unescape")]),
+                        ToolGroup(
+                            "hex", "Hex", "Text to hex bytes and back", symbol: "number",
+                            [("ascii-to-hex", "Text to Hex"), ("hex-to-ascii", "Hex to Text")]),
+                        ToolGroup(
+                            "defang", "Defang URLs", "Make links safe to share, or restore them",
+                            symbol: "link.badge.plus",
+                            [("defang-url", "Defang"), ("refang-url", "Refang")]),
+                        "rot13",
+                    ]
+                ),
+                (
+                    "Hash & Sign",
+                    [
+                        ToolGroup(
+                            "hashing", "Hash & HMAC", "Digests and webhook signatures", symbol: "lock.shield",
+                            [("hash", "Hash"), ("hmac", "HMAC")])
+                    ]
+                ),
+                (
+                    "Format",
+                    [
+                        ToolGroup(
+                            "json", "JSON", "Format, minify or sort keys", symbol: "curlybraces",
+                            [("format-json", "Format"), ("minify-json", "Minify"), ("sort-json", "Sort Keys")]),
+                        ToolGroup(
+                            "graphql", "GraphQL", "Format, minify, extract variables",
+                            symbol: "point.3.connected.trianglepath.dotted",
+                            [
+                                ("format-graphql", "Format"), ("minify-graphql", "Minify"),
+                                ("graphql-variables", "Variables"),
+                            ]),
+                        ToolGroup(
+                            "sql", "SQL", "Format or minify queries", symbol: "cylinder.split.1x2",
+                            [("format-sql", "Format"), ("minify-sql", "Minify")]),
+                        ToolGroup(
+                            "xml", "XML", "Format or minify", symbol: "chevron.left.slash.chevron.right",
+                            [("format-xml", "Format"), ("minify-xml", "Minify")]),
+                    ]
+                ),
+                (
+                    "Convert",
+                    [
+                        ToolGroup(
+                            "yaml", "JSON ⇄ YAML", "Convert either way", symbol: "arrow.left.arrow.right",
+                            [("json-to-yaml", "JSON to YAML"), ("yaml-to-json", "YAML to JSON")]),
+                        ToolGroup(
+                            "csv", "JSON ⇄ CSV", "Convert either way", symbol: "tablecells",
+                            [("json-to-csv", "JSON to CSV"), ("csv-to-json", "CSV to JSON")]),
+                        ToolGroup(
+                            "query", "Query String ⇄ JSON", "Convert either way", symbol: "questionmark.square",
+                            [("query-to-json", "Query to JSON"), ("json-to-query", "JSON to Query")]),
+                        ToolGroup(
+                            "codegen", "JSON to Code", "Go structs and TypeScript types", symbol: "curlybraces.square",
+                            [("json-to-go", "Go"), ("json-to-typescript", "TypeScript")]),
+                        "number-base",
+                        "color-convert",
+                    ]
+                ),
+                (
+                    "Inspect & Debug",
+                    [
+                        "decode-jwt", "epoch-converter", "explain-cron", "parse-url", "unwrap-log-json", "evaluate-js",
+                    ]
+                ),
+                (
+                    "Generate",
+                    [
+                        ToolGroup(
+                            "ids", "IDs", "Generate or decode cuid, UUID, ULID", symbol: "barcode",
+                            [("generate-id", "Generate"), ("inspect-id", "Inspect")]),
+                        "branch-name",
+                    ]
+                ),
+            ]
+        ),
+        (
+            .screen,
+            [
+                ("Capture", ["capture-text", "extract-text"]),
+                ("Screenshots", ["beautify-screenshot", "redact-image"]),
+                (
+                    "QR Codes",
+                    [
+                        ToolGroup(
+                            "qr", "QR Code", "Make one, or read the one in an image", symbol: "qrcode",
+                            [("make-qr", "Make"), ("read-qr", "Read")])
+                    ]
+                ),
+            ]
+        ),
+        (
+            .images,
+            [
+                (
+                    nil,
+                    [
+                        "convert-images", "compress-images", "resize-images", "rotate-images",
+                        "remove-background", "remove-metadata",
+                    ]
+                )
+            ]
+        ),
+        (
+            .pdf,
+            [
+                (
+                    "Combine & Split",
+                    ["merge-pdf", "split-pdf", "organize-pdf", "delete-pdf-pages", "extract-pdf-pages"]
+                ),
+                (
+                    "Protect & Convert",
+                    [
+                        ToolGroup(
+                            "pdf-password", "PDF Password", "Add or remove a password", symbol: "lock.doc",
+                            [("protect-pdf", "Add"), ("unlock-pdf", "Remove")]),
+                        ToolGroup(
+                            "pdf-images", "PDF ⇄ Images", "Convert either way", symbol: "photo.on.rectangle",
+                            [("images-to-pdf", "Images to PDF"), ("pdf-to-images", "PDF to Images")]),
+                    ]
+                ),
+            ]
+        ),
+        (
+            .media,
+            [
+                (
+                    "Edit Video",
+                    [
+                        "trim-video", "crop-rotate-video", "change-video-speed", "merge-videos",
+                        "mute-video", "replace-audio",
+                    ]
+                ),
+                ("Convert & Compress", ["compress-video", "convert-video", "resize-video", "video-to-gif"]),
+                ("Audio", ["trim-audio", "extract-audio", "convert-audio"]),
+                ("Get & Inspect", ["download-video", "transcribe", "media-info", "extract-frames"]),
+            ]
+        ),
+        (
+            .network,
+            [
+                (nil, ["speed-test", "network-health"])
+            ]
+        ),
+        (
+            .mac,
+            [
+                (nil, ["keep-awake", "fix-app", "batch-rename"])
+            ]
+        ),
     ]
 
     /// Tools that run on Apple's on-device models, marked with a sparkle wherever they're listed.
-    static let onDeviceAI: Set<String> = ["rewrite", "summarize", "translate", "transcribe", "extract-text", "capture-text"]
+    static let onDeviceAI: Set<String> = [
+        "rewrite", "summarize", "translate", "transcribe", "extract-text", "capture-text",
+    ]
 
     /// Every group, for lookups.
     public static let groups: [ToolGroup] = layout.flatMap { $0.1.flatMap { $0.1.compactMap { $0 as? ToolGroup } } }

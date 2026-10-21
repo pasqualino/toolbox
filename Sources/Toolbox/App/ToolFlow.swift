@@ -76,7 +76,8 @@ enum ToolFlow {
         if self == .speedTest {
             // Opening Speed Test from the palette is asking for a test now.
             if let tool { AppModel.shared.open(tool) }
-            SpeedTestModel.shared.run(sequential: tool.map { AppModel.shared.session(for: $0).options.bool("sequential") } ?? false)
+            SpeedTestModel.shared.run(
+                sequential: tool.map { AppModel.shared.session(for: $0).options.bool("sequential") } ?? false)
             return true
         }
         guard self == .captureText else { return false }

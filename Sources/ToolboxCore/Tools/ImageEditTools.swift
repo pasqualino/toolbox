@@ -10,18 +10,24 @@ enum ImageEditTools {
         summary: "Background, padding, rounded corners and a shadow",
         category: .images,
         symbol: "sparkles.rectangle.stack",
-        keywords: ["screenshot", "pretty", "frame", "mockup", "background", "gradient", "padding", "shadow",
-                   "rounded", "corners", "social", "slack", "twitter", "share", "present", "polish", "window"],
+        keywords: [
+            "screenshot", "pretty", "frame", "mockup", "background", "gradient", "padding", "shadow",
+            "rounded", "corners", "social", "slack", "twitter", "share", "present", "polish", "window",
+        ],
         accepts: [.image],
         options: [
-            OptionSpec("background", "Background",
-                       .choice(Beautify.backgrounds.map { Choice($0.id, $0.label) }, default: "ocean")),
+            OptionSpec(
+                "background", "Background",
+                .choice(Beautify.backgrounds.map { Choice($0.id, $0.label) }, default: "ocean")),
             OptionSpec("padding", "Padding", .slider(0...25, step: 1, default: 8, format: "%.0f%%")),
             OptionSpec("radius", "Corners", .slider(0...6, step: 0.25, default: 1.5, format: "%.2f%%")),
             OptionSpec("shadow", "Shadow", .toggle(default: true)),
-            OptionSpec("ratio", "Shape", .choice([
-                Choice("auto", "Auto"), Choice("16:9", "16:9"), Choice("4:3", "4:3"), Choice("1:1", "Square"),
-            ], default: "auto"), help: "Pads to a fixed shape for social posts and Slack."),
+            OptionSpec(
+                "ratio", "Shape",
+                .choice(
+                    [
+                        Choice("auto", "Auto"), Choice("16:9", "16:9"), Choice("4:3", "4:3"), Choice("1:1", "Square"),
+                    ], default: "auto"), help: "Pads to a fixed shape for social posts and Slack."),
         ],
         actionTitle: "Beautify",
         runner: .perFile { url, ctx in
@@ -42,22 +48,28 @@ enum ImageEditTools {
         summary: "Black out faces, emails, keys and card numbers",
         category: .images,
         symbol: "eye.slash",
-        keywords: ["redact", "censor", "hide", "blur", "pixelate", "black out", "blackout", "mask", "privacy",
-                   "anonymize", "screenshot", "secret", "token", "api key", "password", "email", "face", "pii",
-                   "credit card", "ip address", "sanitize"],
+        keywords: [
+            "redact", "censor", "hide", "blur", "pixelate", "black out", "blackout", "mask", "privacy",
+            "anonymize", "screenshot", "secret", "token", "api key", "password", "email", "face", "pii",
+            "credit card", "ip address", "sanitize",
+        ],
         accepts: [.image],
         options: [
             OptionSpec("faces", "Faces", .toggle(default: true)),
             OptionSpec("emails", "Emails", .toggle(default: true)),
-            OptionSpec("secrets", "Keys and tokens", .toggle(default: true),
-                       help: "JWTs, API keys, bearer tokens, passwords and long random strings."),
+            OptionSpec(
+                "secrets", "Keys and tokens", .toggle(default: true),
+                help: "JWTs, API keys, bearer tokens, passwords and long random strings."),
             OptionSpec("cards", "Card numbers", .toggle(default: true)),
             OptionSpec("ips", "IP addresses", .toggle(default: false)),
             OptionSpec("phones", "Phone numbers", .toggle(default: false)),
             OptionSpec("regions", "Also cover", .regions, help: "Drag on the preview to cover anything else."),
-            OptionSpec("style", "Style", .choice([
-                Choice("fill", "Black box"), Choice("pixelate", "Pixelate"), Choice("blur", "Blur"),
-            ], default: "fill"), help: "Black box can't be undone. Pixelate and blur hide less."),
+            OptionSpec(
+                "style", "Style",
+                .choice(
+                    [
+                        Choice("fill", "Black box"), Choice("pixelate", "Pixelate"), Choice("blur", "Blur"),
+                    ], default: "fill"), help: "Black box can't be undone. Pixelate and blur hide less."),
         ],
         actionTitle: "Redact",
         runner: .perFile { url, ctx in
@@ -66,7 +78,8 @@ enum ImageEditTools {
             try Task.checkCancellation()
             let (redacted, hits) = try Redact.render(image, ctx.options)
             guard !hits.isEmpty else {
-                throw ToolError.message("Found nothing to redact in \(url.lastPathComponent). Drag on the preview to cover areas by hand.")
+                throw ToolError.message(
+                    "Found nothing to redact in \(url.lastPathComponent). Drag on the preview to cover areas by hand.")
             }
             ctx.progress(0.8)
             let format: ImageFormat = ImageFormat.of(url) == .jpeg ? .jpeg : .png

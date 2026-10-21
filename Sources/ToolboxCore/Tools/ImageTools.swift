@@ -19,8 +19,9 @@ enum ImageTools {
         accepts: [.image],
         options: [
             OptionSpec("format", "Format", .choice(formatChoices, default: "jpeg")),
-            OptionSpec("quality", "Quality", .slider(0.1...1, step: 0.05, default: 0.85, format: "%.0f%%"),
-                       visibleWhen: ("format", ["jpeg", "heic", "webp", "avif"])),
+            OptionSpec(
+                "quality", "Quality", .slider(0.1...1, step: 0.05, default: 0.85, format: "%.0f%%"),
+                visibleWhen: ("format", ["jpeg", "heic", "webp", "avif"])),
         ],
         actionTitle: "Convert",
         runner: .perFile { url, ctx in
@@ -28,9 +29,10 @@ enum ImageTools {
             let src = try ImageIOHelpers.source(url)
             let image = try ImageIOHelpers.image(src)
             let out = ctx.output(for: url, ext: format.ext)
-            try await ImageIOHelpers.write(image, to: out, format: format,
-                                           quality: ctx.options.double("quality"),
-                                           properties: ImageIOHelpers.uprightProperties(src))
+            try await ImageIOHelpers.write(
+                image, to: out, format: format,
+                quality: ctx.options.double("quality"),
+                properties: ImageIOHelpers.uprightProperties(src))
             return [out]
         }
     )
@@ -59,18 +61,28 @@ enum ImageTools {
         summary: "Smaller files, same look",
         category: .images,
         symbol: "arrow.down.right.and.arrow.up.left",
-        keywords: ["shrink", "smaller", "reduce", "optimize", "size", "kb", "mb", "email", "jpg", "jpeg", "png", "heic", "quality"],
+        keywords: [
+            "shrink", "smaller", "reduce", "optimize", "size", "kb", "mb", "email", "jpg", "jpeg", "png", "heic",
+            "quality",
+        ],
         accepts: [.image],
         options: [
-            OptionSpec("format", "Format", .choice([
-                Choice("keep", "Keep"), Choice("jpeg", "JPEG"), Choice("heic", "HEIC"),
-            ], default: "keep")),
-            OptionSpec("quality", "Quality", .slider(0.1...1, step: 0.05, default: 0.7, format: "%.0f%%"),
-                       help: "PNG stays lossless."),
-            OptionSpec("max", "Max size", .choice([
-                Choice("0", "Original"), Choice("3840", "3840 px"), Choice("2560", "2560 px"),
-                Choice("1920", "1920 px"), Choice("1280", "1280 px"),
-            ], default: "0")),
+            OptionSpec(
+                "format", "Format",
+                .choice(
+                    [
+                        Choice("keep", "Keep"), Choice("jpeg", "JPEG"), Choice("heic", "HEIC"),
+                    ], default: "keep")),
+            OptionSpec(
+                "quality", "Quality", .slider(0.1...1, step: 0.05, default: 0.7, format: "%.0f%%"),
+                help: "PNG stays lossless."),
+            OptionSpec(
+                "max", "Max size",
+                .choice(
+                    [
+                        Choice("0", "Original"), Choice("3840", "3840 px"), Choice("2560", "2560 px"),
+                        Choice("1920", "1920 px"), Choice("1280", "1280 px"),
+                    ], default: "0")),
         ],
         actionTitle: "Compress",
         runner: .perFile { url, ctx in
@@ -86,12 +98,14 @@ enum ImageTools {
             let out = ctx.output(for: url, ext: format.ext)
             var props = ImageIOHelpers.uprightProperties(src)
             props.merge(extraProperties(format)) { $1 }
-            try await ImageIOHelpers.write(image, to: out, format: format,
-                                           quality: ctx.options.double("quality"), properties: props)
+            try await ImageIOHelpers.write(
+                image, to: out, format: format,
+                quality: ctx.options.double("quality"), properties: props)
 
             // Never hand back a bigger file in the same format and size.
             if format == ImageFormat.of(url), !shrinks,
-               ImageIOHelpers.fileSize(out) >= ImageIOHelpers.fileSize(url) {
+                ImageIOHelpers.fileSize(out) >= ImageIOHelpers.fileSize(url)
+            {
                 try FileManager.default.removeItem(at: out)
                 try FileManager.default.copyItem(at: url, to: out)
             }
@@ -105,17 +119,25 @@ enum ImageTools {
         summary: "Scale to a size, keeping proportions",
         category: .images,
         symbol: "aspectratio",
-        keywords: ["scale", "smaller", "shrink", "dimensions", "width", "height", "pixels", "downscale", "enlarge", "thumbnail"],
+        keywords: [
+            "scale", "smaller", "shrink", "dimensions", "width", "height", "pixels", "downscale", "enlarge",
+            "thumbnail",
+        ],
         accepts: [.image],
         options: [
-            OptionSpec("mode", "Fit", .choice([
-                Choice("longest", "Longest side"), Choice("width", "Width"),
-                Choice("height", "Height"), Choice("percent", "Percent"),
-            ], default: "longest")),
-            OptionSpec("size", "Size", .number(16...20_000, default: 1920, unit: "px"),
-                       visibleWhen: ("mode", ["longest", "width", "height"])),
-            OptionSpec("percent", "Scale", .number(1...1000, default: 50, unit: "%"),
-                       visibleWhen: ("mode", ["percent"])),
+            OptionSpec(
+                "mode", "Fit",
+                .choice(
+                    [
+                        Choice("longest", "Longest side"), Choice("width", "Width"),
+                        Choice("height", "Height"), Choice("percent", "Percent"),
+                    ], default: "longest")),
+            OptionSpec(
+                "size", "Size", .number(16...20_000, default: 1920, unit: "px"),
+                visibleWhen: ("mode", ["longest", "width", "height"])),
+            OptionSpec(
+                "percent", "Scale", .number(1...1000, default: 50, unit: "%"),
+                visibleWhen: ("mode", ["percent"])),
             OptionSpec("upscale", "Allow enlarging", .toggle(default: false)),
         ],
         actionTitle: "Resize",
@@ -131,8 +153,9 @@ enum ImageTools {
             case "percent": scale = ctx.options.double("percent") / 100
             default: scale = value / max(size.width, size.height)
             }
-            let target = CGSize(width: max(1, (size.width * scale).rounded()),
-                                height: max(1, (size.height * scale).rounded()))
+            let target = CGSize(
+                width: max(1, (size.width * scale).rounded()),
+                height: max(1, (size.height * scale).rounded()))
             // Already that size, or would need enlarging: hand back the original untouched.
             if target == size || (scale > 1 && !ctx.options.bool("upscale")) {
                 return [try copyOriginal(url, ctx: ctx)]
@@ -154,13 +177,18 @@ enum ImageTools {
         summary: "Turn or flip, without quality loss for JPEG",
         category: .images,
         symbol: "rotate.right",
-        keywords: ["turn", "flip", "mirror", "orientation", "sideways", "upside down", "90", "180", "landscape", "portrait"],
+        keywords: [
+            "turn", "flip", "mirror", "orientation", "sideways", "upside down", "90", "180", "landscape", "portrait",
+        ],
         accepts: [.image],
         options: [
-            OptionSpec("turn", "Turn", .choice([
-                Choice("right", "90° right"), Choice("left", "90° left"), Choice("180", "180°"),
-                Choice("fliph", "Flip horizontal"), Choice("flipv", "Flip vertical"),
-            ], default: "right")),
+            OptionSpec(
+                "turn", "Turn",
+                .choice(
+                    [
+                        Choice("right", "90° right"), Choice("left", "90° left"), Choice("180", "180°"),
+                        Choice("fliph", "Flip horizontal"), Choice("flipv", "Flip vertical"),
+                    ], default: "right"))
         ],
         actionTitle: "Rotate",
         runner: .perFile { url, ctx in
@@ -192,26 +220,34 @@ enum ImageTools {
         summary: "Cut out the subject as a transparent PNG",
         category: .images,
         symbol: "person.and.background.dotted",
-        keywords: ["cutout", "cut out", "transparent", "background", "remove bg", "subject", "isolate", "mask", "sticker", "alpha", "png"],
+        keywords: [
+            "cutout", "cut out", "transparent", "background", "remove bg", "subject", "isolate", "mask", "sticker",
+            "alpha", "png",
+        ],
         accepts: [.image],
         options: [
             OptionSpec("crop", "Crop to subject", .toggle(default: false)),
-            OptionSpec("fill", "Background", .choice([
-                Choice("transparent", "Transparent"), Choice("white", "White"), Choice("black", "Black"),
-                Choice("gray", "Gray"), Choice("custom", "Custom"),
-            ], default: "transparent")),
-            OptionSpec("color", "Color", .text(default: "#FFFFFF", placeholder: "#RRGGBB"),
-                       visibleWhen: ("fill", ["custom"])),
+            OptionSpec(
+                "fill", "Background",
+                .choice(
+                    [
+                        Choice("transparent", "Transparent"), Choice("white", "White"), Choice("black", "Black"),
+                        Choice("gray", "Gray"), Choice("custom", "Custom"),
+                    ], default: "transparent")),
+            OptionSpec(
+                "color", "Color", .text(default: "#FFFFFF", placeholder: "#RRGGBB"),
+                visibleWhen: ("fill", ["custom"])),
         ],
         actionTitle: "Remove",
         runner: .perFile { url, ctx in
-            let fill: CGColor? = switch ctx.options.string("fill") {
-            case "white": CGColor(gray: 1, alpha: 1)
-            case "black": CGColor(gray: 0, alpha: 1)
-            case "gray": CGColor(gray: 0.5, alpha: 1)
-            case "custom": try ImageEdit.color(hex: ctx.options.string("color"))
-            default: nil
-            }
+            let fill: CGColor? =
+                switch ctx.options.string("fill") {
+                case "white": CGColor(gray: 1, alpha: 1)
+                case "black": CGColor(gray: 0, alpha: 1)
+                case "gray": CGColor(gray: 0.5, alpha: 1)
+                case "custom": try ImageEdit.color(hex: ctx.options.string("color"))
+                default: nil
+                }
             let src = try ImageIOHelpers.source(url)
             let image = try ImageIOHelpers.image(src)
             ctx.progress(0.1)
@@ -224,12 +260,15 @@ enum ImageTools {
             }
             ctx.progress(0.7)
 
-            let buffer = try result.generateMaskedImage(ofInstances: result.allInstances, from: handler,
-                                                        croppedToInstancesExtent: ctx.options.bool("crop"))
+            let buffer = try result.generateMaskedImage(
+                ofInstances: result.allInstances, from: handler,
+                croppedToInstancesExtent: ctx.options.bool("crop"))
             let masked = CIImage(cvPixelBuffer: buffer)
-            let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
+            let space =
+                image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
                 ?? CGColorSpace(name: CGColorSpace.sRGB)!
-            guard var cutout = CIContext().createCGImage(masked, from: masked.extent, format: .RGBA8, colorSpace: space) else {
+            guard var cutout = CIContext().createCGImage(masked, from: masked.extent, format: .RGBA8, colorSpace: space)
+            else {
                 throw ToolError.message("Couldn't build the cutout.")
             }
             if let fill {
@@ -254,11 +293,15 @@ enum ImageTools {
         summary: "Strip location, camera and EXIF data",
         category: .images,
         symbol: "location.slash",
-        keywords: ["exif", "gps", "location", "privacy", "strip", "clean", "metadata", "xmp", "iptc", "camera", "anonymize", "scrub"],
+        keywords: [
+            "exif", "gps", "location", "privacy", "strip", "clean", "metadata", "xmp", "iptc", "camera", "anonymize",
+            "scrub",
+        ],
         accepts: [.image],
         options: [
-            OptionSpec("orientation", "Keep orientation tag", .toggle(default: true),
-                       help: "Off rotates the pixels instead, which re-encodes the image."),
+            OptionSpec(
+                "orientation", "Keep orientation tag", .toggle(default: true),
+                help: "Off rotates the pixels instead, which re-encodes the image.")
         ],
         actionTitle: "Remove",
         runner: .perFile { url, ctx in
@@ -272,7 +315,9 @@ enum ImageTools {
             if keepTag || orientation == 1, let format, format != .webp {
                 // Tag-only edit: JPEG keeps its compressed data, PNG and TIFF stay lossless, HEIC is re-encoded.
                 out = ctx.output(for: url)
-                if format != .jpeg || !ImageMetadata.copy(url, to: out, options: ImageMetadata.stripOptions(orientation: tag)) {
+                if format != .jpeg
+                    || !ImageMetadata.copy(url, to: out, options: ImageMetadata.stripOptions(orientation: tag))
+                {
                     try ImageMetadata.rewriteStripped(src, to: out, orientation: tag, quality: 0.9)
                 }
             } else {
@@ -280,8 +325,9 @@ enum ImageTools {
                 let image = try ImageIOHelpers.image(src)
                 let kept = keptFormat(url, image)
                 out = ctx.output(for: url, ext: kept.ext)
-                try await ImageIOHelpers.write(image, to: out, format: kept, quality: 0.9,
-                                               properties: extraProperties(kept))
+                try await ImageIOHelpers.write(
+                    image, to: out, format: kept, quality: 0.9,
+                    properties: extraProperties(kept))
             }
 
             guard ImageMetadata.isClean(out) else {

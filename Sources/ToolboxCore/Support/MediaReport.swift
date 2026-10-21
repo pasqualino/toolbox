@@ -17,7 +17,8 @@ enum MediaReport {
         /// Adds a row; empty values are skipped.
         mutating func row(_ label: String, _ value: String?) {
             guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty,
-                  !sections.isEmpty else { return }
+                !sections.isEmpty
+            else { return }
             sections[sections.count - 1].rows.append((label, value))
         }
 
@@ -67,8 +68,10 @@ enum MediaReport {
         var b = Builder()
         fileRows(&b, url)
         let type = UTType(filenameExtension: url.pathExtension.lowercased())
-        b.row("Format", type.flatMap { $0.isDynamic ? nil : $0.localizedDescription }
-            ?? format["format_long_name"] as? String ?? format["format_name"] as? String)
+        b.row(
+            "Format",
+            type.flatMap { $0.isDynamic ? nil : $0.localizedDescription }
+                ?? format["format_long_name"] as? String ?? format["format_name"] as? String)
         if let d = double(format["duration"]) { b.row("Duration", duration(d)) }
         if let r = double(format["bit_rate"]) { b.row("Bitrate", bitrate(r)) }
         b.row("Created", tags["creation_time"].flatMap(isoDate) ?? fileCreated(url))
@@ -97,7 +100,9 @@ enum MediaReport {
                 b.row("Frame rate", String(format: "%.3g fps", fps))
             }
             let depth = Int(s["bits_per_raw_sample"] as? String ?? "") ?? bitDepth(s["pix_fmt"] as? String)
-            b.row("Pixels", [depth.map { "\($0)-bit" }, s["pix_fmt"] as? String].compactMap { $0 }.joined(separator: ", "))
+            b.row(
+                "Pixels",
+                [depth.map { "\($0)-bit" }, s["pix_fmt"] as? String].compactMap { $0 }.joined(separator: ", "))
             let transfer = s["color_transfer"] as? String
             let color = [s["color_primaries"] as? String, transfer].compactMap { $0 }.filter { $0 != "unknown" }
             if !color.isEmpty { b.row("Color", color.joined(separator: " / ")) }
@@ -110,7 +115,10 @@ enum MediaReport {
             b.row("Codec", codec(s))
             let channels = s["channels"] as? Int ?? 0
             let layout = s["channel_layout"] as? String
-            b.row("Channels", channels > 0 ? ([String(channels)] + (layout.map { ["(\($0))"] } ?? [])).joined(separator: " ") : layout)
+            b.row(
+                "Channels",
+                channels > 0 ? ([String(channels)] + (layout.map { ["(\($0))"] } ?? [])).joined(separator: " ") : layout
+            )
             if let sr = double(s["sample_rate"]) { b.row("Sample rate", String(format: "%g kHz", sr / 1000)) }
             if let r = double(s["bit_rate"]) { b.row("Bitrate", bitrate(r)) }
             b.row("Language", language(s))
@@ -217,9 +225,10 @@ enum MediaReport {
     /// "+38.7200-009.1400+010.000/" → "38.72000, -9.14000".
     static func iso6709(_ text: String) -> String? {
         guard let regex = try? Regex(#"^([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)"#),
-              let m = text.firstMatch(of: regex), m.count == 3,
-              let a = m[1].substring, let b = m[2].substring,
-              let lat = Double(a), let lon = Double(b) else { return nil }
+            let m = text.firstMatch(of: regex), m.count == 3,
+            let a = m[1].substring, let b = m[2].substring,
+            let lat = Double(a), let lon = Double(b)
+        else { return nil }
         return coordinate(lat, lon)
     }
 
@@ -260,9 +269,11 @@ enum MediaReport {
         for (i, t) in video.enumerated() {
             b.section(video.count > 1 ? "Video \(i + 1)" : "Video")
             let (formats, size, transform, fps, rate, lang) = try await t.load(
-                .formatDescriptions, .naturalSize, .preferredTransform, .nominalFrameRate, .estimatedDataRate, .languageCode)
+                .formatDescriptions, .naturalSize, .preferredTransform, .nominalFrameRate, .estimatedDataRate,
+                .languageCode)
             if let f = formats.first { b.row("Codec", fourCC(CMFormatDescriptionGetMediaSubType(f))) }
-            let w = Int(size.width), h = Int(size.height)
+            let w = Int(size.width)
+            let h = Int(size.height)
             let degrees = (Int((atan2(transform.b, transform.a) * 180 / .pi).rounded()) + 360) % 360
             b.row("Resolution", degrees % 180 != 0 ? "\(w) × \(h) (shows as \(h) × \(w))" : "\(w) × \(h)")
             if degrees != 0 { b.row("Rotation", rotationName(degrees)) }
@@ -276,8 +287,12 @@ enum MediaReport {
                 if let depth = ext[kCMFormatDescriptionExtension_Depth as String] as? Int, depth >= 24, depth % 3 == 0 {
                     b.row("Pixels", "\(depth / 3)-bit")
                 }
-                if transfer == (kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ as String) { b.row("HDR", "Yes (HDR10, PQ)") }
-                if transfer == (kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG as String) { b.row("HDR", "Yes (HLG)") }
+                if transfer == (kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ as String) {
+                    b.row("HDR", "Yes (HDR10, PQ)")
+                }
+                if transfer == (kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG as String) {
+                    b.row("HDR", "Yes (HLG)")
+                }
             }
             if rate > 0 { b.row("Bitrate", bitrate(Double(rate))) }
             b.row("Language", lang.flatMap { $0 == "und" ? nil : $0 })
@@ -305,7 +320,10 @@ enum MediaReport {
         for item in metadata {
             guard let key = item.commonKey else {
                 if let id = item.identifier?.rawValue, id.contains("location.ISO6709"),
-                   let v = try? await item.load(.stringValue) { b.row("Location", iso6709(v) ?? v) }
+                    let v = try? await item.load(.stringValue)
+                {
+                    b.row("Location", iso6709(v) ?? v)
+                }
                 continue
             }
             let value = try? await item.load(.stringValue)
@@ -376,7 +394,8 @@ enum MediaReport {
         b.section("Camera")
         b.row("Make", tiff[kCGImagePropertyTIFFMake] as? String)
         b.row("Model", tiff[kCGImagePropertyTIFFModel] as? String)
-        b.row("Lens", exif[kCGImagePropertyExifLensModel] as? String ?? aux[kCGImagePropertyExifAuxLensModel] as? String)
+        b.row(
+            "Lens", exif[kCGImagePropertyExifLensModel] as? String ?? aux[kCGImagePropertyExifAuxLensModel] as? String)
         if let t = double(exif[kCGImagePropertyExifExposureTime]), t > 0 {
             b.row("Exposure", t < 1 ? "1/\(Int((1 / t).rounded())) s" : String(format: "%g s", t))
         }
@@ -386,11 +405,15 @@ enum MediaReport {
         }
         if let focal = double(exif[kCGImagePropertyExifFocalLength]) {
             var text = String(format: "%g mm", focal)
-            if let eq = double(exif[kCGImagePropertyExifFocalLenIn35mmFilm]) { text += String(format: " (%g mm equivalent)", eq) }
+            if let eq = double(exif[kCGImagePropertyExifFocalLenIn35mmFilm]) {
+                text += String(format: " (%g mm equivalent)", eq)
+            }
             b.row("Focal length", text)
         }
-        b.row("Date taken", (exif[kCGImagePropertyExifDateTimeOriginal] as? String ?? tiff[kCGImagePropertyTIFFDateTime] as? String)
-            .map { exifDate($0) ?? $0 })
+        b.row(
+            "Date taken",
+            (exif[kCGImagePropertyExifDateTimeOriginal] as? String ?? tiff[kCGImagePropertyTIFFDateTime] as? String)
+                .map { exifDate($0) ?? $0 })
         b.row("Software", tiff[kCGImagePropertyTIFFSoftware] as? String)
 
         b.section("Location")
@@ -433,7 +456,9 @@ enum MediaReport {
     static func duration(_ seconds: Double) -> String {
         let s = Int(seconds)
         let ms = Int(((seconds - Double(s)) * 1000).rounded())
-        let clock = s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
+        let clock =
+            s >= 3600
+            ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60)
             : String(format: "%d:%02d", s / 60, s % 60)
         return ms > 0 ? "\(clock).\(String(format: "%03d", min(ms, 999))) (\(String(format: "%g", seconds)) s)" : clock
     }

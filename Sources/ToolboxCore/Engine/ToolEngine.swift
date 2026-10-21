@@ -56,9 +56,10 @@ public enum ToolEngine {
 
         let names = NameBook()
         func context(_ index: Int) -> ToolContext {
-            ToolContext(options: options, outputDirectory: staging, names: names,
-                        onProgress: { events(.itemProgress(index, $0)) },
-                        onText: { events(.text(index, $0)) })
+            ToolContext(
+                options: options, outputDirectory: staging, names: names,
+                onProgress: { events(.itemProgress(index, $0)) },
+                onText: { events(.text(index, $0)) })
         }
 
         var produced: [Int: [URL]] = [:]
@@ -81,7 +82,9 @@ public enum ToolEngine {
 
         switch tool.runner {
         case .perFile(let body):
-            let limit = tool.requirements.contains(.ffmpeg) ? 1 : max(2, min(6, ProcessInfo.processInfo.activeProcessorCount / 2))
+            let limit =
+                tool.requirements.contains(.ffmpeg)
+                ? 1 : max(2, min(6, ProcessInfo.processInfo.activeProcessorCount / 2))
             // A nested enqueue() func capturing the group reported every item as index 0 in
             // release builds, so the bounded fan-out is written as a flat loop.
             await withTaskGroup(of: ItemOutcome.self) { group in
@@ -96,8 +99,8 @@ public enum ToolEngine {
                         running += 1
                         events(.itemStarted(index))
                         group.addTask {
-                            do { return ItemOutcome(index: index, urls: try await body(input, ctx), error: nil) }
-                            catch { return ItemOutcome(index: index, urls: [], error: error) }
+                            do { return ItemOutcome(index: index, urls: try await body(input, ctx), error: nil) } catch
+                            { return ItemOutcome(index: index, urls: [], error: error) }
                         }
                     }
                     guard let outcome = await group.next() else { break }
@@ -168,8 +171,9 @@ public enum ToolEngine {
             events(.itemFailed(0, message: "Couldn't save results: \(error.localizedDescription)"))
             return RunResult(folder: nil, outputs: [], failures: failures + 1, cancelled: false)
         }
-        return RunResult(folder: createdFolder ? folder : delivered.first?.deletingLastPathComponent(),
-                         outputs: delivered, failures: failures, cancelled: false)
+        return RunResult(
+            folder: createdFolder ? folder : delivered.first?.deletingLastPathComponent(),
+            outputs: delivered, failures: failures, cancelled: false)
     }
 }
 

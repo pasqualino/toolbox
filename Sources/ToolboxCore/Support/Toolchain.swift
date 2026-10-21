@@ -51,7 +51,8 @@ public enum Toolchain {
         case .appleIntelligence:
             switch SystemLanguageModel.default.availability {
             case .available: "Apple Intelligence is ready."
-            case .unavailable(.appleIntelligenceNotEnabled): "Turn on Apple Intelligence in System Settings to use this tool."
+            case .unavailable(.appleIntelligenceNotEnabled):
+                "Turn on Apple Intelligence in System Settings to use this tool."
             case .unavailable(.deviceNotEligible): "This Mac doesn't support Apple Intelligence."
             case .unavailable(.modelNotReady): "Apple Intelligence is still downloading its model. Try again soon."
             case .unavailable: "Apple Intelligence isn't available right now."

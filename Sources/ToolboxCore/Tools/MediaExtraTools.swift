@@ -12,13 +12,16 @@ enum MediaExtraTools {
         summary: "Codec, resolution, bitrate, camera and location details",
         category: .media,
         symbol: "info.circle",
-        keywords: ["mediainfo", "ffprobe", "probe", "inspect", "details", "properties", "metadata", "codec",
-                   "bitrate", "resolution", "fps", "frame rate", "exif", "hdr", "duration", "sample rate",
-                   "gps", "camera", "what is this file"],
+        keywords: [
+            "mediainfo", "ffprobe", "probe", "inspect", "details", "properties", "metadata", "codec",
+            "bitrate", "resolution", "fps", "frame rate", "exif", "hdr", "duration", "sample rate",
+            "gps", "camera", "what is this file",
+        ],
         accepts: VideoTools.videoTypes + [.audio, .image],
         options: [
             // Hidden in the app; the CLI sets it from TOOLBOX_MEDIAINFO_AVFOUNDATION=1 to test the fallback.
-            OptionSpec("avfoundation", "Read with AVFoundation", .toggle(default: false), visibleWhen: ("cli", ["true"])),
+            OptionSpec(
+                "avfoundation", "Read with AVFoundation", .toggle(default: false), visibleWhen: ("cli", ["true"]))
         ],
         actionTitle: "Inspect",
         runner: .perFile { url, ctx in
@@ -35,27 +38,39 @@ enum MediaExtraTools {
         summary: "Save stills from a video as images",
         category: .media,
         symbol: "film.stack",
-        keywords: ["frames", "stills", "screenshots", "snapshot", "thumbnails", "video to images", "video to png",
-                   "video to jpg", "grab frame", "capture frame", "scene", "contact sheet"],
+        keywords: [
+            "frames", "stills", "screenshots", "snapshot", "thumbnails", "video to images", "video to png",
+            "video to jpg", "grab frame", "capture frame", "scene", "contact sheet",
+        ],
         accepts: VideoTools.videoTypes,
         options: [
-            OptionSpec("mode", "Frames", .choice([
-                Choice("count", "Evenly spaced"), Choice("interval", "Every N seconds"),
-                Choice("times", "At times"), Choice("scenes", "Scene changes"),
-            ], default: "count")),
-            OptionSpec("count", "How many", .number(1...1000, default: 10, unit: "frames"),
-                       visibleWhen: ("mode", ["count"])),
-            OptionSpec("seconds", "Every", .number(0.1...3600, default: 1, unit: "s"),
-                       visibleWhen: ("mode", ["interval"])),
-            OptionSpec("times", "Times", .text(default: "", placeholder: "0:01, 5.5, 1:02"),
-                       help: "Seconds or m:ss, separated by commas.", visibleWhen: ("mode", ["times"])),
-            OptionSpec("threshold", "Sensitivity", .slider(0.1...0.9, step: 0.05, default: 0.3, format: "%.2f"),
-                       help: "Lower finds more scene changes. The first frame is always included.",
-                       visibleWhen: ("mode", ["scenes"])),
+            OptionSpec(
+                "mode", "Frames",
+                .choice(
+                    [
+                        Choice("count", "Evenly spaced"), Choice("interval", "Every N seconds"),
+                        Choice("times", "At times"), Choice("scenes", "Scene changes"),
+                    ], default: "count")),
+            OptionSpec(
+                "count", "How many", .number(1...1000, default: 10, unit: "frames"),
+                visibleWhen: ("mode", ["count"])),
+            OptionSpec(
+                "seconds", "Every", .number(0.1...3600, default: 1, unit: "s"),
+                visibleWhen: ("mode", ["interval"])),
+            OptionSpec(
+                "times", "Times", .text(default: "", placeholder: "0:01, 5.5, 1:02"),
+                help: "Seconds or m:ss, separated by commas.", visibleWhen: ("mode", ["times"])),
+            OptionSpec(
+                "threshold", "Sensitivity", .slider(0.1...0.9, step: 0.05, default: 0.3, format: "%.2f"),
+                help: "Lower finds more scene changes. The first frame is always included.",
+                visibleWhen: ("mode", ["scenes"])),
             OptionSpec("range", "From", .timeRange, visibleWhen: ("mode", ["count", "interval", "scenes"])),
-            OptionSpec("format", "Format", .choice([
-                Choice("png", "PNG"), Choice("jpeg", "JPEG"), Choice("heic", "HEIC"),
-            ], default: "png")),
+            OptionSpec(
+                "format", "Format",
+                .choice(
+                    [
+                        Choice("png", "PNG"), Choice("jpeg", "JPEG"), Choice("heic", "HEIC"),
+                    ], default: "png")),
         ],
         requirements: [.ffmpeg],
         actionTitle: "Extract",
@@ -70,8 +85,9 @@ enum MediaExtraTools {
             switch mode {
             case "scenes":
                 let folder = ctx.outputFolder(for: url, suffix: " frames")
-                return try await MediaFrames.scenes(url, range: range, threshold: o.double("threshold"), format: format,
-                                                    name: name, into: folder, context: ctx)
+                return try await MediaFrames.scenes(
+                    url, range: range, threshold: o.double("threshold"), format: format,
+                    name: name, into: folder, context: ctx)
             case "interval":
                 times = try MediaFrames.intervalTimes(every: o.double("seconds"), in: range)
             case "times":

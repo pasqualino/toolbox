@@ -34,16 +34,22 @@ enum DevJWT {
     }
 
     static func json(_ part: Substring, _ name: String) throws -> Any {
-        guard let data = try? DevEncoding.base64Decode(String(part)) else { throw ToolError.message("The \(name) isn't valid base64url.") }
+        guard let data = try? DevEncoding.base64Decode(String(part)) else {
+            throw ToolError.message("The \(name) isn't valid base64url.")
+        }
         guard let value = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) else {
             throw ToolError.message("The \(name) isn't JSON.")
         }
         return value
     }
 
-    static let timeClaims: [(String, String)] = [("iat", "Issued at"), ("nbf", "Not before"), ("auth_time", "Auth time"), ("exp", "Expires")]
-    static let known: [(String, String)] = [("iss", "Issuer"), ("sub", "Subject"), ("aud", "Audience"), ("azp", "Authorized party"),
-                                            ("scope", "Scope"), ("permissions", "Permissions"), ("gty", "Grant type"), ("jti", "Token ID")]
+    static let timeClaims: [(String, String)] = [
+        ("iat", "Issued at"), ("nbf", "Not before"), ("auth_time", "Auth time"), ("exp", "Expires"),
+    ]
+    static let known: [(String, String)] = [
+        ("iss", "Issuer"), ("sub", "Subject"), ("aud", "Audience"), ("azp", "Authorized party"),
+        ("scope", "Scope"), ("permissions", "Permissions"), ("gty", "Grant type"), ("jti", "Token ID"),
+    ]
 
     static func claims(_ p: [String: Any], now: Date) -> String {
         var rows: [(String, String)] = []
@@ -74,7 +80,9 @@ enum DevJWT {
 
     static func text(_ v: Any) -> String {
         if let s = v as? String { return s }
-        if let a = v as? [Any], a.allSatisfy({ $0 is String }) { return a.map { $0 as! String }.joined(separator: ", ") }
+        if let a = v as? [Any], a.allSatisfy({ $0 is String }) {
+            return a.map { $0 as! String }.joined(separator: ", ")
+        }
         return (try? DevJSON.minify(v, sortKeys: true)) ?? "\(v)"
     }
 }

@@ -42,8 +42,10 @@ public struct OptionSpec: Identifiable, Sendable {
     /// Show only when another option has one of these values.
     public let visibleWhen: (key: String, values: [String])?
 
-    public init(_ id: String, _ label: String, _ kind: OptionKind, help: String? = nil,
-                visibleWhen: (key: String, values: [String])? = nil) {
+    public init(
+        _ id: String, _ label: String, _ kind: OptionKind, help: String? = nil,
+        visibleWhen: (key: String, values: [String])? = nil
+    ) {
         self.id = id
         self.label = label
         self.kind = kind
@@ -103,7 +105,9 @@ public struct Options: Sendable, Codable, Equatable {
     /// (Custom MB under Target under "To a size").
     public func isVisible(_ spec: OptionSpec, among specs: [OptionSpec]) -> Bool {
         guard isVisible(spec) else { return false }
-        guard let parentKey = spec.visibleWhen?.key, let parent = specs.first(where: { $0.id == parentKey }) else { return true }
+        guard let parentKey = spec.visibleWhen?.key, let parent = specs.first(where: { $0.id == parentKey }) else {
+            return true
+        }
         return isVisible(parent, among: specs)
     }
 }

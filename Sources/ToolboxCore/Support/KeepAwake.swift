@@ -25,10 +25,12 @@ public final class KeepAwake: @unchecked Sendable {
     public func start(duration: TimeInterval?, keepDisplayOn: Bool) throws {
         lock.lock()
         releaseLocked()
-        let type = keepDisplayOn ? kIOPMAssertionTypePreventUserIdleDisplaySleep : kIOPMAssertionTypePreventUserIdleSystemSleep
+        let type =
+            keepDisplayOn ? kIOPMAssertionTypePreventUserIdleDisplaySleep : kIOPMAssertionTypePreventUserIdleSystemSleep
         var id: IOPMAssertionID = 0
-        let status = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                                                 "Toolbox Keep Awake" as CFString, &id)
+        let status = IOPMAssertionCreateWithName(
+            type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
+            "Toolbox Keep Awake" as CFString, &id)
         guard status == kIOReturnSuccess else {
             lock.unlock()
             throw ToolError.message("Couldn't keep the Mac awake.")
@@ -60,7 +62,10 @@ public final class KeepAwake: @unchecked Sendable {
 
     private func expire(_ expected: Int) {
         lock.lock()
-        guard generation == expected, _active else { lock.unlock(); return }
+        guard generation == expected, _active else {
+            lock.unlock()
+            return
+        }
         releaseLocked()
         lock.unlock()
         post()
@@ -104,7 +109,8 @@ public final class KeepAwake: @unchecked Sendable {
     public static func describe(_ seconds: TimeInterval) -> String {
         let total = Int(seconds.rounded())
         if total < 60 { return "\(total) s" }
-        let h = total / 3600, m = (total % 3600) / 60
+        let h = total / 3600
+        let m = (total % 3600) / 60
         switch (h, m) {
         case (0, _): return "\(m) min"
         case (_, 0): return "\(h) h"

@@ -25,8 +25,10 @@ struct OptionsPanel: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         ForEach(session.tool.options) { spec in
-                            if session.options.isVisible(spec, among: session.tool.options), spec.id != session.primaryEditor?.id,
-                               !session.optionsShownElsewhere.contains(spec.id) {
+                            if session.options.isVisible(spec, among: session.tool.options),
+                                spec.id != session.primaryEditor?.id,
+                                !session.optionsShownElsewhere.contains(spec.id)
+                            {
                                 OptionRow(spec: spec, session: session)
                                     .transition(.opacity)
                             }
@@ -155,8 +157,9 @@ private struct SliderOption: View {
     let format: String
 
     var body: some View {
-        let number = Binding(get: { Double(value) ?? range.lowerBound },
-                             set: { value = OptionSpecFormat.number(($0 / step).rounded() * step) })
+        let number = Binding(
+            get: { Double(value) ?? range.lowerBound },
+            set: { value = OptionSpecFormat.number(($0 / step).rounded() * step) })
         HStack(spacing: 10) {
             Slider(value: number, in: range)
                 .controlSize(.small)
@@ -195,13 +198,17 @@ private struct FileOption: View {
                 .controlSize(.small)
         }
         .padding(8)
-        .background(targeted ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04),
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(
+            targeted ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04),
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first else { return false }
             value = url.path
             return true
-        } isTargeted: { targeted = $0 }
+        } isTargeted: {
+            targeted = $0
+        }
     }
 
     private func choose() {
@@ -216,8 +223,10 @@ private struct LanguagePicker: View {
     let allowsDetect: Bool
 
     static let languages: [(code: String, name: String)] = {
-        let codes = ["en", "es", "fr", "de", "it", "pt", "nl", "pl", "ru", "uk", "tr", "ar", "hi",
-                     "id", "vi", "th", "ja", "ko", "zh-Hans", "zh-Hant"]
+        let codes = [
+            "en", "es", "fr", "de", "it", "pt", "nl", "pl", "ru", "uk", "tr", "ar", "hi",
+            "id", "vi", "th", "ja", "ko", "zh-Hans", "zh-Hant",
+        ]
         let current = Locale.current
         return codes.map { ($0, current.localizedString(forIdentifier: $0) ?? $0) }
             .sorted { $0.name < $1.name }
