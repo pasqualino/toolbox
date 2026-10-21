@@ -1,0 +1,62 @@
+Sources/Toolbox/App/ToolFlow.swift
+  s_2b59deb0249666::t_9fab1912928526 14-15,49-52,103
+  s_2b59deb0249666::t_4b0728c7946e9b 76-81,112
+  s_2b59deb0249666::t_14d63883049131 16-17,35,53-56,71-75,104
+Sources/Toolbox/Views/ToolView.swift
+  s_2b59deb0249666::t_4b0728c7946e9b 21-22
+  s_2b59deb0249666::t_14d63883049131 23-24
+Sources/ToolboxCore/Tools/MacTools.swift
+  s_2b59deb0249666::t_69658562857cd5 5
+Sources/Toolbox/Views/SpeedTestView.swift
+  s_2b59deb0249666::t_9fab1912928526 1-20,46-261,263-283,286-292,294-456
+  s_2b59deb0249666::t_4b0728c7946e9b 21-45
+  s_2b59deb0249666::t_4008319278896c 262,284-285,293
+Sources/Toolbox/Views/MainView.swift
+  s_2b59deb0249666::t_1eca8d3a94bf74 4,12-13,18,22,42,52-53,56,62,65,74-80,82-84,87-90,94-115,118-133,136-141,143-160,163-170,172-181,185,188-189,193-199,204-205,208-212,215-217,221-224
+  s_2b59deb0249666::t_1f86df5937cac4 85-86
+Sources/Toolbox/Views/ActionArea.swift
+  s_2b59deb0249666::t_f889b5f02ddac7 4-5,11-24,26-28,31-35,38
+Sources/Toolbox/Palette/Toast.swift
+  s_2b59deb0249666::t_932e414c6e3980 158-159
+  s_2b59deb0249666::t_14d63883049131 104,157
+Sources/Toolbox/Views/NetworkHealthView.swift
+  s_2b59deb0249666::t_5cb768e428608f 1-280
+Sources/Toolbox/App/WindowController.swift
+  s_2b59deb0249666::t_98207f62905fe6 23
+Sources/ToolboxCore/Support/NetworkHealthProbes.swift
+  s_2b59deb0249666::t_69658562857cd5 373,376
+  s_2b59deb0249666::t_9cc2acb6e4fe4e 1-151,153-372,374-375,377-433
+  s_2b59deb0249666::t_92fcda73e8b00e 152
+Sources/ToolboxCore/Support/NetworkHealth.swift
+  s_2b59deb0249666::t_b8d430530c31aa 99-100
+  s_2b59deb0249666::t_396c2a00923e75 1-98,101-262,264-428
+  s_2b59deb0249666::t_92fcda73e8b00e 263
+Sources/Toolbox/App/Snapshot.swift
+  s_2b59deb0249666::t_4efe247e5cf4be 55-59
+Sources/Toolbox/Views/ReportView.swift
+  s_2b59deb0249666::t_9fab1912928526 1-104
+Fixtures/batch1/check-net.sh
+  s_2b59deb0249666::t_b927a4520ffdfd 1-86
+Sources/Toolbox/App/AppModel.swift
+  s_2b59deb0249666::t_a04c37409f27b3 24-35,83-84,95-99
+Sources/Toolbox/App/Theme.swift
+  s_2b59deb0249666::t_1d997f563199ff 40-51
+Sources/Toolbox/Views/Inputs.swift
+  s_2b59deb0249666::t_794c9782cc9c7c 493-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "82a78a7caa4baa8fe64df287f93aa45cc1150e0e",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
