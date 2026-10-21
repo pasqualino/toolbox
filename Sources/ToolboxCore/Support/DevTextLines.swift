@@ -1,6 +1,6 @@
 import Foundation
 
-/// Line operations, counting and cleanup behind the Boop-style text tools.
+/// Line operations, counting and cleanup behind the text tools.
 enum DevTextLines {
     static func sort(_ text: String, descending: Bool, natural: Bool, caseInsensitive: Bool) -> String {
         let (sub, trailing) = DevTextReport.lines(text)

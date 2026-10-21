@@ -1,12 +1,12 @@
 # Toolbox
 
-Native macOS all-in-one file toolbox, modeled on [OneMac](https://onemacapp.com). SwiftUI, macOS 26+, runs fully on device.
+Native macOS all-in-one file toolbox. SwiftUI, macOS 26+, runs fully on device.
 
 Press **⌃⌥Space** from any app, type what you need, drop files, press Return. With files selected in Finder, the shortcut opens straight to the tools that take them.
 
 ## Developer tools
 
-68 live text tools (Boop-style plus workflow ones: JWT, epoch, cron, GraphQL, JSON to Go/TS, IDs, diff). Input on the left, output updates as you type. From the palette:
+68 live text tools (case, lines, encoding and formatting, plus workflow ones: JWT, epoch, cron, GraphQL, JSON to Go/TS, IDs, diff). Input on the left, output updates as you type. From the palette:
 
 - **Return** opens the tool with your clipboard already loaded.
 - **⌥Return** runs it on the clipboard in place and shows a "Copied" toast.

@@ -1,8 +1,8 @@
 import AppKit
 import UniformTypeIdentifiers
 
-/// Puts a run's saved files on the clipboard: as files, which Finder, Mail and Slack paste as attachments,
-/// and for a single image the picture too, which image editors and chat boxes paste inline.
+/// Puts a run's saved files on the clipboard: as files, which paste as attachments,
+/// and for a single image the picture too, which pastes inline.
 enum ResultClipboard {
     /// Where results go. Snapshot runs swap in a private pasteboard so tests leave the real one alone.
     nonisolated(unsafe) static var pasteboard = NSPasteboard.general

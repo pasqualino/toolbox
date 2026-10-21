@@ -84,7 +84,7 @@ enum DevTextCase: String, CaseIterable {
         return first.uppercased() + word.dropFirst().lowercased()
     }
 
-    /// Alternates lower and upper on letters only, starting lower. Deterministic, unlike Boop's.
+    /// Alternates lower and upper on letters only, starting lower. Deterministic, not random.
     static func sponge(_ text: String) -> String {
         var upper = false
         var out = ""
