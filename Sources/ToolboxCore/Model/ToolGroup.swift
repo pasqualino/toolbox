@@ -22,12 +22,6 @@ public struct ToolGroup: Identifiable, Sendable {
         self.symbol = symbol
         self.members = members.map { Member(toolID: $0.0, label: $0.1) }
     }
-
-    public var tools: [Tool] { members.compactMap { ToolRegistry.tool(id: $0.toolID) } }
-
-    public func label(for toolID: String) -> String? {
-        members.first { $0.toolID == toolID }?.label
-    }
 }
 
 /// One row in a category list: a single tool or a group of them.
@@ -325,7 +319,7 @@ extension ToolRegistry {
         for (category, sections) in layout {
             for (title, items) in sections {
                 for item in items {
-                    if let g = item as? ToolGroup { g.members.forEach { map[$0.toolID] = (category, title) } }
+                    if let g = item as? ToolGroup { for m in g.members { map[m.toolID] = (category, title) } }
                     if let id = item as? String { map[id] = (category, title) }
                 }
             }

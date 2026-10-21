@@ -56,7 +56,7 @@ final class AppModel {
         NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
         ) { _ in
-            Task { @MainActor in AppModel.shared.sessions.values.forEach { $0.refreshRequirements() } }
+            Task { @MainActor in for session in AppModel.shared.sessions.values { session.refreshRequirements() } }
         }
     }
 

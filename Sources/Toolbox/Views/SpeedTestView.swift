@@ -164,10 +164,10 @@ struct SpeedTestView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     if model.running {
-                        RunningCard(startedAt: model.startedAt ?? Date(), tint: session.tool.tint)
+                        RunningCard(startedAt: model.startedAt ?? Date())
                     } else if let latest = model.latest {
                         LatestResult(
-                            result: latest, tint: session.tool.tint,
+                            result: latest,
                             networkName: model.name(for: SpeedTestModel.networkID(latest)))
                     } else {
                         EmptyCard(tint: session.tool.tint)
@@ -247,7 +247,6 @@ struct SpeedTestView: View {
 
 private struct LatestResult: View {
     let result: SpeedTestResult
-    let tint: Color
     let networkName: String
 
     var body: some View {
@@ -422,7 +421,6 @@ private struct Detail: View {
 
 private struct RunningCard: View {
     let startedAt: Date
-    let tint: Color
 
     var body: some View {
         Panel(padding: 28) {

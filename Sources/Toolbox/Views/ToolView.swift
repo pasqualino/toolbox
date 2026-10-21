@@ -4,7 +4,6 @@ import ToolboxCore
 struct ToolView: View {
     let session: ToolSession
 
-    @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var tool: Tool { session.tool }

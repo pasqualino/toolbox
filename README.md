@@ -101,4 +101,8 @@ for s in Fixtures/batch1/check-*.sh; do zsh $s </dev/null; done               # 
 
 `check-mac.sh` and `check-net.sh` in `Fixtures/batch1` need a network connection.
 
+### Lint
+
+`./lint.sh` checks the Swift sources with swift-format (`.swift-format`: 4 spaces, 120 columns). `./lint.sh --fix` reformats in place first. AGENTS.md lists the style rules.
+
 `./make-app.sh --debug-hooks` adds the `TOOLBOX_SNAPSHOT` screenshot and `TOOLBOX_DEBUG` logging hooks (`Sources/Toolbox/App/Snapshot.swift`). Normal builds leave them out.

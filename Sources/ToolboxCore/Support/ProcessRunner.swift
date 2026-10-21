@@ -120,7 +120,7 @@ private final class LineBuffer: @unchecked Sendable {
             lines.append(String(decoding: line, as: UTF8.self))
         }
         lock.unlock()
-        lines.forEach { onLine?($0) }
+        for line in lines { onLine?(line) }
     }
 
     func flush() {

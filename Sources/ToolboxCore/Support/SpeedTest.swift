@@ -80,19 +80,19 @@ public enum SpeedTest {
             let reason = ProcessRunner.summarize(stderr, fallback: "")
             throw ToolError.message(reason.isEmpty ? "The speed test didn't finish. Check your connection." : reason)
         }
-        if let error = raw.error_code, error != 0, raw.dl_throughput == nil {
+        if let error = raw.errorCode, error != 0, raw.dlThroughput == nil {
             throw ToolError.message("The speed test failed. Check your connection.")
         }
-        let rpm = raw.responsiveness ?? average(raw.dl_responsiveness, raw.ul_responsiveness)
+        let rpm = raw.responsiveness ?? average(raw.dlResponsiveness, raw.ulResponsiveness)
         let kind = raw.other?.interfaceType?.max { $0.value < $1.value }?.key ?? ""
         return SpeedTestResult(
-            downloadMbps: (raw.dl_throughput ?? 0) / 1_000_000,
-            uploadMbps: (raw.ul_throughput ?? 0) / 1_000_000,
+            downloadMbps: (raw.dlThroughput ?? 0) / 1_000_000,
+            uploadMbps: (raw.ulThroughput ?? 0) / 1_000_000,
             responsivenessRPM: rpm,
-            idleLatencyMs: raw.base_rtt,
-            interface: raw.interface_name ?? "",
+            idleLatencyMs: raw.baseRTT,
+            interface: raw.interfaceName ?? "",
             interfaceType: typeName(kind),
-            date: date(raw.end_date) ?? Date())
+            date: date(raw.endDate) ?? Date())
     }
 
     static func mbps(_ value: Double) -> String {
@@ -131,16 +131,29 @@ public enum SpeedTest {
 
     // Keys as networkQuality -c prints them (see `man networkQuality`).
     private struct Raw: Decodable {
-        var dl_throughput: Double?
-        var ul_throughput: Double?
-        var base_rtt: Double?
+        var dlThroughput: Double?
+        var ulThroughput: Double?
+        var baseRTT: Double?
         var responsiveness: Double?
-        var dl_responsiveness: Double?
-        var ul_responsiveness: Double?
-        var interface_name: String?
-        var end_date: String?
-        var error_code: Int?
+        var dlResponsiveness: Double?
+        var ulResponsiveness: Double?
+        var interfaceName: String?
+        var endDate: String?
+        var errorCode: Int?
         var other: Other?
+
+        enum CodingKeys: String, CodingKey {
+            case dlThroughput = "dl_throughput"
+            case ulThroughput = "ul_throughput"
+            case baseRTT = "base_rtt"
+            case responsiveness
+            case dlResponsiveness = "dl_responsiveness"
+            case ulResponsiveness = "ul_responsiveness"
+            case interfaceName = "interface_name"
+            case endDate = "end_date"
+            case errorCode = "error_code"
+            case other
+        }
 
         struct Other: Decodable {
             var interfaceType: [String: Int]?

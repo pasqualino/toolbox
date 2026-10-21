@@ -122,7 +122,8 @@ enum DevTextLines {
             let b = bytes[i]
             var start = i
             var negative = false
-            if b == 45 /* - */, i + 1 < n, isDigit(bytes[i + 1]) {
+            // 45 is "-": a minus sign when a digit follows.
+            if b == 45, i + 1 < n, isDigit(bytes[i + 1]) {
                 let before: UInt8 = i > 0 ? bytes[i - 1] : 32
                 if before == 32 || before == 9 || before == 10 || before == 13 || before == 40 || before == 61
                     || before == 58

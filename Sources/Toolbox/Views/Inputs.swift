@@ -247,7 +247,7 @@ struct FileList: View {
             Button("Compare Before and After") { session.comparing = item.id }
         }
         if case .done(let outputs) = item.status, !outputs.isEmpty {
-            Button("Open Result") { outputs.forEach { NSWorkspace.shared.open($0) } }
+            Button("Open Result") { for url in outputs { NSWorkspace.shared.open(url) } }
             Button("Show Result in Finder") { NSWorkspace.shared.activateFileViewerSelecting(outputs) }
             Divider()
         }

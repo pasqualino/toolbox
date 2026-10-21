@@ -16,8 +16,6 @@ struct SpeechTranscript: Sendable {
     /// One entry per finalized phrase, trimmed.
     let phrases: [String]
     let words: [SpeechWord]
-
-    var text: String { phrases.joined(separator: " ") }
 }
 
 /// On-device transcription with SpeechAnalyzer.

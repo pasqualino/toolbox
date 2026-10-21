@@ -278,7 +278,6 @@ enum DevGraphQL {
         }
 
         var peek: Token { tokens[i] }
-        func peek(_ offset: Int) -> Token { tokens[min(i + offset, tokens.count - 1)] }
 
         func fail(_ expected: String) -> ToolError {
             let t = peek
@@ -388,7 +387,7 @@ enum DevGraphQL {
                         d.implements.append(try name())
                     }
                 }
-                d.directives = try directives(const: true)
+                d.directives = try directives()
                 if keyword == "union", at("=") {
                     advance()
                     if at("|") { advance() }
@@ -441,7 +440,7 @@ enum DevGraphQL {
             var m = Member(description: description, name: try name())
             switch keyword {
             case "enum":
-                m.directives = try directives(const: true)
+                m.directives = try directives()
             case "schema":
                 try expect(":")
                 m.type = try name()
@@ -453,7 +452,7 @@ enum DevGraphQL {
                     advance()
                     m.value = try value()
                 }
-                m.directives = try directives(const: true)
+                m.directives = try directives()
             }
             return m
         }
@@ -478,7 +477,7 @@ enum DevGraphQL {
                                 p.advance()
                                 a.value = try p.value()
                             }
-                            a.directives = try p.directives(const: true)
+                            a.directives = try p.directives()
                             return a
                         }, notes: { $0.notes = $1 }))
             }
@@ -503,7 +502,7 @@ enum DevGraphQL {
             return t
         }
 
-        mutating func directives(const: Bool = false) throws -> [Directive] {
+        mutating func directives() throws -> [Directive] {
             var list = [Directive]()
             while at("@") {
                 advance()

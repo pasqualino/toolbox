@@ -10,12 +10,9 @@ struct MediaInfo: Sendable {
     let frameRate: Double
     let hasVideo: Bool
     let hasAudio: Bool
-    let videoCodec: String
     let audioCodec: String
     /// Bits per second of the main video stream, 0 when unknown.
     var videoBitrate: Int = 0
-    /// Bits per second of the whole file, 0 when unknown.
-    var overallBitrate: Int = 0
 
     static func inspect(_ url: URL) async throws -> MediaInfo {
         let (format, streams) = try await FFmpeg.probeJSON(url)
@@ -53,9 +50,8 @@ struct MediaInfo: Sendable {
         return MediaInfo(
             duration: duration, width: width, height: height, frameRate: fps,
             hasVideo: video != nil, hasAudio: audio != nil,
-            videoCodec: video?["codec_name"] as? String ?? "",
             audioCodec: audio?["codec_name"] as? String ?? "",
-            videoBitrate: videoRate, overallBitrate: overall)
+            videoBitrate: videoRate)
     }
 
     /// Absolute rotation in degrees from the display matrix or the legacy "rotate" tag.
@@ -212,8 +208,6 @@ enum Media {
             case .aiff: "AIFF"
             }
         }
-
-        var isLossy: Bool { self == .m4a || self == .mp3 }
 
         /// Codec name ffprobe reports when the source can be copied as is.
         var copyableCodec: String? {

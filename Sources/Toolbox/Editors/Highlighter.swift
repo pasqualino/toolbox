@@ -28,7 +28,6 @@ enum Highlighter {
     private static let keyword = NSColor.systemPink
     private static let type = NSColor.systemPurple
     private static let comment = NSColor.secondaryLabelColor
-    private static let punctuation = NSColor.tertiaryLabelColor
 
     private static let rules: [Syntax: [Rule]] = [
         .json: [

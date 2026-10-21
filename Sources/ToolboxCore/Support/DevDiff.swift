@@ -4,7 +4,11 @@ import Foundation
 /// so large inputs stay fast even when most lines moved.
 enum DevDiff {
     /// Each op carries the line index on both sides at that point of the walk.
-    enum Op { case equal(Int, Int), remove(Int, Int), insert(Int, Int) }
+    enum Op {
+        case equal(Int, Int)
+        case remove(Int, Int)
+        case insert(Int, Int)
+    }
 
     static func diff(_ a: String, _ b: String, ignoreWhitespace: Bool, context: Int = 3) -> String {
         let old = a.isEmpty ? [] : DevTextReport.lines(a).lines

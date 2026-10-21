@@ -17,12 +17,6 @@ public indirect enum JSONValue: Sendable, Equatable {
         }
     }
 
-    /// First value for a key, for objects.
-    public subscript(key: String) -> JSONValue? {
-        guard case .object(let members) = self else { return nil }
-        return members.first { $0.key == key }?.value
-    }
-
     /// Recursively sorts object keys. Duplicate keys keep their relative order.
     public func sortedKeys() -> JSONValue {
         switch self {
@@ -185,37 +179,12 @@ public enum DevJSON {
         out.append(34)
     }
 
-    // MARK: Foundation bridge (older callers)
-
-    public static func parse(_ text: String) throws -> Any { foundation(try parseValue(text)) }
-
-    public static func format(_ value: Any, indent: String = "2", sortKeys: Bool = false) throws -> String {
-        var v = try JSONValue(foundation: value)
-        if sortKeys { v = v.sortedKeys() }
-        return write(v, indent: indent)
-    }
+    // MARK: Foundation bridge
 
     public static func minify(_ value: Any, sortKeys: Bool = false) throws -> String {
         var v = try JSONValue(foundation: value)
         if sortKeys { v = v.sortedKeys() }
         return write(v, indent: nil)
-    }
-
-    /// Converts to Foundation types (NSDictionary loses key order).
-    public static func foundation(_ value: JSONValue) -> Any {
-        switch value {
-        case .null: return NSNull()
-        case .bool(let b): return b
-        case .number(let n):
-            if !n.contains(where: { $0 == "." || $0 == "e" || $0 == "E" }), let i = Int(n) { return i }
-            return Double(n) ?? 0
-        case .string(let s): return s
-        case .array(let items): return items.map(foundation)
-        case .object(let members):
-            var dict = [String: Any]()
-            for m in members { dict[m.key] = foundation(m.value) }
-            return dict
-        }
     }
 }
 

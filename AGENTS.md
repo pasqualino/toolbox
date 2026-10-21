@@ -32,6 +32,21 @@ Live text tools are `Tool.text(…)` with a pure `transform`. Tools that need a 
 - For UI changes, build with `./make-app.sh --debug-hooks` and take snapshots with `TOOLBOX_SNAPSHOT=<dir>` plus the `TOOLBOX_*` variables in `App/Snapshot.swift`. Run snapshots from a copy of the app with its own bundle id, and with `NSLocationWhenInUseUsageDescription` and `NSServices` removed from its Info.plist. That keeps tests out of the user's settings and stops permission prompts from appearing on screen. Rebuild without the hooks afterwards.
 - A run in a snapshot saves real files. Point `outputFolder` (in the copy's defaults) at a scratch folder.
 
+## Code style
+
+The code is formatted by swift-format with `.swift-format` (4-space indent, 120 columns). `./lint.sh` must pass before a commit; `./lint.sh --fix` reformats in place and leaves only what needs a hand fix. Write code in this shape from the start so the formatter has little to change:
+
+- One statement per line. No `;`, so no `{ a(); b() }` closures or `case "x": a; case "y": b` on one line.
+- A single-statement body may stay on one line: `if done { return }`, `Button("Copy") { copy() }`. An `if` with `else` takes the multi-line form.
+- Wrapped arguments use a hanging indent: break after `(`, indent 4, close on the last argument's line. Don't align under the opening parenthesis.
+- Multi-line collection literals end with a trailing comma.
+- One `var`/`let` per line, one enum `case` per line.
+- `for x in xs { … }`, not `xs.forEach { … }`.
+- lowerCamelCase names. Map snake_case JSON keys with `CodingKeys`.
+- `//` and `///` comments only, no `/* */`.
+
+Periphery (`brew install periphery`, then `periphery scan`) finds unused code. It builds without `--debug-hooks`, so code used only by `App/Snapshot.swift` shows up as unused; check before deleting.
+
 ## Conventions
 
 - Comments: short, say why, match the surrounding density.

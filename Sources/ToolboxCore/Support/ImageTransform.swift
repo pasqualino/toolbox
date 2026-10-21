@@ -75,7 +75,11 @@ public enum ImageTransform {
 
     /// A quarter turn or mirror, as the user sees it.
     public enum Turn: String, CaseIterable, Sendable {
-        case right, left, half = "180", flipH = "fliph", flipV = "flipv"
+        case right
+        case left
+        case half = "180"
+        case flipH = "fliph"
+        case flipV = "flipv"
 
         /// The same edit as a 2x2 matrix on y-down display coordinates.
         var matrix: Orientation.Matrix {
