@@ -1,0 +1,64 @@
+Sources/Toolbox/Views/RewriteView.swift
+  s_2b59deb0249666::t_638832048dcb55 254-255,259-264,266-267,270-287,289-292
+  s_2b59deb0249666::t_97dc91acf8b3c7 366-378
+  s_2b59deb0249666::t_899d6503231669 1-14,17-142,145-253,256-258,265,268-269,288,293-307,314-365,379-444
+  s_2b59deb0249666::t_7db5c48d4f6b48 15-16,143-144,308-313
+Sources/ToolboxCore/Tools/AITools.swift
+  s_2b59deb0249666::t_d4fec8633b0398 44,60,62,73-77,99-100,134,143,146,148-150,207-214,217
+  s_2b59deb0249666::t_66c0a413bbcc85 5,7-23,25-43,45-46
+Sources/Toolbox/Views/Inputs.swift
+  s_2b59deb0249666::t_b826936c1ec888 254-258,457-458
+  s_2b59deb0249666::t_e8b0cbf0a23ad3 477-479
+Sources/Toolbox/App/AppModel.swift
+  s_2b59deb0249666::t_e3b01dd2279208 23
+Sources/toolbox-cli/main.swift
+  s_2b59deb0249666::t_d4fec8633b0398 96-97,104-106,117
+  s_2b59deb0249666::t_b4c80737b80420 102-103
+Sources/Toolbox/Editors/CodeTextView.swift
+  s_2b59deb0249666::t_d65040e84ed671 110-115
+  s_2b59deb0249666::t_e3b01dd2279208 12-13,54,120
+Sources/Toolbox/Palette/Toast.swift
+  s_2b59deb0249666::t_7ef044a4fc32ce 11-12,43,87-121,123-126
+Sources/ToolboxCore/ToolRegistry.swift
+  s_2b59deb0249666::t_7db5c48d4f6b48 7
+Sources/Toolbox/Palette/PaletteView.swift
+  s_2b59deb0249666::t_7ef044a4fc32ce 193,199,217-218
+  s_2b59deb0249666::t_7db5c48d4f6b48 222-225
+Sources/Toolbox/App/ToolSession.swift
+  s_2b59deb0249666::t_e8b0cbf0a23ad3 55-56,214,242-244,248-262,266
+Sources/Toolbox/App/Snapshot.swift
+  s_2b59deb0249666::t_ea0cf9f2a527c2 76-82,97-99
+  s_2b59deb0249666::t_2100886bd9318c 50-61
+  s_2b59deb0249666::t_82da0dd38e5c57 100-101
+Sources/ToolboxCore/Engine/ToolEngine.swift
+  s_2b59deb0249666::t_d4fec8633b0398 8-9,58,120
+Sources/ToolboxCore/Support/AIRewriter.swift
+  s_2b59deb0249666::t_2d10fc9f560fa4 51-60
+  s_2b59deb0249666::t_fb1761aa140c80 144-148,150-154
+  s_2b59deb0249666::t_ce84e5dd72d3aa 1-50,61-143,149,155-165
+Sources/Toolbox/Views/RunBar.swift
+  s_2b59deb0249666::t_e8b0cbf0a23ad3 9-17,132-134,154-168,181-197,313-329
+  s_2b59deb0249666::t_ce10f53c74e68f 330
+Sources/Toolbox/Views/ToolView.swift
+  s_2b59deb0249666::t_e3b01dd2279208 19-20
+  s_2b59deb0249666::t_c306748bb0ed7c 108,110,114
+Fixtures/check-other.sh
+  s_2b59deb0249666::t_6f530231ccf0b9 12,14,46-47,49-50,55-56
+  s_2b59deb0249666::t_b4c80737b80420 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bb26ef5c3694032265a9d2f113cce5c6efffb9e1",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
