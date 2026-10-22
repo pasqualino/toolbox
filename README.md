@@ -91,15 +91,20 @@ toolbox-cli <tool-id> --text "…"                # text tools; or pipe stdin
 526 checks, run against the release CLI. Optimizations once exposed an engine bug that debug builds hid, so always test release.
 
 ```bash
-swift build -c release --product toolbox-cli
-export CLI=$PWD/.build/release/toolbox-cli
-for s in Fixtures/dev/check-*.sh; do TZ=Europe/Berlin zsh $s </dev/null; done   # 284 text tools
-zsh Fixtures/media/check-media.sh                                              # 48 audio and video
-zsh Fixtures/check-other.sh                                                    # 27 image, PDF, AI, download
-for s in Fixtures/batch1/check-*.sh; do zsh $s </dev/null; done               # 167 more
+./test.sh              # builds the release CLI, runs every Fixtures/**/check-*.sh, prints a total
+./test.sh dev media    # only scripts whose path contains one of the words
 ```
 
-`check-mac.sh` and `check-net.sh` in `Fixtures/batch1` need a network connection.
+It exits non-zero if any check fails, and prints each failure with what it wanted and got.
+
+| Script | Checks | Covers |
+|---|---|---|
+| `Fixtures/dev/check-{enc,fmt,txt}.sh` | 284 | Text tools |
+| `Fixtures/media/check-media.sh` | 48 | Audio and video |
+| `Fixtures/check-other.sh` | 27 | Image, PDF, AI, download |
+| `Fixtures/batch1/check-*.sh` | 167 | Image edits, Mac, media extras, network |
+
+`check-mac.sh`, `check-net.sh` and `check-other.sh` need a network connection. To run one script by hand: `CLI=$PWD/.build/release/toolbox-cli zsh Fixtures/dev/check-txt.sh`.
 
 ### Lint
 

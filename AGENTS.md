@@ -28,7 +28,7 @@ Live text tools are `Tool.text(…)` with a pure `transform`. Tools that need a 
 ## Build and verify
 
 - `./make-app.sh` builds, signs and registers `Toolbox.app`. Relaunch with `pkill -x Toolbox; open Toolbox.app`.
-- Test release builds only: `swift build -c release --product toolbox-cli`, then the scripts in README.md. They're zsh scripts; run them with `zsh`, and `check-txt.sh` with `TZ=Europe/Berlin`.
+- `./test.sh` builds the release CLI and runs every check script; it must pass before a commit. `./test.sh <word>` runs only the scripts whose path matches. Test release builds only. New checks go in the matching `Fixtures/**/check-*.sh`, ending with the `N passed, M failed` line test.sh reads.
 - For UI changes, build with `./make-app.sh --debug-hooks` and take snapshots with `TOOLBOX_SNAPSHOT=<dir>` plus the `TOOLBOX_*` variables in `App/Snapshot.swift`. Run snapshots from a copy of the app with its own bundle id, and with `NSLocationWhenInUseUsageDescription` and `NSServices` removed from its Info.plist. That keeps tests out of the user's settings and stops permission prompts from appearing on screen. Rebuild without the hooks afterwards.
 - A run in a snapshot saves real files. Point `outputFolder` (in the copy's defaults) at a scratch folder.
 
