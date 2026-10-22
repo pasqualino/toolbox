@@ -1,0 +1,53 @@
+Sources/Toolbox/App/MenuBarDrop.swift
+  s_2b59deb0249666::t_92614679590105 1-54
+Sources/Toolbox/Palette/PaletteView.swift
+  s_2b59deb0249666::t_6341d71c1548ac 29-30,32-35,54,86,163,178-180,200,214-216,234,236-237,250,252-256,292,295-296,302
+Sources/Toolbox/App/ToolboxApp.swift
+  s_2b59deb0249666::t_f4b7bbbb4ad5c0 40
+  s_2b59deb0249666::t_fd4d3e0fe0ba96 39
+AGENTS.md
+  s_2b59deb0249666::t_d338c9a2ba43a5 15
+Sources/Toolbox/Palette/Presets.swift
+  s_2b59deb0249666::t_9e5121810e515a 1-13,17-66,69,73-78,84-85
+  s_2b59deb0249666::t_6341d71c1548ac 14-16,67-68,70-72,79-83
+Sources/Toolbox/Views/Inputs.swift
+  s_2b59deb0249666::t_f5aee8d021383d 2,147-148,224-233,257-265,268-274
+Sources/Toolbox/App/ToolSession.swift
+  s_2b59deb0249666::t_fd4d3e0fe0ba96 358-360
+README.md
+  s_2b59deb0249666::t_5d8daae08505cf 90
+  s_2b59deb0249666::t_723df3b95527f9 3,5-7,13,24,28-29,48,113,124
+Sources/Toolbox/App/RunNotifier.swift
+  s_2b59deb0249666::t_b1643eb7c15d76 15-16,29-42
+  s_2b59deb0249666::t_bf4bcde372eb2c 1-14,17-28,43-76
+Sources/ToolboxCore/Support/SlackMarkdown.swift
+  s_2b59deb0249666::t_524eb25b64f4cb 1-7,21,23-27,87-99,104,107,109,118-119
+  s_2b59deb0249666::t_315ff8dd66a468 8-11,14-15,22,28-29,31,38,100-103,105-106,108,110-117
+  s_2b59deb0249666::t_cc541ffea253c3 12-13,16-20,30,32-37,39-86
+Sources/ToolboxCore/Tools/DevTextTools.swift
+  s_2b59deb0249666::t_b68d28b5c1e862 8,11-26
+  s_2b59deb0249666::t_79e91d34e47adc 27
+Sources/ToolboxCore/Model/ToolGroup.swift
+  s_2b59deb0249666::t_cc541ffea253c3 134-136
+  s_2b59deb0249666::t_c12edc53db1321 133
+Sources/Toolbox/App/Snapshot.swift
+  s_2b59deb0249666::t_fd4d3e0fe0ba96 14-15
+Fixtures/dev/check-txt.sh
+  s_2b59deb0249666::t_cc541ffea253c3 175-184,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e506a871ade00a72c58e41b28b61a0029a8e1d5f",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
