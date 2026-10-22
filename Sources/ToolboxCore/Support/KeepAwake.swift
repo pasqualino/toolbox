@@ -1,93 +1,86 @@
 import Foundation
 import IOKit.pwr_mgt
+import Synchronization
 
 /// Holds a power assertion so the Mac doesn't idle-sleep. One shared instance; the app and the CLI both drive it.
-public final class KeepAwake: @unchecked Sendable {
+public final class KeepAwake: Sendable {
     public static let shared = KeepAwake()
     /// Posted on start, stop and expiry. Object is the KeepAwake instance.
     public static let didChange = Notification.Name("KeepAwake.didChange")
 
-    private let lock = NSLock()
-    private var assertion: IOPMAssertionID = 0
-    private var expiry: DispatchWorkItem?
-    private var _endDate: Date?
-    private var _active = false
-    /// Bumped on every start, so a stale expiry can't end a newer session.
-    private var generation = 0
+    private struct State {
+        var assertion: IOPMAssertionID = 0
+        var expiry: DispatchWorkItem?
+        var endDate: Date?
+        var active = false
+        /// Bumped on every start, so a stale expiry can't end a newer session.
+        var generation = 0
+
+        mutating func release() {
+            expiry?.cancel()
+            expiry = nil
+            if active { IOPMAssertionRelease(assertion) }
+            assertion = 0
+            active = false
+            endDate = nil
+        }
+    }
+    private let state = Mutex(State())
 
     private init() {}
 
     /// When it ends on its own. Nil while inactive or when it runs until stopped.
-    public var endDate: Date? { locked { _endDate } }
-    public var isActive: Bool { locked { _active } }
+    public var endDate: Date? { state.withLock { $0.endDate } }
+    public var isActive: Bool { state.withLock { $0.active } }
 
     /// Starts, or restarts with new settings. A nil duration runs until `stop()`.
     public func start(duration: TimeInterval?, keepDisplayOn: Bool) throws {
-        lock.lock()
-        releaseLocked()
-        let type =
-            keepDisplayOn ? kIOPMAssertionTypePreventUserIdleDisplaySleep : kIOPMAssertionTypePreventUserIdleSystemSleep
-        var id: IOPMAssertionID = 0
-        let status = IOPMAssertionCreateWithName(
-            type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "Toolbox Keep Awake" as CFString, &id)
-        guard status == kIOReturnSuccess else {
-            lock.unlock()
-            throw ToolError.message("Couldn't keep the Mac awake.")
+        try state.withLock { state in
+            state.release()
+            let type =
+                keepDisplayOn
+                ? kIOPMAssertionTypePreventUserIdleDisplaySleep : kIOPMAssertionTypePreventUserIdleSystemSleep
+            var id: IOPMAssertionID = 0
+            let status = IOPMAssertionCreateWithName(
+                type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                "Toolbox Keep Awake" as CFString, &id)
+            guard status == kIOReturnSuccess else { throw ToolError.message("Couldn't keep the Mac awake.") }
+            state.assertion = id
+            state.generation += 1
+            let current = state.generation
+            state.active = true
+            if let duration {
+                state.endDate = Date().addingTimeInterval(duration)
+                // A dispatch timer, not Timer: the CLI has no run loop spinning.
+                let item = DispatchWorkItem { [weak self] in self?.expire(current) }
+                state.expiry = item
+                DispatchQueue.global().asyncAfter(deadline: .now() + duration, execute: item)
+            } else {
+                state.endDate = nil
+            }
         }
-        assertion = id
-        generation += 1
-        let current = generation
-        _active = true
-        if let duration {
-            _endDate = Date().addingTimeInterval(duration)
-            // A dispatch timer, not Timer: the CLI has no run loop spinning.
-            let item = DispatchWorkItem { [weak self] in self?.expire(current) }
-            expiry = item
-            DispatchQueue.global().asyncAfter(deadline: .now() + duration, execute: item)
-        } else {
-            _endDate = nil
-        }
-        lock.unlock()
         post()
     }
 
     public func stop() {
-        lock.lock()
-        let was = _active
-        releaseLocked()
-        lock.unlock()
+        let was = state.withLock { state in
+            defer { state.release() }
+            return state.active
+        }
         if was { post() }
     }
 
     private func expire(_ expected: Int) {
-        lock.lock()
-        guard generation == expected, _active else {
-            lock.unlock()
-            return
+        let expired = state.withLock { state in
+            guard state.generation == expected, state.active else { return false }
+            state.release()
+            return true
         }
-        releaseLocked()
-        lock.unlock()
-        post()
-    }
-
-    private func releaseLocked() {
-        expiry?.cancel()
-        expiry = nil
-        if _active { IOPMAssertionRelease(assertion) }
-        assertion = 0
-        _active = false
-        _endDate = nil
+        if expired { post() }
     }
 
     private func post() {
         NotificationCenter.default.post(name: Self.didChange, object: self)
-    }
-
-    private func locked<T>(_ body: () -> T) -> T {
-        lock.lock()
-        defer { lock.unlock() }
-        return body()
     }
 
     /// The tool's duration choices. Nil seconds means until stopped.

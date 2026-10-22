@@ -2,7 +2,8 @@ import Foundation
 import FoundationModels
 
 /// Rewrites chat messages with the on-device model, and keeps the conversation so feedback can refine the result.
-public final class RewriteSession: @unchecked Sendable {
+/// An actor, so the model session and the latest version are only touched from its own executor.
+public actor RewriteSession {
     public struct Settings: Sendable, Equatable {
         public var mode: String
         public var tone: String

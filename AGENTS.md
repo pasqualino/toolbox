@@ -50,7 +50,7 @@ Periphery (`brew install periphery`, then `periphery scan`) finds unused code. I
 ## Conventions
 
 - Comments: short, say why, match the surrounding density.
-- Concurrency: UI state is `@MainActor`. Shared mutable state off the main actor goes in a `Mutex` or `Atomic`, not `@unchecked Sendable` or `nonisolated(unsafe)`. A few older lock-based types still use `@unchecked Sendable`; don't add more.
+- Concurrency: UI state is `@MainActor`. Shared mutable state off the main actor goes in a `Mutex` or `Atomic`, not `@unchecked Sendable` or `nonisolated(unsafe)`. The code has none of either; keep it that way.
 - User-facing text: short sentences, no em dashes.
 - Ad hoc signing means Screen Recording and Location may need re-granting after a rebuild.
 - No git remote: commit when asked, never push.

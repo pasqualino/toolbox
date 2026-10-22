@@ -104,7 +104,7 @@ enum Highlighter {
     ]
 
     /// One colored range.
-    struct Span: @unchecked Sendable {
+    struct Span: Sendable {
         let range: NSRange
         let color: NSColor
         var background: NSColor?

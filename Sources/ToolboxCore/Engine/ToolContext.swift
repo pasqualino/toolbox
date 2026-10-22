@@ -2,7 +2,7 @@ import Foundation
 import Synchronization
 
 /// Everything a tool's runner gets besides its inputs.
-public final class ToolContext: @unchecked Sendable {
+public final class ToolContext: Sendable {
     public let options: Options
     /// Staging folder. Write every output here; the engine moves them to the user's folder at the end.
     public let outputDirectory: URL

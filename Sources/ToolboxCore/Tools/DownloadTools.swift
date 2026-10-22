@@ -201,30 +201,26 @@ private final class PrintedPaths: Sendable {
 }
 
 /// Tracks which part (video, then audio) is downloading so progress doesn't jump back to 0 between them.
-private final class PartCounter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 1
-    private var part = 0
-    private var started = false
+private final class PartCounter: Sendable {
+    private struct State {
+        var count = 1
+        var part = 0
+        var started = false
+    }
+    private let state = Mutex(State())
 
     func setCount(_ value: Int) {
-        lock.lock()
-        count = max(1, value)
-        part = 0
-        started = false
-        lock.unlock()
+        state.withLock { $0 = State(count: max(1, value)) }
     }
 
     func nextPart() {
-        lock.lock()
-        if started { part = min(part + 1, count - 1) }
-        started = true
-        lock.unlock()
+        state.withLock {
+            if $0.started { $0.part = min($0.part + 1, $0.count - 1) }
+            $0.started = true
+        }
     }
 
     func overall(_ fraction: Double) -> Double {
-        lock.lock()
-        defer { lock.unlock() }
-        return min(1, (Double(part) + fraction) / Double(count))
+        state.withLock { min(1, (Double($0.part) + fraction) / Double($0.count)) }
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 public struct ProcessOutput: Sendable {
     public let status: Int32
@@ -98,10 +99,13 @@ public enum ProcessRunner {
     }
 }
 
-private final class LineBuffer: @unchecked Sendable {
-    private let lock = NSLock()
-    private var pending = Data()
-    private var all = Data()
+private final class LineBuffer: Sendable {
+    private struct State {
+        /// Bytes after the last line break.
+        var pending = Data()
+        var all = Data()
+    }
+    private let state = Mutex(State())
     private let onLine: (@Sendable (String) -> Void)?
 
     init(_ onLine: (@Sendable (String) -> Void)?) {
@@ -110,30 +114,30 @@ private final class LineBuffer: @unchecked Sendable {
 
     func append(_ data: Data) {
         guard !data.isEmpty else { return }
-        lock.lock()
-        all.append(data)
-        pending.append(data)
-        var lines: [String] = []
-        while let range = pending.firstRange(of: Data([0x0A])) ?? pending.firstRange(of: Data([0x0D])) {
-            let line = pending.subdata(in: pending.startIndex..<range.lowerBound)
-            pending.removeSubrange(pending.startIndex..<range.upperBound)
-            lines.append(String(decoding: line, as: UTF8.self))
+        let lines = state.withLock { state -> [String] in
+            state.all.append(data)
+            state.pending.append(data)
+            var lines: [String] = []
+            while let range = state.pending.firstRange(of: Data([0x0A])) ?? state.pending.firstRange(of: Data([0x0D])) {
+                let line = state.pending.subdata(in: state.pending.startIndex..<range.lowerBound)
+                state.pending.removeSubrange(state.pending.startIndex..<range.upperBound)
+                lines.append(String(decoding: line, as: UTF8.self))
+            }
+            return lines
         }
-        lock.unlock()
+        // Outside the lock: the callback may take its time.
         for line in lines { onLine?(line) }
     }
 
     func flush() {
-        lock.lock()
-        let rest = pending
-        pending = Data()
-        lock.unlock()
+        let rest = state.withLock { state -> Data in
+            defer { state.pending = Data() }
+            return state.pending
+        }
         if !rest.isEmpty { onLine?(String(decoding: rest, as: UTF8.self)) }
     }
 
     var text: String {
-        lock.lock()
-        defer { lock.unlock() }
-        return String(decoding: all, as: UTF8.self)
+        state.withLock { String(decoding: $0.all, as: UTF8.self) }
     }
 }

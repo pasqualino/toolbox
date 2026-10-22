@@ -374,14 +374,14 @@ enum NetworkProbes {
     /// `start` may return a cleanup to run on timeout or cancel.
     private static func withDeadline<T: Sendable>(
         _ seconds: Double, fallback: T,
-        _ start: @escaping (@escaping @Sendable (T) -> Void) -> (() -> Void)?
+        _ start: @escaping (@escaping @Sendable (T) -> Void) -> (@Sendable () -> Void)?
     ) async -> T {
         let once = Once<T>()
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
                 once.install(continuation)
                 let cleanup = start { once.finish($0) }
-                once.onGiveUp = cleanup
+                once.setGiveUp(cleanup)
                 DispatchQueue.global().asyncAfter(deadline: .now() + seconds) { once.finish(fallback, givingUp: true) }
             }
         } onCancel: {
@@ -392,7 +392,7 @@ enum NetworkProbes {
     private static func withDeadline<T: Sendable>(
         _ seconds: Double, fallback: T, _ start: @escaping (@escaping @Sendable (T) -> Void) -> Void
     ) async -> T {
-        await withDeadline(seconds, fallback: fallback) { finish -> (() -> Void)? in
+        await withDeadline(seconds, fallback: fallback) { finish -> (@Sendable () -> Void)? in
             start(finish)
             return nil
         }
@@ -400,44 +400,46 @@ enum NetworkProbes {
 }
 
 /// Resumes a continuation exactly once, whichever of result, timeout or cancel comes first.
-private final class Once<T: Sendable>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<T, Never>?
-    private var pending: T?
-    private var finished = false
-    private var giveUp: (() -> Void)?
+private final class Once<T: Sendable>: Sendable {
+    private struct State {
+        var continuation: CheckedContinuation<T, Never>?
+        /// A result that came before the continuation was installed.
+        var pending: T?
+        var finished = false
+        var giveUp: (@Sendable () -> Void)?
+    }
+    private let state = Mutex(State())
 
     /// Cleanup for when the deadline or cancel wins. Ignored once finished.
-    var onGiveUp: (() -> Void)? {
-        get { lock.withLock { giveUp } }
-        set { lock.withLock { if !finished { giveUp = newValue } } }
+    func setGiveUp(_ cleanup: (@Sendable () -> Void)?) {
+        state.withLock { if !$0.finished { $0.giveUp = cleanup } }
     }
 
     func install(_ c: CheckedContinuation<T, Never>) {
-        lock.lock()
-        if let value = pending {
-            pending = nil
-            lock.unlock()
-            c.resume(returning: value)
-        } else {
-            continuation = c
-            lock.unlock()
+        let early = state.withLock { state -> T? in
+            guard let value = state.pending else {
+                state.continuation = c
+                return nil
+            }
+            state.pending = nil
+            return value
         }
+        if let early { c.resume(returning: early) }
     }
 
     func finish(_ value: T, givingUp: Bool = false) {
-        lock.lock()
-        guard !finished else {
-            lock.unlock()
-            return
+        let handoff = state.withLock { state -> (CheckedContinuation<T, Never>?, (@Sendable () -> Void)?)? in
+            guard !state.finished else { return nil }
+            state.finished = true
+            let c = state.continuation
+            state.continuation = nil
+            if c == nil { state.pending = value }
+            let cleanup = givingUp ? state.giveUp : nil
+            state.giveUp = nil
+            return (c, cleanup)
         }
-        finished = true
-        let c = continuation
-        continuation = nil
-        if c == nil { pending = value }
-        let cleanup = givingUp ? giveUp : nil
-        giveUp = nil
-        lock.unlock()
+        // Resume and clean up outside the lock.
+        guard let (c, cleanup) = handoff else { return }
         cleanup?()
         c?.resume(returning: value)
     }
