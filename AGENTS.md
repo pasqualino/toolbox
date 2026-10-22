@@ -25,6 +25,12 @@ Native macOS app (SwiftUI, macOS 26+, Swift 6 language mode). README.md covers f
 
 Live text tools are `Tool.text(…)` with a pure `transform`. Tools that need a custom screen get a `ToolFlow` case and their own view.
 
+## Shortcuts actions
+
+`App/ShortcutsIntents.swift` holds the App Intents. Each one runs a registry tool through `ShortcutsRunner` in a scratch folder and returns the result as data. To add one: write the intent there, add it to `ToolboxShortcuts` (at most 10 entries), and add it to `runIntents` in `App/Snapshot.swift`.
+
+Shortcuts only finds actions through `Contents/Resources/Metadata.appintents`. Xcode normally generates it; here `Package.swift` makes the compiler emit const values for the app target, and `make-app.sh` runs `xcrun appintentsmetadataprocessor` on them before signing. Check `extract.actionsdata` in that bundle lists the new action. To test every action without Shortcuts, use a `--debug-hooks` build with `TOOLBOX_INTENTS=<image>:<image with text>`.
+
 ## Build and verify
 
 - `./make-app.sh` builds, signs and registers `Toolbox.app`. Relaunch with `pkill -x Toolbox; open Toolbox.app`.

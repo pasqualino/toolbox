@@ -1,4 +1,5 @@
 #if TOOLBOX_DEBUG_HOOKS
+    import AppIntents
     import AppKit
     import SwiftUI
     import ScreenCaptureKit
@@ -36,6 +37,10 @@
                     pb.setString(env["TOOLBOX_SERVICE_TEXT"] ?? "", forType: .string)
                     let ok = NSPerformService(name, pb)
                     print("service \(name) ok=\(ok) result=\(pb.string(forType: .string) ?? "nil")")
+                }
+                // TOOLBOX_INTENTS=<image>:<image with text>: runs every Shortcuts action's perform() once.
+                if let paths = env["TOOLBOX_INTENTS"]?.split(separator: ":").map(String.init), paths.count == 2 {
+                    await runIntents(image: URL(fileURLWithPath: paths[0]), textImage: URL(fileURLWithPath: paths[1]))
                 }
                 if let cat = env["TOOLBOX_CATEGORY"], let c = ToolCategory(rawValue: cat) {
                     AppModel.shared.select(.category(c))
@@ -240,6 +245,55 @@
                 try rep.representation(using: .png, properties: [:])?.write(to: url)
             } catch {
                 FileHandle.standardError.write("snapshot failed: \(error)\n".data(using: .utf8)!)
+            }
+        }
+
+        /// Calls each Shortcuts action the way Shortcuts would, and prints what came back.
+        static func runIntents(image: URL, textImage: URL) async {
+            func report(_ name: String, _ body: () async throws -> String) async {
+                do { print("intent \(name): \(try await body())") } catch { print("intent \(name) failed: \(error)") }
+            }
+            func describe(_ files: [IntentFile]) -> String {
+                files.map { "\($0.filename) \($0.data.count) bytes" }.joined(separator: ", ")
+            }
+            let input = IntentFile(fileURL: image, filename: image.lastPathComponent)
+            await report("convert") {
+                let intent = ConvertImagesIntent()
+                intent.images = [input, input]
+                intent.format = .heic
+                intent.quality = 0.8
+                return describe(try await intent.perform().value ?? [])
+            }
+            await report("compress") {
+                let intent = CompressImagesIntent()
+                intent.images = [input]
+                intent.format = .keep
+                intent.quality = 0.7
+                return describe(try await intent.perform().value ?? [])
+            }
+            await report("extract") {
+                let intent = ExtractTextIntent()
+                intent.file = IntentFile(fileURL: textImage, filename: textImage.lastPathComponent)
+                return String((try await intent.perform().value ?? "").prefix(60))
+            }
+            await report("qr") {
+                let intent = MakeQRCodeIntent()
+                intent.text = "https://example.com"
+                return describe([try await intent.perform().value].compactMap { $0 })
+            }
+            await report("json") {
+                let intent = FormatJSONIntent()
+                intent.json = #"{"b":1,"a":2}"#
+                intent.sortKeys = true
+                return (try await intent.perform().value ?? "").replacingOccurrences(of: "\n", with: " ")
+            }
+            await report("rewrite") {
+                let intent = RewriteIntent()
+                intent.text = "hey can u send me the report tmrw"
+                intent.mode = .improve
+                intent.tone = .professional
+                intent.length = .same
+                return try await intent.perform().value ?? ""
             }
         }
     }

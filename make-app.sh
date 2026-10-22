@@ -31,6 +31,20 @@ if [[ ! -f $ICONS/AppIcon.icns || Support/make-icon.swift -nt $ICONS/AppIcon.icn
 fi
 cp $ICONS/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
+# Shortcuts finds App Intents through Metadata.appintents, which Xcode normally generates. SwiftPM doesn't,
+# so run the same processor on the const values the compiler emitted (see Package.swift).
+BUILD_DIR="$(swift build -c release --show-bin-path)/Toolbox.build"
+find "$PWD/Sources/Toolbox" -name '*.swift' > "$BUILD_DIR/appintents-sources.txt"
+ls "$BUILD_DIR"/*.swiftconstvalues > "$BUILD_DIR/appintents-constvalues.txt"
+xcrun appintentsmetadataprocessor --quiet-warnings \
+  --output "$APP/Contents/Resources" \
+  --toolchain-dir "$(dirname "$(dirname "$(dirname "$(xcrun --find swiftc)")")")" \
+  --module-name Toolbox --sdk-root "$(xcrun --show-sdk-path)" \
+  --xcode-version "$(xcodebuild -version | awk '/Build version/ {print $3}')" \
+  --platform-family macOS --deployment-target 26.0 --target-triple arm64-apple-macos26.0 \
+  --source-file-list "$BUILD_DIR/appintents-sources.txt" \
+  --swift-const-vals-list "$BUILD_DIR/appintents-constvalues.txt" > /dev/null
+
 # A stable identity keeps macOS permissions (Screen Recording, Location) across rebuilds.
 # Create it once with Support/make-signing-identity.sh. Without it, sign ad hoc.
 IDENTITY="${TOOLBOX_SIGN_IDENTITY:-Toolbox Dev}"
@@ -40,6 +54,8 @@ else
   codesign --force --sign - "$APP"
   echo "Signed ad hoc: permissions reset on each build. Run Support/make-signing-identity.sh once to fix that."
 fi
+# Register with Launch Services so Services and Shortcuts see this build's actions.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$PWD/$APP"
 echo "Built $PWD/$APP"
 
 if (( OPEN )); then

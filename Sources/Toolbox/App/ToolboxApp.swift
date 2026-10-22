@@ -45,7 +45,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HotKey.shared.start {
             Task { @MainActor in WindowController.shared.togglePalette() }
         }
-        Task { @MainActor in WindowController.shared.showMain() }
+        // Shortcuts and other system launches aren't "default" launches; they run in the background,
+        // so don't put a window in front of the user.
+        let userLaunch = notification.userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool ?? true
+        if userLaunch {
+            Task { @MainActor in WindowController.shared.showMain() }
+        }
     }
 
     // Closing the window must not quit: the hotkey has to keep working.

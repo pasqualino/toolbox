@@ -59,6 +59,21 @@ Select text or files in any app, then right-click › Services:
 
 Give any of them a shortcut in System Settings › Keyboard › Keyboard Shortcuts › Services.
 
+## Shortcuts
+
+Six actions appear under Toolbox in the Shortcuts app, and work in automations and Spotlight:
+
+| Action | Takes | Gives |
+|---|---|---|
+| Convert Images | Images, format, quality | Images |
+| Compress Images | Images, format, quality | Images |
+| Extract Text | An image or PDF | Text |
+| Rewrite Text | Text, mode, tone, length (needs Apple Intelligence) | Text |
+| Make QR Code | A link or text | PNG |
+| Format JSON | JSON, sort keys | Text |
+
+Results go back to Shortcuts; nothing is saved to the output folder. Toolbox runs them in the background without opening its window.
+
 ## Build and run
 
 ```bash
