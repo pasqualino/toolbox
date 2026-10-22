@@ -1,0 +1,40 @@
+Sources/Toolbox/Views/SpeedTestView.swift
+  s_2b59deb0249666::t_5b0bb97b1088a9 50-102,105,113-115,171-172,179-193,203,249,267-268,456-458,468-473,480,482,484,487,492-496,502-574,577-578,585,593,605-607
+Sources/Toolbox/App/Snapshot.swift
+  s_2b59deb0249666::t_5af24f9fe48b3b 24,27
+Sources/Toolbox/Views/NetworkHealthView.swift
+  s_2b59deb0249666::t_5b0bb97b1088a9 25
+Sources/Toolbox/App/LocationAccess.swift
+  s_2b59deb0249666::t_e731953a90ff41 1-37
+Sources/ToolboxCore/Support/NetworkIdentity.swift
+  s_2b59deb0249666::t_b3fb513d79141c 1-12,16,18-20,22-23,25,28-32,34,36-37,39,41-60
+  s_2b59deb0249666::t_3ac848e264aae7 13-15,17,21,24,26-27,33,35,38,40
+Fixtures/batch1/check-net.sh
+  s_2b59deb0249666::t_3ac848e264aae7 34-35
+Sources/ToolboxCore/Support/NetworkHealth.swift
+  s_2b59deb0249666::t_3ac848e264aae7 8,308-310
+Sources/ToolboxCore/Support/NetworkHealthProbes.swift
+  s_2b59deb0249666::t_3ac848e264aae7 33-34,165-170,175
+Sources/Toolbox/App/Permissions.swift
+  s_2b59deb0249666::t_e089ac8d02a366 8,14,24-25
+Sources/ToolboxCore/Support/SpeedTest.swift
+  s_2b59deb0249666::t_8d6e4633cc0b9d 15-16,19,27,51,67-68,71-73
+Support/Info.plist
+  s_2b59deb0249666::t_e089ac8d02a366 33-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "56286bbab3de40ab65a517918f96a171b6ebf906",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
