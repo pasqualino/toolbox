@@ -1,0 +1,35 @@
+Sources/ToolboxCore/Engine/ToolContext.swift
+  s_2b59deb0249666::t_1cafa3011a8f3e 5
+Sources/ToolboxCore/Support/NetworkHealthProbes.swift
+  s_2b59deb0249666::t_1cafa3011a8f3e 377,384,395,403-411,414-415,419-425,427,431-439,441-442
+Sources/Toolbox/Editors/Highlighter.swift
+  s_2b59deb0249666::t_ad4a574e66a4ee 107
+Sources/ToolboxCore/Support/ProcessRunner.swift
+  s_2b59deb0249666::t_1cafa3011a8f3e 2,102-108,117-126,128,133-136,141
+Sources/ToolboxCore/Tools/DownloadTools.swift
+  s_2b59deb0249666::t_1cafa3011a8f3e 204-210,213,217-220,224
+Sources/ToolboxCore/Support/KeepAwake.swift
+  s_2b59deb0249666::t_fabad12ea93b46 3
+  s_2b59deb0249666::t_ad4a574e66a4ee 6,11-28,33-34,38-60,66-69,74-77,79
+Sources/ToolboxCore/Support/AIRewriter.swift
+  s_2b59deb0249666::t_30258d44af02e3 6
+  s_2b59deb0249666::t_921a4d6b7343e5 5
+AGENTS.md
+  s_2b59deb0249666::t_52a4ca5831d45d 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "437d9f9e37a9cf20dbc28f5400ed8c60415c2c39",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
