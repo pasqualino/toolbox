@@ -1,0 +1,25 @@
+Sources/ToolboxCore/Support/DevTextCase.swift
+  s_2b59deb0249666::t_ef6e00c875e886 87
+Sources/Toolbox/App/ResultClipboard.swift
+  s_2b59deb0249666::t_ef6e00c875e886 4-5
+README.md
+  s_2b59deb0249666::t_ef6e00c875e886 3,9
+Sources/ToolboxCore/Support/DevTextLines.swift
+  s_2b59deb0249666::t_ef6e00c875e886 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f96c08178aa099b50c04382631ca96ca791cdb75",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
