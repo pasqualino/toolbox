@@ -1,0 +1,25 @@
+README.md
+  s_2b59deb0249666::t_901bd15b9ca823 68-70
+Support/make-signing-identity.sh
+  s_2b59deb0249666::t_ef94f35063b997 1-43
+AGENTS.md
+  s_2b59deb0249666::t_901bd15b9ca823 55
+make-app.sh
+  s_2b59deb0249666::t_5449b1ac5e291c 34-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d1e7bc47f0d17c3bad451ff335a831d193a428f2",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
