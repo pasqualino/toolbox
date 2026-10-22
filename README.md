@@ -1,37 +1,104 @@
+<div align="center">
+
+<img src="docs/images/icon.png" width="112" alt="Toolbox icon">
+
 # Toolbox
 
-A native macOS toolbox: 116 tools for text, code, screenshots, images, PDFs, audio, video, the network and the Mac. SwiftUI, macOS 26+. Everything runs on device.
+**116 everyday tools for your Mac, one keystroke away.**
 
-Press **⌃⌥Space** from any app, type what you need, drop files, press Return. With files selected in Finder, the shortcut opens straight to the tools that take them. Dropping files on the Dock icon or the menu bar icon does the same. Change the shortcut in Settings.
+Convert, compress, format, decode, rewrite and more. Native, fast, and fully on device.
 
-The palette also offers presets: type a format or size and it offers the tool with that option already set. "png" offers Convert Images → PNG and PDF to Images → PNG; "mp4" offers Convert Video → MP4; "1080" offers Resize Images → 1080 px.
+![macOS 26+](https://img.shields.io/badge/macOS-26%2B-black?logo=apple&logoColor=white)
+![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF)
+![On device](https://img.shields.io/badge/runs-on%20device-34C759)
+![534 checks](https://img.shields.io/badge/checks-534%20passing-34C759)
 
-## Tools
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png">
+  <img src="docs/images/hero-light.png" width="860" alt="Toolbox converting three images to HEIC, 58% smaller">
+</picture>
 
-| Category | Examples |
+</div>
+
+## ⌃⌥Space and go
+
+Press **⌃⌥Space** from any app, type what you need, press Return. Files selected in Finder come along, and the palette shows only the tools that take them. Dropping files on the Dock icon or the menu bar icon works too.
+
+Type a format or a size and the palette offers the tool with that option already set: **png**, **heic**, **mp4**, **mp3**, **1080**.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/palette-dark.png">
+    <img src="docs/images/palette-light.png" width="560" alt="The palette offering Convert Images to PNG for the query png">
+  </picture>
+</p>
+
+## What's inside
+
+| Category | Tools |
 |---|---|
-| Writing | Rewrite, Summarize, Translate (on-device AI), Change Case, Lines, Markdown ⇄ Slack, Text Diff |
-| Developer | Base64, URL encoding, hashes, JSON/GraphQL/SQL/XML formatting, JSON ⇄ YAML/CSV, JWT, epoch, cron, IDs |
-| Screen & Scan | Capture Text, Extract Text, Beautify Screenshot, Redact Image, QR Code |
-| Images | Convert, Compress, Resize, Rotate, Remove Background, Remove Metadata |
-| PDF | Merge, Split, Organize, Delete or Extract Pages, PDF Password, PDF ⇄ Images |
-| Audio & Video | Trim, Crop, Speed, Merge, Compress, Convert, GIF, Download, Transcribe, Media Info |
-| Network | Speed Test (history per network), Network Health |
-| Mac | Keep Awake, Fix "App Is Damaged", Batch Rename |
+| ✍️ **Writing** | Rewrite, Summarize and Translate with the on-device model · Change Case · Lines · Markdown ⇄ Slack · Text Diff |
+| 🧑‍💻 **Developer** | Base64, URL and HTML encoding · hashes and HMAC · JSON, GraphQL, SQL and XML formatting · JSON ⇄ YAML/CSV · JWT · epoch · cron · IDs |
+| 📸 **Screen & Scan** | Capture Text · Extract Text · Beautify Screenshot · Redact Image · QR Code |
+| 🖼️ **Images** | Convert · Compress · Resize · Rotate · Remove Background · Remove Metadata |
+| 📄 **PDF** | Merge · Split · Organize · Delete or Extract Pages · Password · PDF ⇄ Images |
+| 🎬 **Audio & Video** | Trim · Crop · Speed · Merge · Compress · Convert · GIF · Download · Transcribe · Media Info |
+| 🌐 **Network** | Speed Test, with history per network · Network Health |
+| 💻 **Mac** | Keep Awake · Fix "App Is Damaged" · Batch Rename |
 
-Related tools share one row with pills to switch between them (Change Case: camelCase | snake_case | …). Text and dropped files carry over when you switch. `ToolRegistry.layout` in `ToolGroup.swift` decides the categories, sections and groups.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/slack.png" alt="Markdown to Slack converting release notes"></td>
+    <td width="50%"><img src="docs/images/json.png" alt="Format JSON"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>70 live text tools.</b> The output updates as you type.</td>
+    <td align="center"><b>Syntax colored</b> JSON, GraphQL, SQL, XML, YAML and diffs.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/qr.png" alt="Make QR Code for a Wi-Fi network"></td>
+    <td width="50%"><img src="docs/images/rewrite.png" alt="Rewrite turning a casual draft into a clear message"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Wi-Fi QR codes</b> from the network you're on.</td>
+    <td align="center"><b>Rewrite</b> with the on-device model, then refine it in a few words.</td>
+  </tr>
+</table>
 
-The 70 text tools update as you type. From the palette, **Return** opens one with the clipboard loaded, and **⌥Return** runs it on the clipboard in place.
+## Built for flow
 
-## Results
+- **Run and Copy.** ⌥-click the run button and the result goes straight to the clipboard: files as files, an image as a picture, text as text. Nothing lands in Downloads.
+- **Shortcuts actions.** Convert Images, Compress Images, Extract Text, Rewrite Text, Make QR Code and Format JSON work in Shortcuts, automations and Spotlight.
+- **Services in every app.** Select text, right-click, and Rewrite, Fix Grammar or Format JSON in place.
+- **Groups with pills.** Related tools share one row (camelCase | snake_case | …), and your text and files carry over when you switch.
+- **Notified when done.** Long runs that finish in the background post a notification with Show in Finder.
+- **Space to preview.** Quick Look any result from the file list.
+- **Private by default.** OCR, transcription, translation and rewriting all run on your Mac. Originals are never changed, except by Batch Rename when you ask it to rename in place.
 
-A run that takes 10 seconds or more and finishes while Toolbox is in the background posts a notification. Click it to go back to the tool, or use Show in Finder.
+## Install
 
-Each run saves to `~/Downloads/Toolbox/<date> <tool>/`; change the folder in Settings. Originals are never changed, except by Batch Rename in "Rename originals" mode. Tools that only produce text show it instead of saving a file.
+```bash
+git clone https://github.com/pasqualino/toolbox.git
+cd toolbox
+./make-app.sh --open
+```
 
-**Run and Copy** puts the result on the clipboard without saving it to the output folder: files as files, a single image also as a picture, text as text. ⌥-click the run button (it reads "Make & Copy" while ⌥ is held), press ⌥⌘Return, or use Tool › Run and Copy. After a normal run, Copy sits next to Show in Finder.
+This builds `Toolbox.app` in release mode, signs it, registers it and launches it. Needs Xcode 26 and macOS 26. Video, audio and download tools use Homebrew's `ffmpeg` and `yt-dlp`, and WebP output uses `webp`; the app offers to install them.
 
-## Keyboard
+<details>
+<summary><b>Keep permissions across rebuilds</b></summary>
+
+Run `Support/make-signing-identity.sh` once. It creates a self-signed "Toolbox Dev" code-signing certificate in your login keychain and asks for your password to trust it. `make-app.sh` then signs with it, so macOS keeps Screen Recording, Location and other permissions across rebuilds. On the first build, macOS asks to let codesign use the key: enter your password and click **Always Allow**, or it asks on every build.
+
+Without the identity, builds are signed ad hoc and those permissions reset each time. To remove it, delete "Toolbox Dev" in Keychain Access.
+
+</details>
+
+## Reference
+
+<details>
+<summary><b>Keyboard</b></summary>
 
 | Keys | Action |
 |---|---|
@@ -50,7 +117,21 @@ Each run saves to `~/Downloads/Toolbox/<date> <tool>/`; change the folder in Set
 | ⇧⌘N | Open the tool in a new window |
 | ⇧⌘⌫ | Clear files |
 
-## Services
+From the palette, **Return** opens a text tool with the clipboard loaded, and **⌥Return** runs it on the clipboard in place.
+
+</details>
+
+<details>
+<summary><b>Results and output</b></summary>
+
+Each run saves to `~/Downloads/Toolbox/<date> <tool>/`; change the folder in Settings. Originals are never changed, except by Batch Rename in "Rename originals" mode. Tools that only produce text show it instead of saving a file.
+
+Run and Copy writes to a cache folder instead, keeping only the latest run. After a normal run, Copy sits next to Show in Finder. A run that takes 10 seconds or more and finishes while Toolbox is in the background posts a notification.
+
+</details>
+
+<details>
+<summary><b>Services</b></summary>
 
 Select text or files in any app, then right-click › Services:
 
@@ -64,9 +145,10 @@ Select text or files in any app, then right-click › Services:
 
 Give any of them a shortcut in System Settings › Keyboard › Keyboard Shortcuts › Services.
 
-## Shortcuts
+</details>
 
-Six actions appear under Toolbox in the Shortcuts app, and work in automations and Spotlight:
+<details>
+<summary><b>Shortcuts actions</b></summary>
 
 | Action | Takes | Gives |
 |---|---|---|
@@ -79,15 +161,7 @@ Six actions appear under Toolbox in the Shortcuts app, and work in automations a
 
 Results go back to Shortcuts; nothing is saved to the output folder. Toolbox runs them in the background without opening its window.
 
-## Build and run
-
-```bash
-./make-app.sh --open
-```
-
-This builds `Toolbox.app` in release mode, signs it, registers it and launches it. Video, audio and download tools need Homebrew's `ffmpeg` and `yt-dlp`; WebP output needs `webp`. The app offers to install them.
-
-Run `Support/make-signing-identity.sh` once. It creates a self-signed "Toolbox Dev" code-signing certificate in your login keychain, and asks for your password to trust it. `make-app.sh` then signs with it, so macOS keeps Screen Recording, Location and other permissions across rebuilds. On the first build, macOS asks to let codesign use the key: enter your password and click **Always Allow**, or it asks on every build. Without the identity, builds are signed ad hoc and those permissions reset each time. To remove it, delete "Toolbox Dev" in Keychain Access.
+</details>
 
 ## Development
 
@@ -99,6 +173,17 @@ Run `Support/make-signing-identity.sh` once. It creates a self-signed "Toolbox D
 | `Sources/toolbox-cli` | Headless runner for tests. |
 | `Fixtures` | Test inputs and check scripts. |
 
+`ToolRegistry.layout` in `ToolGroup.swift` decides the categories, sections and groups. [AGENTS.md](AGENTS.md) covers how to add a tool, the code style and how to verify UI changes.
+
+```bash
+./test.sh              # build the release CLI and run all 534 checks
+./test.sh dev media    # only the scripts whose path contains one of the words
+./lint.sh              # swift-format lint; --fix reformats first
+```
+
+<details>
+<summary><b>CLI and test details</b></summary>
+
 The CLI runs any tool without the app:
 
 ```bash
@@ -108,16 +193,7 @@ toolbox-cli <tool-id> key=value… files…         # file tools
 toolbox-cli <tool-id> --text "…"                # text tools; or pipe stdin
 ```
 
-### Tests
-
-534 checks, run against the release CLI. Optimizations once exposed an engine bug that debug builds hid, so always test release.
-
-```bash
-./test.sh              # builds the release CLI, runs every Fixtures/**/check-*.sh, prints a total
-./test.sh dev media    # only scripts whose path contains one of the words
-```
-
-It exits non-zero if any check fails, and prints each failure with what it wanted and got.
+Always test release builds: optimizations once exposed an engine bug that debug builds hid. `test.sh` prints each failure with what it wanted and got.
 
 | Script | Checks | Covers |
 |---|---|---|
@@ -128,8 +204,6 @@ It exits non-zero if any check fails, and prints each failure with what it wante
 
 `check-mac.sh`, `check-net.sh` and `check-other.sh` need a network connection. To run one script by hand: `CLI=$PWD/.build/release/toolbox-cli zsh Fixtures/dev/check-txt.sh`.
 
-### Lint
-
-`./lint.sh` checks the Swift sources with swift-format (`.swift-format`: 4 spaces, 120 columns). `./lint.sh --fix` reformats in place first. AGENTS.md lists the style rules.
-
 `./make-app.sh --debug-hooks` adds the `TOOLBOX_SNAPSHOT` screenshot and `TOOLBOX_DEBUG` logging hooks (`Sources/Toolbox/App/Snapshot.swift`). Normal builds leave them out.
+
+</details>
