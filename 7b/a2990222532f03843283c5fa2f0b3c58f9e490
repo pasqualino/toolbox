@@ -1,0 +1,29 @@
+Sources/Toolbox/App/ToolSession.swift
+  s_2b59deb0249666::t_27901e22424eae 208-212,239-242
+Sources/Toolbox/Views/OptionsPanel.swift
+  s_2b59deb0249666::t_27901e22424eae 28-29
+Sources/Toolbox/Views/ToolView.swift
+  s_2b59deb0249666::t_e8cb1a853dee82 127
+  s_2b59deb0249666::t_27901e22424eae 13-16,131
+  s_2b59deb0249666::t_c60ff17229d9dc 124-126,128-130
+Sources/ToolboxCore/Tools/QRTools.swift
+  s_2b59deb0249666::t_9c59693dad3a7c 21-22
+Sources/Toolbox/Views/WiFiQRForm.swift
+  s_2b59deb0249666::t_3a4a81982c51bc 1-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7ba2990222532f03843283c5fa2f0b3c58f9e490",
+  "prompts": {},
+  "sessions": {
+    "s_2b59deb0249666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e260f567-8717-44fe-980d-343d9011553c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Marcos Pasqualino <marcos.pasqualino@gmail.com>"
+    }
+  }
+}
