@@ -5,7 +5,25 @@ enum DevTextTools {
         caseTools + [
             sortLines, reverseLines, shuffleLines, dedupeLines, trimLines, collapseLines, numberLines,
             markdownQuote, reverseText, countText, sumAll, loremIpsum, straightQuotes, removeDiacritics,
+            markdownToSlack, slackToMarkdown,
         ]
+
+    static let markdownToSlack = Tool.text(
+        id: "markdown-to-slack", name: "Markdown to Slack",
+        summary: "**bold**, [links](url) and lists as Slack writes them",
+        symbol: "arrow.right.doc.on.clipboard",
+        keywords: ["slack", "mrkdwn", "markdown", "format", "message", "paste", "convert"]
+    ) { input, _ in
+        SlackMarkdown.toSlack(input.text)
+    }
+
+    static let slackToMarkdown = Tool.text(
+        id: "slack-to-markdown", name: "Slack to Markdown", summary: "*bold*, <url|links> and • lists as Markdown",
+        symbol: "arrow.left.doc.on.clipboard",
+        keywords: ["slack", "mrkdwn", "markdown", "format", "message", "notion", "github", "convert"]
+    ) { input, _ in
+        SlackMarkdown.toMarkdown(input.text)
+    }
 
     static let caseTools: [Tool] = [
         caseTool(.camel, id: "camel-case", name: "camelCase", keywords: ["camel", "lower camel", "js"]),

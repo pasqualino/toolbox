@@ -355,6 +355,9 @@ final class ToolSession {
                 self.copiedOnFinish = self.copiedCount > 0
             }
             self.copyWhenDone = false
+            if let started = self.startedAt {
+                RunNotifier.shared.runFinished(self, result: result, duration: Date().timeIntervalSince(started))
+            }
             if !result.outputs.isEmpty || !self.resultText.isEmpty {
                 History.record(tool.id)
                 if UserDefaults.standard.bool(forKey: Prefs.revealWhenDone), !self.outputsAreTemporary,

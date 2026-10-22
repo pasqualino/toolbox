@@ -1,4 +1,5 @@
 import AppKit
+import QuickLook
 import SwiftUI
 import ToolboxCore
 import UniformTypeIdentifiers
@@ -143,6 +144,8 @@ struct FileList: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: Set<InputItem.ID> = []
     @State private var targeted = false
+    /// The file Quick Look shows; nil when closed.
+    @State private var preview: URL?
 
     var body: some View {
         Panel {
@@ -218,6 +221,16 @@ struct FileList: View {
                 } primaryAction: { ids in
                     open(ids)
                 }
+                // Space, as in Finder: the selected files' results, or the originals before a run.
+                .onKeyPress(.space) {
+                    if preview != nil {
+                        preview = nil
+                    } else {
+                        preview = previewURLs.first
+                    }
+                    return .handled
+                }
+                .quickLookPreview($preview, in: previewURLs)
             }
         }
         .overlay {
@@ -241,8 +254,24 @@ struct FileList: View {
         return "\(n) file\(n == 1 ? "" : "s") · \(Format.bytes(total))"
     }
 
+    /// What Space previews: the selection, or every file when nothing is selected.
+    private var previewURLs: [URL] {
+        let chosen = session.items.filter { selection.isEmpty || selection.contains($0.id) }
+        return chosen.flatMap { item -> [URL] in
+            if case .done(let outputs) = item.status, !outputs.isEmpty { return outputs }
+            return [item.url]
+        }
+    }
+
     @ViewBuilder
     private func menu(for item: InputItem) -> some View {
+        Button("Quick Look") {
+            if case .done(let outputs) = item.status, let first = outputs.first {
+                preview = first
+            } else {
+                preview = item.url
+            }
+        }
         if item.comparableOutput != nil {
             Button("Compare Before and After") { session.comparing = item.id }
         }

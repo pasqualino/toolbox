@@ -12,7 +12,7 @@ Native macOS app (SwiftUI, macOS 26+, Swift 6 language mode). README.md covers f
 | `Sources/ToolboxCore/Support` | The work behind tools (PDF, media, OCR, QR, text transforms). |
 | `Sources/Toolbox/App` | `AppModel` (routing, groups, favorites, search), `ToolSession` (one tool's state and runs), `ToolFlow` (tools with custom views), Services, hot key. |
 | `Sources/Toolbox/Views` | `ToolView` (file tools), `TextToolView` (live text tools), `RunBar`, `OptionsPanel`, sidebar in `MainView`. |
-| `Sources/Toolbox/Palette` | The ⌃⌥Space palette and `ToolSearch`. |
+| `Sources/Toolbox/Palette` | The ⌃⌥Space palette, `ToolSearch`, and `Presets` (format and size shortcuts like "png", built from tools' options). |
 | `Support/Info.plist` | Copied into the app by `make-app.sh`: Services, usage descriptions. |
 | `Fixtures` | Inputs and zsh check scripts. |
 

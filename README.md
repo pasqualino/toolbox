@@ -1,14 +1,16 @@
 # Toolbox
 
-A native macOS toolbox: 114 tools for text, code, screenshots, images, PDFs, audio, video, the network and the Mac. SwiftUI, macOS 26+. Everything runs on device.
+A native macOS toolbox: 116 tools for text, code, screenshots, images, PDFs, audio, video, the network and the Mac. SwiftUI, macOS 26+. Everything runs on device.
 
-Press **⌃⌥Space** from any app, type what you need, drop files, press Return. With files selected in Finder, the shortcut opens straight to the tools that take them. Change the shortcut in Settings.
+Press **⌃⌥Space** from any app, type what you need, drop files, press Return. With files selected in Finder, the shortcut opens straight to the tools that take them. Dropping files on the Dock icon or the menu bar icon does the same. Change the shortcut in Settings.
+
+The palette also offers presets: type a format or size and it offers the tool with that option already set. "png" offers Convert Images → PNG and PDF to Images → PNG; "mp4" offers Convert Video → MP4; "1080" offers Resize Images → 1080 px.
 
 ## Tools
 
 | Category | Examples |
 |---|---|
-| Writing | Rewrite, Summarize, Translate (on-device AI), Change Case, Lines, Text Diff |
+| Writing | Rewrite, Summarize, Translate (on-device AI), Change Case, Lines, Markdown ⇄ Slack, Text Diff |
 | Developer | Base64, URL encoding, hashes, JSON/GraphQL/SQL/XML formatting, JSON ⇄ YAML/CSV, JWT, epoch, cron, IDs |
 | Screen & Scan | Capture Text, Extract Text, Beautify Screenshot, Redact Image, QR Code |
 | Images | Convert, Compress, Resize, Rotate, Remove Background, Remove Metadata |
@@ -19,9 +21,11 @@ Press **⌃⌥Space** from any app, type what you need, drop files, press Return
 
 Related tools share one row with pills to switch between them (Change Case: camelCase | snake_case | …). Text and dropped files carry over when you switch. `ToolRegistry.layout` in `ToolGroup.swift` decides the categories, sections and groups.
 
-The 68 text tools update as you type. From the palette, **Return** opens one with the clipboard loaded, and **⌥Return** runs it on the clipboard in place.
+The 70 text tools update as you type. From the palette, **Return** opens one with the clipboard loaded, and **⌥Return** runs it on the clipboard in place.
 
 ## Results
+
+A run that takes 10 seconds or more and finishes while Toolbox is in the background posts a notification. Click it to go back to the tool, or use Show in Finder.
 
 Each run saves to `~/Downloads/Toolbox/<date> <tool>/`; change the folder in Settings. Originals are never changed, except by Batch Rename in "Rename originals" mode. Tools that only produce text show it instead of saving a file.
 
@@ -41,6 +45,7 @@ Each run saves to `~/Downloads/Toolbox/<date> <tool>/`; change the folder in Set
 | ⌘. | Stop |
 | ⇧⌘R | Show results in Finder |
 | ⌃Tab, ⌃⇧Tab | Next or previous pill in a group |
+| Space | Quick Look the selected files' results (or originals before a run) |
 | ⌘D | Add to Favorites, or remove |
 | ⇧⌘N | Open the tool in a new window |
 | ⇧⌘⌫ | Clear files |
@@ -82,7 +87,7 @@ Results go back to Shortcuts; nothing is saved to the output folder. Toolbox run
 
 This builds `Toolbox.app` in release mode, signs it, registers it and launches it. Video, audio and download tools need Homebrew's `ffmpeg` and `yt-dlp`; WebP output needs `webp`. The app offers to install them.
 
-Run `Support/make-signing-identity.sh` once. It creates a self-signed "Toolbox Dev" code-signing certificate in your login keychain, and asks for your password to trust it. `make-app.sh` then signs with it, so macOS keeps Screen Recording, Location and other permissions across rebuilds. Without it, builds are signed ad hoc and those permissions reset each time. To remove it, delete "Toolbox Dev" in Keychain Access.
+Run `Support/make-signing-identity.sh` once. It creates a self-signed "Toolbox Dev" code-signing certificate in your login keychain, and asks for your password to trust it. `make-app.sh` then signs with it, so macOS keeps Screen Recording, Location and other permissions across rebuilds. On the first build, macOS asks to let codesign use the key: enter your password and click **Always Allow**, or it asks on every build. Without the identity, builds are signed ad hoc and those permissions reset each time. To remove it, delete "Toolbox Dev" in Keychain Access.
 
 ## Development
 
@@ -105,7 +110,7 @@ toolbox-cli <tool-id> --text "…"                # text tools; or pipe stdin
 
 ### Tests
 
-526 checks, run against the release CLI. Optimizations once exposed an engine bug that debug builds hid, so always test release.
+534 checks, run against the release CLI. Optimizations once exposed an engine bug that debug builds hid, so always test release.
 
 ```bash
 ./test.sh              # builds the release CLI, runs every Fixtures/**/check-*.sh, prints a total
@@ -116,7 +121,7 @@ It exits non-zero if any check fails, and prints each failure with what it wante
 
 | Script | Checks | Covers |
 |---|---|---|
-| `Fixtures/dev/check-{enc,fmt,txt}.sh` | 284 | Text tools |
+| `Fixtures/dev/check-{enc,fmt,txt}.sh` | 292 | Text tools |
 | `Fixtures/media/check-media.sh` | 48 | Audio and video |
 | `Fixtures/check-other.sh` | 27 | Image, PDF, AI, download |
 | `Fixtures/batch1/check-*.sh` | 167 | Image edits, Mac, media extras, network |

@@ -11,6 +11,8 @@
     @MainActor
     enum Snapshot {
         static func runIfRequested() -> Bool {
+            // Before anything can run: a test must never ask for notification permission.
+            if ProcessInfo.processInfo.environment["TOOLBOX_SNAPSHOT"] != nil { RunNotifier.enabled = false }
             let env = ProcessInfo.processInfo.environment
             guard let dir = env["TOOLBOX_SNAPSHOT"] else { return false }
             let out = URL(fileURLWithPath: dir)

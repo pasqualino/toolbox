@@ -36,6 +36,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             PasteShortcut.install()
             SearchFieldKeys.install()
             ModifierKeys.install()
+            RunNotifier.shared.install()
+            MenuBarDrop.shared.install()
         }
         #if TOOLBOX_DEBUG_HOOKS
             if MainActor.assumeIsolated({ Snapshot.runIfRequested() }) { return }

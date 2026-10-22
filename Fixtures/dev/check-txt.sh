@@ -172,11 +172,21 @@ eq diff-ws-off $'@@ -1,2 +1,2 @@\n  a\n-   b\n+ b  ' "$(r text-diff --text $'a\n
 eq diff-added $'@@ -0,0 +1,2 @@\n+ x\n+ y' "$(r text-diff --text '' --text2 $'x\ny')"
 eq diff-empty '' "$(r text-diff)"
 
+# Markdown ⇄ Slack
+eq md-slack-inline '*bold* and _italic_ and ~gone~ and <https://x.io|a link>' "$(r markdown-to-slack --text '**bold** and *italic* and ~~gone~~ and [a link](https://x.io)')"
+eq md-slack-blocks $'*Title*\n• one\n  • nested\n> quote' "$(r markdown-to-slack --text $'## Title\n- one\n  * nested\n> quote')"
+eq md-slack-code $'keep `**this**` but *that*\n```\n**raw**\n```' "$(r markdown-to-slack --text $'keep `**this**` but **that**\n```\n**raw**\n```')"
+eq md-slack-bare-link '<https://x.io> and <https://y.io|pic>' "$(r markdown-to-slack --text '[https://x.io](https://x.io) and ![pic](https://y.io)')"
+eq md-slack-underscore '*bold* _it_ snake_case_name' "$(r markdown-to-slack --text '__bold__ _it_ snake_case_name')"
+eq slack-md-inline '**bold** and _italic_ and ~~gone~~ and [a link](https://x.io)' "$(r slack-to-markdown --text '*bold* and _italic_ and ~gone~ and <https://x.io|a link>')"
+eq slack-md-refs $'- see https://x.io in #general, @here\n2 * 3 * 4' "$(r slack-to-markdown --text $'• see <https://x.io> in <#C0123|general>, <!here>\n2 * 3 * 4')"
+eq slack-md-code 'run `a*b*c` and **go**' "$(r slack-to-markdown --text 'run `a*b*c` and *go*')"
+
 # Registry
 ids=(camel-case pascal-case snake-case kebab-case constant-case title-case upper-case lower-case sponge-case sort-lines
      reverse-lines shuffle-lines dedupe-lines trim-lines collapse-lines number-lines markdown-quote reverse-text count-text
      sum-all lorem-ipsum straight-quotes remove-diacritics decode-jwt epoch-converter explain-cron parse-url branch-name
-     generate-id inspect-id text-diff)
+     generate-id inspect-id text-diff markdown-to-slack slack-to-markdown)
 listed=$("$CLI" list | grep -v '^ ')
 missing=0; for id in $ids; do print -r -- "$listed" | grep -qx "$id" || { missing=$((missing+1)); echo "  not listed: $id"; }; done
 eq registry 0 $missing

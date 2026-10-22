@@ -131,6 +131,10 @@ extension ToolRegistry {
                                 ("reverse-text", "Reverse"),
                             ]),
                         ToolGroup(
+                            "slack-markdown", "Markdown ⇄ Slack", "Convert formatting either way",
+                            symbol: "bubble.left.and.text.bubble.right",
+                            [("markdown-to-slack", "Markdown to Slack"), ("slack-to-markdown", "Slack to Markdown")]),
+                        ToolGroup(
                             "count", "Count & Sum", "Characters, words, lines, totals", symbol: "sum",
                             [("count-text", "Count"), ("sum-all", "Sum Numbers")]),
                         "text-diff",

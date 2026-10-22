@@ -26,10 +26,13 @@ struct PaletteView: View {
     @FocusState private var fieldFocused: Bool
     @State private var dropTargeted = false
 
-    private var results: [Tool] {
+    /// Presets that the query names ("png"), then tools.
+    private var results: [PaletteItem] {
         let ranked = ToolSearch.rank(ToolRegistry.all, query: state.query, files: state.files)
-        guard state.text != nil else { return ranked }
-        return ranked.filter(\.takesText)
+        guard state.text == nil else { return ranked.filter(\.takesText).map { PaletteItem(tool: $0) } }
+        let pool = ToolSearch.rank(ToolRegistry.all, query: "", files: state.files)
+        let presets = Presets.matching(state.query, in: pool).map { PaletteItem(tool: $0.tool, preset: $0) }
+        return presets + ranked.map { PaletteItem(tool: $0) }
     }
 
     var body: some View {
@@ -48,7 +51,7 @@ struct PaletteView: View {
         .animation(.easeOut(duration: PalettePanel.fade), value: state.shown)
     }
 
-    private func card(_ results: [Tool]) -> some View {
+    private func card(_ results: [PaletteItem]) -> some View {
         @Bindable var state = state
         return VStack(spacing: 0) {
             searchField(results: results)
@@ -80,7 +83,7 @@ struct PaletteView: View {
         .shadow(color: .black.opacity(0.28), radius: 30, y: 12)
     }
 
-    private func searchField(results: [Tool]) -> some View {
+    private func searchField(results: [PaletteItem]) -> some View {
         @Bindable var state = state
         return HStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
@@ -157,7 +160,7 @@ struct PaletteView: View {
     }
 
     @ViewBuilder
-    private func resultList(_ results: [Tool]) -> some View {
+    private func resultList(_ results: [PaletteItem]) -> some View {
         if results.isEmpty {
             VStack(spacing: 6) {
                 Image(systemName: state.files.isEmpty ? "questionmark.circle" : "doc.questionmark")
@@ -172,9 +175,9 @@ struct PaletteView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 2) {
-                        ForEach(Array(results.enumerated()), id: \.element.id) { index, tool in
-                            PaletteRow(tool: tool, selected: index == state.selection)
-                                .id(tool.id)
+                        ForEach(Array(results.enumerated()), id: \.element.id) { index, item in
+                            PaletteRow(item: item, selected: index == state.selection)
+                                .id(item.id)
                                 .onTapGesture {
                                     state.selection = index
                                     open(results)
@@ -194,7 +197,7 @@ struct PaletteView: View {
         }
     }
 
-    private func footer(_ results: [Tool]) -> some View {
+    private func footer(_ results: [PaletteItem]) -> some View {
         HStack(spacing: 14) {
             Image(systemName: "square.grid.2x2.fill")
                 .foregroundStyle(.tertiary)
@@ -208,7 +211,9 @@ struct PaletteView: View {
                 KeyCap(text: "↩")
                 Text("Open")
             }
-            if results.indices.contains(state.selection) && ClipboardAction.supports(results[state.selection]) {
+            if results.indices.contains(state.selection), results[state.selection].preset == nil,
+                ClipboardAction.supports(results[state.selection].tool)
+            {
                 HStack(spacing: 4) {
                     KeyCap(text: "⌥↩")
                     Text("Apply to clipboard")
@@ -226,10 +231,10 @@ struct PaletteView: View {
         .background(.quaternary.opacity(0.25))
     }
 
-    private func applyToClipboard(_ results: [Tool]) {
+    private func applyToClipboard(_ results: [PaletteItem]) {
         guard results.indices.contains(state.selection) else { return }
-        let tool = results[state.selection]
-        guard ClipboardAction.supports(tool) else {
+        let tool = results[state.selection].tool
+        guard results[state.selection].preset == nil, ClipboardAction.supports(tool) else {
             open(results)
             return
         }
@@ -242,9 +247,13 @@ struct PaletteView: View {
         state.selection = (state.selection + delta + count) % count
     }
 
-    private func open(_ results: [Tool]) {
+    private func open(_ results: [PaletteItem]) {
         guard results.indices.contains(state.selection) else { return }
-        let tool = results[state.selection]
+        let tool = results[state.selection].tool
+        if let preset = results[state.selection].preset {
+            let session = AppModel.shared.session(for: tool)
+            for (key, value) in preset.options { session.options[key] = value }
+        }
         if tool.flow.openFromPalette() { return }
         var text = tool.inputKind == .url && ToolSearch.looksLikeURL(state.query) ? state.query : nil
         if let handed = state.text {
@@ -280,15 +289,17 @@ struct PaletteView: View {
 
 private struct PaletteRow: View {
     static let height: CGFloat = 48
-    let tool: Tool
+    let item: PaletteItem
     let selected: Bool
+
+    private var tool: Tool { item.tool }
 
     var body: some View {
         HStack(spacing: 12) {
             ToolIcon(tool, size: 32)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
-                    Text(tool.name)
+                    Text(item.preset?.title ?? tool.name)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.primary)
                     if tool.usesOnDeviceAI { AIMark(size: 10) }
