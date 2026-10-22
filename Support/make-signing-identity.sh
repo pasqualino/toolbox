@@ -36,8 +36,9 @@ $SSL req -x509 -newkey rsa:2048 -nodes -days 3650 -config "$WORK/cert.conf" \
 $SSL pkcs12 -export -inkey "$WORK/key.pem" -in "$WORK/cert.pem" -name "$NAME" \
     -out "$WORK/identity.p12" -passout pass:toolbox
 
-# -T lets codesign use the key without asking each build.
 security import "$WORK/identity.p12" -k "$KEYCHAIN" -P toolbox -T /usr/bin/codesign
 security add-trusted-cert -p codeSign -k "$KEYCHAIN" "$WORK/cert.pem"
 
 security find-identity -v -p codesigning | grep "\"$NAME\"" && echo "Done. Rebuild with ./make-app.sh."
+# -T isn't enough on current macOS: the first build asks for the keychain password.
+echo "On the first build, macOS asks to let codesign use the key: enter your password and click Always Allow."
