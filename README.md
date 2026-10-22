@@ -65,7 +65,9 @@ Give any of them a shortcut in System Settings › Keyboard › Keyboard Shortcu
 ./make-app.sh --open
 ```
 
-This builds `Toolbox.app` in release mode, signs it ad hoc, registers it and launches it. Video, audio and download tools need Homebrew's `ffmpeg` and `yt-dlp`; WebP output needs `webp`. The app offers to install them.
+This builds `Toolbox.app` in release mode, signs it, registers it and launches it. Video, audio and download tools need Homebrew's `ffmpeg` and `yt-dlp`; WebP output needs `webp`. The app offers to install them.
+
+Run `Support/make-signing-identity.sh` once. It creates a self-signed "Toolbox Dev" code-signing certificate in your login keychain, and asks for your password to trust it. `make-app.sh` then signs with it, so macOS keeps Screen Recording, Location and other permissions across rebuilds. Without it, builds are signed ad hoc and those permissions reset each time. To remove it, delete "Toolbox Dev" in Keychain Access.
 
 ## Development
 

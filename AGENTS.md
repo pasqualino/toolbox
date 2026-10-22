@@ -52,5 +52,5 @@ Periphery (`brew install periphery`, then `periphery scan`) finds unused code. I
 - Comments: short, say why, match the surrounding density.
 - Concurrency: UI state is `@MainActor`. Shared mutable state off the main actor goes in a `Mutex` or `Atomic`, not `@unchecked Sendable` or `nonisolated(unsafe)`. The code has none of either; keep it that way.
 - User-facing text: short sentences, no em dashes.
-- Ad hoc signing means Screen Recording and Location may need re-granting after a rebuild.
+- `make-app.sh` signs with the "Toolbox Dev" identity when it exists, and ad hoc otherwise. Ad hoc builds lose Screen Recording and Location on every rebuild. Creating the identity changes the user's keychain, so the user runs `Support/make-signing-identity.sh` themselves.
 - No git remote: commit when asked, never push.

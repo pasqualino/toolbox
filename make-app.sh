@@ -31,7 +31,15 @@ if [[ ! -f $ICONS/AppIcon.icns || Support/make-icon.swift -nt $ICONS/AppIcon.icn
 fi
 cp $ICONS/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
-codesign --force --sign - "$APP"
+# A stable identity keeps macOS permissions (Screen Recording, Location) across rebuilds.
+# Create it once with Support/make-signing-identity.sh. Without it, sign ad hoc.
+IDENTITY="${TOOLBOX_SIGN_IDENTITY:-Toolbox Dev}"
+if security find-identity -v -p codesigning | grep -q "\"$IDENTITY\""; then
+  codesign --force --sign "$IDENTITY" "$APP"
+else
+  codesign --force --sign - "$APP"
+  echo "Signed ad hoc: permissions reset on each build. Run Support/make-signing-identity.sh once to fix that."
+fi
 echo "Built $PWD/$APP"
 
 if (( OPEN )); then
