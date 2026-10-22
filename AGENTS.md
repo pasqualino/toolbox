@@ -1,6 +1,6 @@
 # Agent guide
 
-Native macOS app (SwiftUI, macOS 26+, Swift 5 language mode). README.md covers features, the CLI and the test commands. This file covers where things live and how to change them safely.
+Native macOS app (SwiftUI, macOS 26+, Swift 6 language mode). README.md covers features, the CLI and the test commands. This file covers where things live and how to change them safely.
 
 ## Map
 
@@ -50,6 +50,7 @@ Periphery (`brew install periphery`, then `periphery scan`) finds unused code. I
 ## Conventions
 
 - Comments: short, say why, match the surrounding density.
+- Concurrency: UI state is `@MainActor`. Shared mutable state off the main actor goes in a `Mutex` or `Atomic`, not `@unchecked Sendable` or `nonisolated(unsafe)`. A few older lock-based types still use `@unchecked Sendable`; don't add more.
 - User-facing text: short sentences, no em dashes.
 - Ad hoc signing means Screen Recording and Location may need re-granting after a rebuild.
 - No git remote: commit when asked, never push.
